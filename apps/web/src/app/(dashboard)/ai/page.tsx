@@ -112,7 +112,7 @@ export default function AiPage() {
           <div className="text-center text-muted-foreground text-sm py-12 space-y-2">
             <p className="text-4xl">🤖</p>
             <p>Type a command in natural language.</p>
-            <p className="text-xs">e.g. "Add margherita pizza for ₪58" or "הגדל את כל מחירי הפסטה ב-10%"</p>
+            <p className="text-xs">{'e.g. "Add margherita pizza for ₪58" or "הגדל את כל מחירי הפסטה ב-10%"'}</p>
           </div>
         )}
 
