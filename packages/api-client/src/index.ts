@@ -9,6 +9,7 @@ import type {
   OrderItem,
   Payment,
   Printer,
+  PrinterRoute,
   User,
   TokenPair,
   AiCommandRequest,
@@ -169,6 +170,9 @@ export function createApiClient(config: ApiClientConfig) {
       create: (data: Omit<Printer, 'id'>) => post<Printer>('/printers', data),
       update: (id: string, data: Partial<Printer>) => patch<Printer>(`/printers/${id}`, data),
       delete: (id: string) => del<void>(`/printers/${id}`),
+      listRoutes: (locationId: string) =>
+        get<PrinterRoute[]>(`/locations/${locationId}/printer-routes`),
+      setRoute: (data: PrinterRoute) => post<PrinterRoute>('/printer-routes', data),
     },
 
     // Staff
