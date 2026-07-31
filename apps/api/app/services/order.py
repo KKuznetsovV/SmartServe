@@ -41,6 +41,17 @@ class OrderService:
         result = await self.db.execute(q)
         return list(result.scalars().all())
 
+    async def list_active_for_display(self, location_id: str) -> list[Order]:
+        """Returns submitted/preparing/ready orders sorted oldest-first for display screens."""
+        q = (
+            select(Order)
+            .where(Order.location_id == location_id, Order.status.in_(["submitted", "preparing", "ready"]))
+            .options(selectinload(Order.items))
+            .order_by(Order.created_at.asc())
+        )
+        result = await self.db.execute(q)
+        return list(result.scalars().all())
+
     async def get_order(self, order_id: str) -> Order:
         result = await self.db.execute(select(Order).where(Order.id == order_id).options(selectinload(Order.items)))
         order = result.scalar_one_or_none()
