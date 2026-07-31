@@ -4,10 +4,12 @@ import { use, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useOrder, useSubmitOrder, useCancelOrder } from '@/hooks/use-orders'
 import { useOrderPayments } from '@/hooks/use-payments'
+import { useApplyDiscount } from '@/hooks/use-discounts'
 import { PaymentDialog } from './payment-dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import type { OrderStatus, OrderItemStatus, PaymentMethod } from '@smartserve/types'
 
@@ -51,11 +53,13 @@ export default function OrderDetailPage({ params }: Props) {
   const { orderId } = use(params)
   const router = useRouter()
   const [paymentOpen, setPaymentOpen] = useState(false)
+  const [discountCode, setDiscountCode] = useState('')
 
   const { data: order, isLoading } = useOrder(orderId)
   const { data: payments } = useOrderPayments(orderId)
   const submitOrder = useSubmitOrder()
   const cancelOrder = useCancelOrder()
+  const applyDiscount = useApplyDiscount()
 
   async function handleSubmit() {
     if (!order) return
@@ -174,6 +178,12 @@ export default function OrderDetailPage({ params }: Props) {
             <span className="text-muted-foreground">Tax (17%)</span>
             <span>₪{order.taxAmount.toFixed(2)}</span>
           </div>
+          {order.discountAmount > 0 && (
+            <div className="flex justify-between text-sm text-emerald-600">
+              <span>Discount</span>
+              <span>−₪{order.discountAmount.toFixed(2)}</span>
+            </div>
+          )}
           <div className="flex justify-between font-bold text-base pt-1 border-t">
             <span>Total</span>
             <span>₪{order.total.toFixed(2)}</span>
@@ -192,6 +202,28 @@ export default function OrderDetailPage({ params }: Props) {
           )}
         </CardContent>
       </Card>
+
+      {/* Apply discount */}
+      {['open', 'submitted'].includes(order.status) && !order.discountId && (
+        <div className="flex gap-2">
+          <Input
+            placeholder="Discount code"
+            value={discountCode}
+            onChange={(e) => setDiscountCode(e.target.value)}
+            className="max-w-xs uppercase"
+          />
+          <Button
+            variant="outline"
+            disabled={!discountCode.trim() || applyDiscount.isPending}
+            onClick={() => {
+              applyDiscount.mutate({ orderId, code: discountCode.trim() })
+              setDiscountCode('')
+            }}
+          >
+            Apply
+          </Button>
+        </div>
+      )}
 
       {/* Payments list */}
       {payments && payments.length > 0 && (
