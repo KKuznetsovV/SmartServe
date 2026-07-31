@@ -1,5 +1,6 @@
 import type {
   Business,
+  Discount,
   Location,
   MenuCategory,
   MenuItem,
@@ -154,6 +155,8 @@ export function createApiClient(config: ApiClientConfig) {
         patch<OrderItem>(`/orders/${orderId}/items/${itemId}/status`, { status }),
       submit: (orderId: string) => post<Order>(`/orders/${orderId}/submit`, {}),
       cancel: (orderId: string) => post<Order>(`/orders/${orderId}/cancel`, {}),
+      applyDiscount: (orderId: string, code: string) =>
+        post<Order>(`/orders/${orderId}/discount`, { code }),
     },
 
     // Payments
@@ -187,6 +190,15 @@ export function createApiClient(config: ApiClientConfig) {
     reports: {
       summary: (locationId: string, period: 'today' | 'week' | 'month') =>
         get<ReportSummary>(`/locations/${locationId}/reports/summary?period=${period}`),
+    },
+
+    // Discounts
+    discounts: {
+      list: (businessId: string) => get<Discount[]>(`/businesses/${businessId}/discounts`),
+      create: (data: Omit<Discount, 'id' | 'createdAt'>) => post<Discount>('/discounts', data),
+      update: (id: string, data: Partial<Pick<Discount, 'name' | 'value' | 'minOrderAmount' | 'active' | 'expiresAt'>>) =>
+        patch<Discount>(`/discounts/${id}`, data),
+      delete: (id: string) => del<void>(`/discounts/${id}`),
     },
 
     // AI

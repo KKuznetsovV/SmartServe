@@ -43,6 +43,7 @@ class Business(Base):
 
     locations: Mapped[list[Location]] = relationship(back_populates="business")
     users: Mapped[list[User]] = relationship(back_populates="business")
+    discounts: Mapped[list[Discount]] = relationship(back_populates="business")
 
 
 class Location(Base):
@@ -167,6 +168,29 @@ class Table(Base):
     orders: Mapped[list[Order]] = relationship(back_populates="table")
 
 
+# ─── Discounts ────────────────────────────────────────────────────────────────
+
+
+class Discount(Base):
+    __tablename__ = "discounts"
+    __table_args__ = (UniqueConstraint("business_id", "code"),)
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    business_id: Mapped[str] = mapped_column(ForeignKey("businesses.id"), nullable=False)
+    code: Mapped[str] = mapped_column(String(50), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    # "percent" applies value as a percentage of order total; "fixed" subtracts a flat amount
+    type: Mapped[str] = mapped_column(String(20), default="percent")
+    value: Mapped[float] = mapped_column(Float, nullable=False)
+    min_order_amount: Mapped[float] = mapped_column(Float, default=0.0)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    business: Mapped[Business] = relationship(back_populates="discounts")
+    orders: Mapped[list[Order]] = relationship(back_populates="discount")
+
+
 # ─── Orders ───────────────────────────────────────────────────────────────────
 
 
@@ -176,10 +200,12 @@ class Order(Base):
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
     location_id: Mapped[str] = mapped_column(ForeignKey("locations.id"), nullable=False)
     table_id: Mapped[str | None] = mapped_column(ForeignKey("tables.id"))
+    discount_id: Mapped[str | None] = mapped_column(ForeignKey("discounts.id"))
     channel: Mapped[str] = mapped_column(String(50), default="dine_in")
     status: Mapped[str] = mapped_column(String(50), default="open")
     subtotal: Mapped[float] = mapped_column(Float, default=0.0)
     tax_amount: Mapped[float] = mapped_column(Float, default=0.0)
+    discount_amount: Mapped[float] = mapped_column(Float, default=0.0)
     total: Mapped[float] = mapped_column(Float, default=0.0)
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
@@ -187,6 +213,7 @@ class Order(Base):
 
     location: Mapped[Location] = relationship(back_populates="orders")
     table: Mapped[Table] = relationship(back_populates="orders")
+    discount: Mapped[Discount | None] = relationship(back_populates="orders")
     items: Mapped[list[OrderItem]] = relationship(back_populates="order")
     payments: Mapped[list[Payment]] = relationship(back_populates="order")
 

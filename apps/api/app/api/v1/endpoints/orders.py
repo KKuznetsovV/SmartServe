@@ -12,7 +12,9 @@ from app.schemas.order import (
     OrderItemStatusUpdate,
     OrderOut,
 )
+from app.schemas.discount import ApplyDiscountIn
 from app.services.order import OrderService
+from app.services.discount import DiscountService
 
 router = APIRouter()
 
@@ -82,3 +84,13 @@ async def cancel_order(
     _: User = Depends(require_staff),
 ):
     return await OrderService(db).transition_order(order_id, "cancelled")
+
+
+@router.post("/orders/{order_id}/discount", response_model=OrderOut)
+async def apply_discount(
+    order_id: str,
+    data: ApplyDiscountIn,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_staff),
+):
+    return await DiscountService(db).apply_to_order(order_id, data)

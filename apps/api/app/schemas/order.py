@@ -39,6 +39,8 @@ class OrderOut(BaseModel):
     location_id: str
     table_id: str | None = None
     table_name: str | None = None
+    discount_id: str | None = None
+    discount_amount: float = 0.0
     channel: str
     status: str
     subtotal: float

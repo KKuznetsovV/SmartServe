@@ -23,7 +23,8 @@
     "printers": "Printers",
     "reports": "Reports",
     "settings": "Settings",
-    "ai": "AI Assistant"
+    "ai": "AI Assistant",
+    "discounts": "Discounts"
   },
   "auth": {
     "login": "Login",

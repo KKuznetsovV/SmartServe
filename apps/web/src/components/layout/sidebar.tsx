@@ -14,6 +14,7 @@ import {
   Sparkles,
   LogOut,
   ChefHat,
+  Tag,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/lib/auth-store'
@@ -28,6 +29,7 @@ const navItems = [
   { href: '/printers', icon: Printer, key: 'printers' },
   { href: '/reports', icon: BarChart3, key: 'reports' },
   { href: '/ai', icon: Sparkles, key: 'ai' },
+  { href: '/settings/discounts', icon: Tag, key: 'discounts' },
   { href: '/settings', icon: Settings, key: 'settings' },
 ]
 
