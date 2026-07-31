@@ -3,9 +3,9 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import (
-    Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+    Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -186,7 +186,7 @@ class OrderItem(Base):
     menu_item_name: Mapped[str] = mapped_column(String(255), nullable=False)
     qty: Mapped[int] = mapped_column(Integer, default=1)
     unit_price: Mapped[float] = mapped_column(Float, nullable=False)
-    modifiers: Mapped[list] = mapped_column(JSONB, default=list)
+    modifiers: Mapped[list] = mapped_column(JSON, default=list)
     notes: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(50), default="pending")
 
