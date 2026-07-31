@@ -12,4 +12,5 @@ redis>=6.1.0
 celery>=5.5.3
 anthropic>=0.52.0
 httpx>=0.28.1
+slowapi>=0.1.9
 structlog>=25.4.0
