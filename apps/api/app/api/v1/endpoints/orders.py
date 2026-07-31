@@ -23,10 +23,12 @@ router = APIRouter()
 async def list_orders(
     location_id: str,
     status: str | None = Query(None),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_staff),
 ):
-    return await OrderService(db).list_orders(location_id, status)
+    return await OrderService(db).list_orders(location_id, status, limit=limit, offset=offset)
 
 
 @router.get("/orders/{order_id}", response_model=OrderOut)

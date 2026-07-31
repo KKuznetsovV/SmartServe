@@ -33,11 +33,13 @@ class OrderService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def list_orders(self, location_id: str, status_filter: str | None = None) -> list[Order]:
+    async def list_orders(
+        self, location_id: str, status_filter: str | None = None, limit: int = 100, offset: int = 0
+    ) -> list[Order]:
         q = select(Order).where(Order.location_id == location_id).options(selectinload(Order.items))
         if status_filter:
             q = q.where(Order.status == status_filter)
-        q = q.order_by(Order.created_at.desc())
+        q = q.order_by(Order.created_at.desc()).limit(limit).offset(offset)
         result = await self.db.execute(q)
         return list(result.scalars().all())
 
@@ -48,6 +50,7 @@ class OrderService:
             .where(Order.location_id == location_id, Order.status.in_(["submitted", "preparing", "ready"]))
             .options(selectinload(Order.items))
             .order_by(Order.created_at.asc())
+            .limit(50)
         )
         result = await self.db.execute(q)
         return list(result.scalars().all())

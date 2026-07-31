@@ -9,6 +9,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -196,6 +197,11 @@ class Discount(Base):
 
 class Order(Base):
     __tablename__ = "orders"
+    # KDS/display/orders-list poll by location+status; history sorts by created_at
+    __table_args__ = (
+        Index("ix_orders_location_status", "location_id", "status"),
+        Index("ix_orders_location_created", "location_id", "created_at"),
+    )
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
     location_id: Mapped[str] = mapped_column(ForeignKey("locations.id"), nullable=False)
@@ -220,6 +226,7 @@ class Order(Base):
 
 class OrderItem(Base):
     __tablename__ = "order_items"
+    __table_args__ = (Index("ix_order_items_order_id", "order_id"),)
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
     order_id: Mapped[str] = mapped_column(ForeignKey("orders.id"), nullable=False)
