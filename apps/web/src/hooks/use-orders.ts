@@ -68,6 +68,18 @@ export function useSubmitOrder() {
   })
 }
 
+export function useUpdateOrderItemStatus() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ orderId, itemId, status }: { orderId: string; itemId: string; status: string }) =>
+      apiClient.orders.updateItemStatus(orderId, itemId, status),
+    onSuccess: (item) => {
+      qc.invalidateQueries({ queryKey: ['order', item.orderId] })
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
 export function useCancelOrder() {
   const qc = useQueryClient()
   return useMutation({
