@@ -14,6 +14,7 @@ import type {
   AiCommandRequest,
   AiCommandResponse,
   ApiError,
+  ReportSummary,
 } from '@smartserve/types'
 
 // ─── Config ──────────────────────────────────────────────────────────────────
@@ -178,9 +179,14 @@ export function createApiClient(config: ApiClientConfig) {
       update: (id: string, data: Partial<User>) => patch<User>(`/staff/${id}`, data),
     },
 
+    // Reports
+    reports: {
+      summary: (locationId: string, period: 'today' | 'week' | 'month') =>
+        get<ReportSummary>(`/locations/${locationId}/reports/summary?period=${period}`),
+    },
+
     // AI
-    ai: {
-      command: (data: AiCommandRequest) => post<AiCommandResponse>('/ai/command', data),
+    ai: {      command: (data: AiCommandRequest) => post<AiCommandResponse>('/ai/command', data),
       confirm: (executionId: string) => post<{ success: boolean; message: string }>('/ai/confirm', { executionId }),
     },
   }
