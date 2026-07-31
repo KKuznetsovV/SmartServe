@@ -78,6 +78,8 @@ class DiscountService:
 
         loc_result = await self.db.execute(select(Location).where(Location.id == order.location_id))
         location = loc_result.scalar_one_or_none()
+        if not location:
+            raise HTTPException(status_code=404, detail="Order location not found")
 
         discount_result = await self.db.execute(
             select(Discount).where(
