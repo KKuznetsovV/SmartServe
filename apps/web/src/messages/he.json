@@ -1,0 +1,68 @@
+{
+  "common": {
+    "save": "שמור",
+    "cancel": "ביטול",
+    "delete": "מחק",
+    "edit": "ערוך",
+    "add": "הוסף",
+    "confirm": "אשר",
+    "loading": "טוען...",
+    "error": "שגיאה",
+    "success": "הצלחה",
+    "search": "חיפוש",
+    "back": "חזור",
+    "yes": "כן",
+    "no": "לא"
+  },
+  "nav": {
+    "dashboard": "לוח בקרה",
+    "menu": "תפריט",
+    "orders": "הזמנות",
+    "tables": "שולחנות",
+    "staff": "צוות",
+    "printers": "מדפסות",
+    "reports": "דוחות",
+    "settings": "הגדרות",
+    "ai": "עוזר AI"
+  },
+  "auth": {
+    "login": "כניסה",
+    "logout": "יציאה",
+    "email": "אימייל",
+    "password": "סיסמה",
+    "loginButton": "כניסה למערכת",
+    "invalidCredentials": "אימייל או סיסמה שגויים"
+  },
+  "menu": {
+    "categories": "קטגוריות",
+    "items": "פריטים",
+    "addCategory": "הוסף קטגוריה",
+    "addItem": "הוסף פריט",
+    "itemName": "שם הפריט",
+    "price": "מחיר",
+    "available": "זמין",
+    "unavailable": "לא זמין",
+    "modifiers": "תוספות",
+    "taxRate": "מע\"מ"
+  },
+  "orders": {
+    "newOrder": "הזמנה חדשה",
+    "table": "שולחן",
+    "status": {
+      "open": "פתוח",
+      "submitted": "נשלח",
+      "preparing": "בהכנה",
+      "ready": "מוכן",
+      "served": "הוגש",
+      "paid": "שולם",
+      "cancelled": "בוטל"
+    }
+  },
+  "ai": {
+    "placeholder": "מה תרצה לעשות? למשל: 'הוסף פיצה מרגריטה ב-58 ₪'",
+    "thinking": "מעבד...",
+    "preview": "תצוגה מקדימה",
+    "confirm": "אשר פעולה",
+    "cancel": "ביטול"
+  }
+}

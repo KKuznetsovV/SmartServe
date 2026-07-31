@@ -1,0 +1,68 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "confirm": "Confirm",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "search": "Search",
+    "back": "Back",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "menu": "Menu",
+    "orders": "Orders",
+    "tables": "Tables",
+    "staff": "Staff",
+    "printers": "Printers",
+    "reports": "Reports",
+    "settings": "Settings",
+    "ai": "AI Assistant"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "email": "Email",
+    "password": "Password",
+    "loginButton": "Sign In",
+    "invalidCredentials": "Invalid email or password"
+  },
+  "menu": {
+    "categories": "Categories",
+    "items": "Items",
+    "addCategory": "Add Category",
+    "addItem": "Add Item",
+    "itemName": "Item Name",
+    "price": "Price",
+    "available": "Available",
+    "unavailable": "Unavailable",
+    "modifiers": "Modifiers",
+    "taxRate": "Tax Rate"
+  },
+  "orders": {
+    "newOrder": "New Order",
+    "table": "Table",
+    "status": {
+      "open": "Open",
+      "submitted": "Submitted",
+      "preparing": "Preparing",
+      "ready": "Ready",
+      "served": "Served",
+      "paid": "Paid",
+      "cancelled": "Cancelled"
+    }
+  },
+  "ai": {
+    "placeholder": "What would you like to do? e.g. 'Add margherita pizza for 58 NIS'",
+    "thinking": "Processing...",
+    "preview": "Preview",
+    "confirm": "Confirm Action",
+    "cancel": "Cancel"
+  }
+}

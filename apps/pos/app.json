@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "SmartServe POS",
+    "slug": "smartserve-pos",
+    "version": "0.0.1",
+    "orientation": "landscape",
+    "scheme": "smartserve",
+    "platforms": ["ios", "android"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.smartserve.pos"
+    },
+    "android": {
+      "package": "com.smartserve.pos",
+      "adaptiveIcon": {
+        "backgroundColor": "#1d4ed8"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-localization"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
