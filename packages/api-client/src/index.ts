@@ -159,6 +159,7 @@ export function createApiClient(config: ApiClientConfig) {
       create: (data: Pick<Payment, 'orderId' | 'method' | 'amount'>) =>
         post<Payment>('/payments', data),
       get: (id: string) => get<Payment>(`/payments/${id}`),
+      listByOrder: (orderId: string) => get<Payment[]>(`/orders/${orderId}/payments`),
     },
 
     // Printers
