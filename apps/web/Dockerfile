@@ -16,10 +16,8 @@ RUN pnpm install --frozen-lockfile --ignore-scripts
 # ── builder ───────────────────────────────────────────────────────────────────
 FROM base AS builder
 WORKDIR /repo
-COPY --from=deps /repo/node_modules ./node_modules
-COPY --from=deps /repo/packages/types/node_modules packages/types/node_modules 2>/dev/null || true
-COPY --from=deps /repo/packages/api-client/node_modules packages/api-client/node_modules 2>/dev/null || true
-COPY --from=deps /repo/apps/web/node_modules apps/web/node_modules 2>/dev/null || true
+# deps stage holds only package.json files + node_modules (incl. per-package pnpm symlink dirs)
+COPY --from=deps /repo/ ./
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm --filter @smartserve/types build && \

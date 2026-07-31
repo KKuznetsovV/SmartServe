@@ -1,0 +1,17 @@
+node_modules
+**/node_modules
+**/.next
+**/dist
+**/.turbo
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/*.tsbuildinfo
+.git
+.vscode
+**/.env
+**/.env.*
+!**/.env.example
+**/test-results
+**/playwright-report
