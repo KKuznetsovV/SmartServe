@@ -1,6 +1,8 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +18,7 @@ from app.db.session import get_db
 
 router = APIRouter()
 bearer = HTTPBearer()
+limiter = Limiter(key_func=get_remote_address)
 
 
 class LoginRequest(BaseModel):
@@ -40,7 +43,8 @@ class RefreshRequest(BaseModel):
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def login(request: Request, body: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == body.email, User.active))
     user = result.scalar_one_or_none()
     if not user or not user.password_hash or not verify_password(body.password, user.password_hash):
@@ -55,7 +59,8 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/pin", response_model=TokenResponse)
-async def pin_login(body: PinLoginRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("20/minute")
+async def pin_login(request: Request, body: PinLoginRequest, db: AsyncSession = Depends(get_db)):
     # TODO: add Redis-based rate limiting (MAX_PIN_ATTEMPTS) in step/02
     result = await db.execute(select(User).where(User.active))
     users = result.scalars().all()

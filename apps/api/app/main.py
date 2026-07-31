@@ -1,8 +1,11 @@
 from contextlib import asynccontextmanager
 
 import structlog
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from app.api.v1.router import api_router
 from app.core.config import settings
@@ -12,10 +15,14 @@ from app.db.session import engine
 
 logger = structlog.get_logger()
 
+limiter = Limiter(key_func=get_remote_address)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging()
+    if settings.ENVIRONMENT == "production" and settings.SECRET_KEY.startswith("change-me"):
+        raise RuntimeError("SECRET_KEY must be changed in production!")
     logger.info("SmartServe API starting", env=settings.ENVIRONMENT)
     yield
     await engine.dispose()
@@ -31,6 +38,10 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # Rate limiting
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.CORS_ORIGINS,
@@ -38,6 +49,18 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Security headers middleware
+    @app.middleware("http")
+    async def security_headers(request: Request, call_next: object) -> Response:
+        response: Response = await call_next(request)  # type: ignore[operator]
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        if settings.ENVIRONMENT == "production":
+            response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+        return response
 
     app.include_router(api_router, prefix="/api/v1")
 
