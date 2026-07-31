@@ -25,15 +25,50 @@ import type {
 export interface ApiClientConfig {
   baseUrl: string
   getAccessToken: () => string | null
+  /** Return the refresh token to enable automatic retry-on-401 token refresh. */
+  getRefreshToken?: () => string | null
+  /** Called with new tokens after a successful automatic refresh. */
+  onTokensRefreshed?: (accessToken: string, refreshToken: string) => void
   onUnauthorized?: () => void
 }
 
 // ─── Core fetch wrapper ───────────────────────────────────────────────────────
 
+// Shared across concurrent requests so only one refresh happens at a time
+let refreshPromise: Promise<boolean> | null = null
+
+async function tryRefresh(config: ApiClientConfig): Promise<boolean> {
+  const refreshToken = config.getRefreshToken?.()
+  if (!refreshToken || !config.onTokensRefreshed) return false
+
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      try {
+        const res = await fetch(`${config.baseUrl}/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken }),
+        })
+        if (!res.ok) return false
+        const json = await res.json()
+        const data = json.data ?? json
+        config.onTokensRefreshed!(data.accessToken, data.refreshToken)
+        return true
+      } catch {
+        return false
+      } finally {
+        refreshPromise = null
+      }
+    })()
+  }
+  return refreshPromise
+}
+
 async function request<T>(
   config: ApiClientConfig,
   path: string,
   options: RequestInit = {},
+  isRetry = false,
 ): Promise<T> {
   const token = config.getAccessToken()
   const headers: Record<string, string> = {
@@ -50,6 +85,9 @@ async function request<T>(
   })
 
   if (response.status === 401) {
+    if (!isRetry && !path.startsWith('/auth/') && (await tryRefresh(config))) {
+      return request<T>(config, path, options, true)
+    }
     config.onUnauthorized?.()
     throw new Error('Unauthorized')
   }
