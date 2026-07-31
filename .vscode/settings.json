@@ -1,7 +1,4 @@
 {
   "python.defaultInterpreterPath": "${workspaceFolder}/apps/api/.venv/Scripts/python.exe",
-  "python.analysis.extraPaths": ["${workspaceFolder}/apps/api"],
-  "[python]": {
-    "editor.defaultFormatter": "charliermarsh.ruff"
-  }
+  "python.analysis.extraPaths": ["${workspaceFolder}/apps/api"]
 }
