@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 
 from app.main import app
 from app.db.session import Base, get_db
-from app.db.models import Business, User
+from app.db.models import Business, Location, MenuCategory, MenuItem, User
 from app.core.security import hash_password, create_access_token
 
 # In-memory SQLite for tests — no Postgres needed
@@ -75,3 +75,22 @@ async def manager_user(db: AsyncSession, business: Business) -> tuple[User, str]
     await db.flush()
     token = create_access_token(user.id, {"business_id": user.business_id, "role": user.role})
     return user, token
+
+
+@pytest_asyncio.fixture
+async def location(db: AsyncSession, business: Business) -> Location:
+    loc = Location(business_id=business.id, name="Main Branch")
+    db.add(loc)
+    await db.flush()
+    return loc
+
+
+@pytest_asyncio.fixture
+async def menu_item(db: AsyncSession, location: Location) -> MenuItem:
+    cat = MenuCategory(location_id=location.id, name="Food", sort_order=0)
+    db.add(cat)
+    await db.flush()
+    item = MenuItem(category_id=cat.id, name="Burger", price=50.0, tax_rate=0.17, preparation_time_min=10)
+    db.add(item)
+    await db.flush()
+    return item
