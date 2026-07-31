@@ -15,12 +15,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.create_index("ix_orders_location_status", "orders", ["location_id", "status"])
+    # ix_orders_location_status and ix_order_items_order_id already exist from the initial schema
     op.create_index("ix_orders_location_created", "orders", ["location_id", "created_at"])
-    op.create_index("ix_order_items_order_id", "order_items", ["order_id"])
 
 
 def downgrade() -> None:
-    op.drop_index("ix_order_items_order_id", table_name="order_items")
     op.drop_index("ix_orders_location_created", table_name="orders")
-    op.drop_index("ix_orders_location_status", table_name="orders")
