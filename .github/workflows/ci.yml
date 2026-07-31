@@ -22,7 +22,7 @@ jobs:
           cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Build packages
         run: pnpm turbo run build --filter=@smartserve/types --filter=@smartserve/api-client
