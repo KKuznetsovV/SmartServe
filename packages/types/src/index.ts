@@ -215,6 +215,12 @@ export const PrinterSchema = z.object({
 })
 export type Printer = z.infer<typeof PrinterSchema>
 
+export const PrinterRouteSchema = z.object({
+  printerId: z.string().uuid(),
+  categoryId: z.string().uuid(),
+})
+export type PrinterRoute = z.infer<typeof PrinterRouteSchema>
+
 // ─── AI Commands ─────────────────────────────────────────────────────────────
 
 export const AiIntent = z.enum([
