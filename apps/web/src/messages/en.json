@@ -25,7 +25,8 @@
     "settings": "Settings",
     "ai": "AI Assistant",
     "discounts": "Discounts",
-    "stock": "Stock"
+    "stock": "Stock",
+    "shifts": "Shifts"
   },
   "auth": {
     "login": "Login",

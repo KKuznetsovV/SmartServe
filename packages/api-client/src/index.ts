@@ -5,6 +5,7 @@ import type {
   MenuCategory,
   MenuItem,
   ModifierGroup,
+  Shift,
   Table,
   Order,
   OrderItem,
@@ -201,6 +202,18 @@ export function createApiClient(config: ApiClientConfig) {
       update: (id: string, data: Partial<Pick<Discount, 'name' | 'value' | 'minOrderAmount' | 'active' | 'expiresAt'>>) =>
         patch<Discount>(`/discounts/${id}`, data),
       delete: (id: string) => del<void>(`/discounts/${id}`),
+    },
+
+    // Shifts
+    shifts: {
+      open: (locationId: string, openingCash: number, notes?: string) =>
+        post<Shift>(`/locations/${locationId}/shifts/open`, { openingCash, notes }),
+      close: (shiftId: string, closingCash: number, notes?: string) =>
+        post<Shift>(`/shifts/${shiftId}/close`, { closingCash, notes }),
+      current: (locationId: string) =>
+        get<Shift | null>(`/locations/${locationId}/shifts/current`),
+      list: (locationId: string) =>
+        get<Shift[]>(`/locations/${locationId}/shifts`),
     },
 
     // AI

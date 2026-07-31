@@ -10,6 +10,7 @@ from app.api.v1.endpoints import (
     payments,
     printers,
     reports,
+    shifts,
     staff,
     tables,
     ws,
@@ -34,5 +35,6 @@ api_router.include_router(printers.router, tags=["printers"])
 api_router.include_router(staff.router, tags=["staff"])
 api_router.include_router(reports.router, tags=["reports"])
 api_router.include_router(discounts.router, tags=["discounts"])
+api_router.include_router(shifts.router, tags=["shifts"])
 api_router.include_router(ai.router, prefix="/ai", tags=["ai"])
 api_router.include_router(ws.router, prefix="/ws", tags=["websocket"])

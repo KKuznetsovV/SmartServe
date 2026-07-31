@@ -25,7 +25,8 @@
     "settings": "הגדרות",
     "ai": "עוזר AI",
     "discounts": "הנחות",
-    "stock": "מלאי"
+    "stock": "מלאי",
+    "shifts": "משמרות"
   },
   "auth": {
     "login": "כניסה",
