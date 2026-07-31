@@ -1,13 +1,15 @@
 'use client'
 
-import { use } from 'react'
+import { use, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useOrder, useSubmitOrder, useCancelOrder } from '@/hooks/use-orders'
+import { useOrderPayments } from '@/hooks/use-payments'
+import { PaymentDialog } from './payment-dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
-import type { OrderStatus, OrderItemStatus } from '@smartserve/types'
+import type { OrderStatus, OrderItemStatus, PaymentMethod } from '@smartserve/types'
 
 const ORDER_STATUS_VARIANT: Record<
   OrderStatus,
@@ -33,6 +35,14 @@ const ITEM_STATUS_VARIANT: Record<
   cancelled: 'destructive',
 }
 
+const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
+  cash: 'Cash',
+  card: 'Credit Card',
+  tap: 'Tap to Pay',
+  mobile: 'Mobile Pay',
+  voucher: 'Voucher',
+}
+
 interface Props {
   params: Promise<{ orderId: string }>
 }
@@ -40,8 +50,10 @@ interface Props {
 export default function OrderDetailPage({ params }: Props) {
   const { orderId } = use(params)
   const router = useRouter()
+  const [paymentOpen, setPaymentOpen] = useState(false)
 
   const { data: order, isLoading } = useOrder(orderId)
+  const { data: payments } = useOrderPayments(orderId)
   const submitOrder = useSubmitOrder()
   const cancelOrder = useCancelOrder()
 
@@ -78,6 +90,10 @@ export default function OrderDetailPage({ params }: Props) {
 
   const canSubmit = order.status === 'open' && order.items.length > 0
   const canCancel = !['paid', 'cancelled'].includes(order.status)
+  const canPay = !['paid', 'cancelled', 'open'].includes(order.status)
+
+  const paidAmount = (payments ?? []).reduce((sum: number, p) => sum + p.amount, 0)
+  const remaining = Math.max(0, order.total - paidAmount)
 
   return (
     <div className="p-6 space-y-6 max-w-2xl mx-auto">
@@ -162,8 +178,44 @@ export default function OrderDetailPage({ params }: Props) {
             <span>Total</span>
             <span>₪{order.total.toFixed(2)}</span>
           </div>
+          {paidAmount > 0 && (
+            <>
+              <div className="flex justify-between text-sm text-green-600">
+                <span>Paid</span>
+                <span>−₪{paidAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between font-semibold text-sm pt-1 border-t">
+                <span>Remaining</span>
+                <span>₪{remaining.toFixed(2)}</span>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
+
+      {/* Payments list */}
+      {payments && payments.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Payments</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {payments.map((p) => (
+              <div key={p.id} className="flex justify-between items-center text-sm py-1 border-b last:border-0">
+                <div>
+                  <span className="font-medium">
+                    {PAYMENT_METHOD_LABEL[p.method as PaymentMethod]}
+                  </span>
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    {new Date(p.createdAt).toLocaleTimeString('he-IL')}
+                  </span>
+                </div>
+                <span className="font-medium">₪{p.amount.toFixed(2)}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Notes */}
       {order.notes && (
@@ -180,6 +232,9 @@ export default function OrderDetailPage({ params }: Props) {
             Submit to Kitchen
           </Button>
         )}
+        {canPay && remaining > 0 && (
+          <Button onClick={() => setPaymentOpen(true)}>Collect Payment</Button>
+        )}
         {canCancel && (
           <Button
             variant="outline"
@@ -191,6 +246,13 @@ export default function OrderDetailPage({ params }: Props) {
           </Button>
         )}
       </div>
+
+      <PaymentDialog
+        open={paymentOpen}
+        onOpenChange={setPaymentOpen}
+        orderId={orderId}
+        remaining={remaining}
+      />
     </div>
   )
 }
