@@ -160,6 +160,8 @@ export function createApiClient(config: ApiClientConfig) {
       cancel: (orderId: string) => post<Order>(`/orders/${orderId}/cancel`, {}),
       applyDiscount: (orderId: string, code: string) =>
         post<Order>(`/orders/${orderId}/discount`, { code }),
+      publicActive: (locationId: string) =>
+        get<Order[]>(`/public/locations/${locationId}/orders`),
     },
 
     // Payments

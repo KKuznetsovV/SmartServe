@@ -94,3 +94,12 @@ async def apply_discount(
     _: User = Depends(require_staff),
 ):
     return await DiscountService(db).apply_to_order(order_id, data)
+
+
+@router.get("/public/locations/{location_id}/orders", response_model=list[OrderOut])
+async def public_active_orders(
+    location_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """No-auth endpoint for customer-facing display screens."""
+    return await OrderService(db).list_active_for_display(location_id)
