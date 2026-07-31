@@ -128,3 +128,30 @@ jobs:
 
       - name: Run frontend tests
         run: pnpm turbo run test --filter=@smartserve/web
+
+  # ─── E2E tests (smoke only, no server required for static assertions) ─────
+  e2e-smoke:
+    name: E2E smoke tests
+    runs-on: ubuntu-latest
+    # Only run if a BASE_URL is available (skip in forks or when no server is deployed)
+    if: ${{ vars.E2E_BASE_URL != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Install Playwright browsers
+        run: pnpm --filter=@smartserve/web exec playwright install --with-deps chromium
+
+      - name: Run E2E smoke tests
+        env:
+          BASE_URL: ${{ vars.E2E_BASE_URL }}
+        run: pnpm --filter=@smartserve/web e2e
