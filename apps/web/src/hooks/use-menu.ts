@@ -105,7 +105,7 @@ export function useToggleItemStock() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ id, inStock }: { id: string; inStock: boolean; categoryId: string }) =>
-      apiClient.menuItems.toggle(id, inStock),
+      apiClient.menuItems.setStock(id, inStock),
     onSuccess: (item) => {
       qc.invalidateQueries({ queryKey: ['items', item.categoryId] })
     },

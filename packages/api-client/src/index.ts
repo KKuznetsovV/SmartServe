@@ -121,8 +121,10 @@ export function createApiClient(config: ApiClientConfig) {
         post<MenuItem>('/menu/items', data),
       update: (id: string, data: Partial<MenuItem>) => patch<MenuItem>(`/menu/items/${id}`, data),
       delete: (id: string) => del<void>(`/menu/items/${id}`),
-      toggle: (id: string, inStock: boolean) =>
+      setStock: (id: string, inStock: boolean) =>
         patch<MenuItem>(`/menu/items/${id}/stock`, { inStock }),
+      listStock: (locationId: string) =>
+        get<MenuItem[]>(`/menu/locations/${locationId}/stock`),
     },
 
     // Modifier Groups

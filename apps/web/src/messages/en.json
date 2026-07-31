@@ -24,7 +24,8 @@
     "reports": "Reports",
     "settings": "Settings",
     "ai": "AI Assistant",
-    "discounts": "Discounts"
+    "discounts": "Discounts",
+    "stock": "Stock"
   },
   "auth": {
     "login": "Login",

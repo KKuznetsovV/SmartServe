@@ -130,3 +130,7 @@ class BulkPriceUpdate(BaseModel):
     change_pct: float | None = None  # +10 means +10%, -5 means -5%
     change_abs: float | None = None  # absolute price delta
     location_id: str
+
+
+class StockUpdate(BaseModel):
+    in_stock: bool

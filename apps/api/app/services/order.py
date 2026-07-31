@@ -80,6 +80,8 @@ class OrderService:
         menu_item = item_result.scalar_one_or_none()
         if not menu_item:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Menu item not found or unavailable")
+        if not menu_item.in_stock:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Menu item is out of stock")
 
         modifier_total = sum(m.price_delta for m in data.modifiers)
         unit_price = menu_item.price + modifier_total

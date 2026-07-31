@@ -18,6 +18,7 @@ from app.schemas.menu import (
     ModifierGroupOut,
     ModifierGroupUpdate,
     ModifierOut,
+    StockUpdate,
 )
 from app.services.menu import MenuService
 
@@ -112,6 +113,25 @@ async def update_item(
     _: User = Depends(require_manager),
 ):
     return await MenuService(db).update_item(item_id, data)
+
+
+@router.patch("/items/{item_id}/stock", response_model=MenuItemOut)
+async def set_item_stock(
+    item_id: str,
+    data: StockUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    return await MenuService(db).set_stock(item_id, data.in_stock)
+
+
+@router.get("/locations/{location_id}/stock", response_model=list[MenuItemOut])
+async def list_location_stock(
+    location_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    return await MenuService(db).list_all_items(location_id)
 
 
 @router.delete("/items/{item_id}", status_code=204)
