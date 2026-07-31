@@ -1,5 +1,3 @@
-from fastapi import APIRouter
-
 from app.api.v1.endpoints import (
     ai,
     auth,
@@ -14,6 +12,7 @@ from app.api.v1.endpoints import (
     tables,
     ws,
 )
+from app.api.v1.router_base import APIRouter
 
 api_router = APIRouter()
 

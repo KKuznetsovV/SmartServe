@@ -25,13 +25,13 @@ async def test_create_and_list_categories(
     # Create category
     resp = await client.post(
         "/api/v1/menu/categories",
-        json={"location_id": location.id, "name": "Pizza", "name_he": "פיצה"},
+        json={"locationId": location.id, "name": "Pizza", "nameHe": "פיצה"},
         headers=headers,
     )
     assert resp.status_code == 201
     cat = resp.json()
     assert cat["name"] == "Pizza"
-    assert cat["name_he"] == "פיצה"
+    assert cat["nameHe"] == "פיצה"
 
     # List categories
     resp = await client.get(f"/api/v1/menu/locations/{location.id}/categories", headers=headers)
@@ -56,7 +56,7 @@ async def test_create_menu_item(
     # Create category first
     cat_resp = await client.post(
         "/api/v1/menu/categories",
-        json={"location_id": location.id, "name": "Pizza"},
+        json={"locationId": location.id, "name": "Pizza"},
         headers=headers,
     )
     category_id = cat_resp.json()["id"]
@@ -65,18 +65,18 @@ async def test_create_menu_item(
     resp = await client.post(
         "/api/v1/menu/items",
         json={
-            "category_id": category_id,
+            "categoryId": category_id,
             "name": "Margherita",
-            "name_he": "מרגריטה",
-            "price": 58.0,
-            "tax_rate": 0.17,
+            "nameHe": "מרגריטה",
+            "price": 55.0,
+            "taxRate": 0.17,
         },
         headers=headers,
     )
     assert resp.status_code == 201
     item = resp.json()
     assert item["name"] == "Margherita"
-    assert item["price"] == 58.0
+    assert item["price"] == 55.0
 
 
 @pytest.mark.asyncio
@@ -95,7 +95,7 @@ async def test_bulk_price_update(
 
     cat_resp = await client.post(
         "/api/v1/menu/categories",
-        json={"location_id": location.id, "name": "Drinks"},
+        json={"locationId": location.id, "name": "Drinks"},
         headers=headers,
     )
     category_id = cat_resp.json()["id"]
@@ -103,14 +103,14 @@ async def test_bulk_price_update(
     for name, price in [("Coffee", 12.0), ("Tea", 10.0)]:
         await client.post(
             "/api/v1/menu/items",
-            json={"category_id": category_id, "name": name, "price": price},
+            json={"categoryId": category_id, "name": name, "price": price},
             headers=headers,
         )
 
     # Increase prices by 10%
     resp = await client.post(
         "/api/v1/menu/items/bulk-price",
-        json={"location_id": location.id, "category_id": category_id, "change_pct": 10.0},
+        json={"locationId": location.id, "categoryId": category_id, "changePct": 10.0},
         headers=headers,
     )
     assert resp.status_code == 200
@@ -133,6 +133,6 @@ async def test_manager_required_for_mutation(
     """Unauthenticated request should get 403."""
     resp = await client.post(
         "/api/v1/menu/categories",
-        json={"location_id": "any", "name": "Test"},
+        json={"locationId": "any", "name": "Test"},
     )
     assert resp.status_code in (401, 403)  # missing/invalid token

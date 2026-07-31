@@ -3,7 +3,9 @@
 from collections import defaultdict
 
 import structlog
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import WebSocket, WebSocketDisconnect
+
+from app.api.v1.router_base import APIRouter
 
 router = APIRouter()
 logger = structlog.get_logger()
