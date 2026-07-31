@@ -69,10 +69,7 @@ class ReportService:
             .order_by(func.sum(OrderItem.qty).desc())
             .limit(10)
         )
-        top_items = [
-            TopItemOut(menu_item_name=row[0], qty=int(row[1]), revenue=float(row[2]))
-            for row in items_q
-        ]
+        top_items = [TopItemOut(menu_item_name=row[0], qty=int(row[1]), revenue=float(row[2])) for row in items_q]
 
         return ReportSummaryOut(
             period=period,
