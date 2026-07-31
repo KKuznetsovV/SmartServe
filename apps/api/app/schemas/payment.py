@@ -1,0 +1,21 @@
+from datetime import datetime
+
+from pydantic import BaseModel
+
+
+class PaymentOut(BaseModel):
+    id: str
+    order_id: str
+    method: str
+    amount: float
+    status: str
+    gateway_ref: str | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class PaymentCreate(BaseModel):
+    order_id: str
+    method: str
+    amount: float

@@ -1,7 +1,9 @@
 """WebSocket endpoint for real-time order and KDS events."""
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
 from collections import defaultdict
+
 import structlog
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 router = APIRouter()
 logger = structlog.get_logger()

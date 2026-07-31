@@ -1,13 +1,14 @@
+from contextlib import asynccontextmanager
+
+import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
-import structlog
 
+from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.logging import setup_logging
-from app.api.v1.router import api_router
-from app.db.session import engine
 from app.db import models  # noqa: F401 — ensure models are registered
+from app.db.session import engine
 
 logger = structlog.get_logger()
 

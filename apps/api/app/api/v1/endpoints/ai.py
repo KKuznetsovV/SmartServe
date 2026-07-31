@@ -1,10 +1,12 @@
 """AI command endpoint — intent classification and action preview."""
+
 import json
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel
+
 import anthropic
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel
 
 from app.core.config import settings
 from app.core.security import decode_token
@@ -89,7 +91,7 @@ async def ai_command(
 
     try:
         result = json.loads(message.content[0].text)
-    except (json.JSONDecodeError, IndexError, KeyError):
+    except json.JSONDecodeError, IndexError, KeyError:
         # Fallback to Sonnet when Haiku produces malformed output
         message = client.messages.create(
             model=settings.AI_COMPLEX_MODEL,

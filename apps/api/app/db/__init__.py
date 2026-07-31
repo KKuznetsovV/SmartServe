@@ -1,16 +1,16 @@
-from app.db.session import Base
 from app.db.models import (  # noqa: F401
     Business,
     Location,
-    User,
     MenuCategory,
     MenuItem,
-    ModifierGroup,
     Modifier,
-    Table,
+    ModifierGroup,
     Order,
     OrderItem,
     Payment,
     Printer,
     PrinterRoute,
+    Table,
+    User,
 )
+from app.db.session import Base as Base  # noqa: F401

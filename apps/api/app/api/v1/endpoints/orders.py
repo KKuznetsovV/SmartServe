@@ -1,4 +1,83 @@
-"""Placeholder endpoint — implemented in a later step."""
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.v1.deps import require_staff
+from app.db.models import User
+from app.db.session import get_db
+from app.schemas.order import (
+    OrderCreate,
+    OrderItemCreate,
+    OrderItemOut,
+    OrderItemStatusUpdate,
+    OrderOut,
+)
+from app.services.order import OrderService
 
 router = APIRouter()
+
+
+@router.get("/locations/{location_id}/orders", response_model=list[OrderOut])
+async def list_orders(
+    location_id: str,
+    status: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_staff),
+):
+    return await OrderService(db).list_orders(location_id, status)
+
+
+@router.get("/orders/{order_id}", response_model=OrderOut)
+async def get_order(
+    order_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_staff),
+):
+    return await OrderService(db).get_order(order_id)
+
+
+@router.post("/orders", response_model=OrderOut, status_code=201)
+async def create_order(
+    data: OrderCreate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_staff),
+):
+    return await OrderService(db).create_order(data)
+
+
+@router.post("/orders/{order_id}/items", response_model=OrderItemOut, status_code=201)
+async def add_order_item(
+    order_id: str,
+    data: OrderItemCreate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_staff),
+):
+    return await OrderService(db).add_item(order_id, data)
+
+
+@router.patch("/orders/{order_id}/items/{item_id}/status", response_model=OrderItemOut)
+async def update_item_status(
+    order_id: str,
+    item_id: str,
+    data: OrderItemStatusUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_staff),
+):
+    return await OrderService(db).update_item_status(order_id, item_id, data)
+
+
+@router.post("/orders/{order_id}/submit", response_model=OrderOut)
+async def submit_order(
+    order_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_staff),
+):
+    return await OrderService(db).transition_order(order_id, "submitted")
+
+
+@router.post("/orders/{order_id}/cancel", response_model=OrderOut)
+async def cancel_order(
+    order_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_staff),
+):
+    return await OrderService(db).transition_order(order_id, "cancelled")
