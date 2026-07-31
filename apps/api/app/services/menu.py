@@ -133,7 +133,21 @@ class MenuService:
         await self.db.flush()
         return len(items)
 
-    # ── Modifier Groups ──────────────────────────────────────────────────────
+    async def set_stock(self, item_id: str, in_stock: bool) -> MenuItem:
+        item = await self.get_item(item_id)
+        item.in_stock = in_stock
+        await self.db.flush()
+        return await self.get_item(item_id)
+
+    async def list_all_items(self, location_id: str) -> list[MenuItem]:
+        result = await self.db.execute(
+            select(MenuItem)
+            .join(MenuCategory, MenuItem.category_id == MenuCategory.id)
+            .where(MenuCategory.location_id == location_id, MenuItem.active.is_(True))
+            .options(selectinload(MenuItem.modifier_groups).selectinload(ModifierGroup.modifiers))
+            .order_by(MenuCategory.sort_order, MenuItem.name)
+        )
+        return list(result.scalars().all())
 
     async def create_modifier_group(self, data: ModifierGroupCreate) -> ModifierGroup:
         await self.get_item(data.item_id)
