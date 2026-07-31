@@ -44,9 +44,7 @@ class DiscountService:
 
     async def list_by_business(self, business_id: str) -> list[Discount]:
         result = await self.db.execute(
-            select(Discount)
-            .where(Discount.business_id == business_id)
-            .order_by(Discount.created_at.desc())
+            select(Discount).where(Discount.business_id == business_id).order_by(Discount.created_at.desc())
         )
         return list(result.scalars().all())
 

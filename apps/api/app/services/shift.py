@@ -15,9 +15,7 @@ class ShiftService:
         self.db = db
 
     async def open_shift(self, user_id: str, location_id: str, data: ShiftOpen) -> Shift:
-        existing = await self.db.execute(
-            select(Shift).where(Shift.location_id == location_id, Shift.status == "open")
-        )
+        existing = await self.db.execute(select(Shift).where(Shift.location_id == location_id, Shift.status == "open"))
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=409, detail="A shift is already open for this location")
 
@@ -50,16 +48,11 @@ class ShiftService:
         return shift
 
     async def get_current(self, location_id: str) -> Shift | None:
-        result = await self.db.execute(
-            select(Shift).where(Shift.location_id == location_id, Shift.status == "open")
-        )
+        result = await self.db.execute(select(Shift).where(Shift.location_id == location_id, Shift.status == "open"))
         return result.scalar_one_or_none()
 
     async def list_shifts(self, location_id: str, limit: int = 30) -> list[Shift]:
         result = await self.db.execute(
-            select(Shift)
-            .where(Shift.location_id == location_id)
-            .order_by(Shift.opened_at.desc())
-            .limit(limit)
+            select(Shift).where(Shift.location_id == location_id).order_by(Shift.opened_at.desc()).limit(limit)
         )
         return list(result.scalars().all())
