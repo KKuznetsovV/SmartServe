@@ -1,9 +1,9 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from fastapi import HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import User
 from app.core.security import hash_password
+from app.db.models import User
 from app.schemas.staff import StaffCreate, StaffUpdate
 
 
@@ -12,9 +12,7 @@ class StaffService:
         self.db = db
 
     async def list_staff(self, business_id: str) -> list[User]:
-        result = await self.db.execute(
-            select(User).where(User.business_id == business_id)
-        )
+        result = await self.db.execute(select(User).where(User.business_id == business_id))
         return list(result.scalars().all())
 
     async def get_user(self, user_id: str) -> User:
@@ -26,9 +24,7 @@ class StaffService:
 
     async def create_staff(self, business_id: str, data: StaffCreate) -> User:
         if data.email:
-            existing = await self.db.execute(
-                select(User).where(User.email == data.email)
-            )
+            existing = await self.db.execute(select(User).where(User.email == data.email))
             if existing.scalar_one_or_none():
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already in use")
 

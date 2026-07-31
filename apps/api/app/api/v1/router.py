@@ -1,6 +1,19 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, businesses, locations, menu, tables, orders, payments, printers, staff, ai, ws, health
+from app.api.v1.endpoints import (
+    ai,
+    auth,
+    businesses,
+    health,
+    locations,
+    menu,
+    orders,
+    payments,
+    printers,
+    staff,
+    tables,
+    ws,
+)
 
 api_router = APIRouter()
 

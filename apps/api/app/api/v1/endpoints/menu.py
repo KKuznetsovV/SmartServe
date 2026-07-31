@@ -1,21 +1,30 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import get_db
-from app.db.models import User
-from app.services.menu import MenuService
-from app.schemas.menu import (
-    MenuCategoryOut, MenuCategoryCreate, MenuCategoryUpdate,
-    MenuItemOut, MenuItemCreate, MenuItemUpdate,
-    ModifierGroupOut, ModifierGroupCreate, ModifierGroupUpdate,
-    ModifierOut, ModifierCreate, BulkPriceUpdate,
-)
 from app.api.v1.deps import get_current_user, require_manager
+from app.db.models import User
+from app.db.session import get_db
+from app.schemas.menu import (
+    BulkPriceUpdate,
+    MenuCategoryCreate,
+    MenuCategoryOut,
+    MenuCategoryUpdate,
+    MenuItemCreate,
+    MenuItemOut,
+    MenuItemUpdate,
+    ModifierCreate,
+    ModifierGroupCreate,
+    ModifierGroupOut,
+    ModifierGroupUpdate,
+    ModifierOut,
+)
+from app.services.menu import MenuService
 
 router = APIRouter()
 
 
 # ── Categories ────────────────────────────────────────────────────────────────
+
 
 @router.get("/locations/{location_id}/categories", response_model=list[MenuCategoryOut])
 async def list_categories(
@@ -65,6 +74,7 @@ async def reorder_categories(
 
 
 # ── Items ─────────────────────────────────────────────────────────────────────
+
 
 @router.get("/categories/{category_id}/items", response_model=list[MenuItemOut])
 async def list_items(
@@ -123,6 +133,7 @@ async def bulk_price_update(
 
 
 # ── Modifier Groups ───────────────────────────────────────────────────────────
+
 
 @router.post("/modifier-groups", response_model=ModifierGroupOut, status_code=201)
 async def create_modifier_group(

@@ -62,7 +62,7 @@ jobs:
         run: ruff format --check app/
 
       - name: Mypy typecheck
-        run: mypy app/ --ignore-missing-imports
+        run: mypy app/ --ignore-missing-imports --explicit-package-bases
 
   # ─── Python tests ─────────────────────────────────────────────────────────
   python-test:

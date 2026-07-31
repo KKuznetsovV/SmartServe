@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import get_db
-from app.db.models import Location, User
-from app.schemas.business import LocationOut, LocationUpdate
 from app.api.v1.deps import get_current_user, require_manager
+from app.db.models import Location, User
+from app.db.session import get_db
+from app.schemas.business import LocationOut, LocationUpdate
 
 router = APIRouter()
 

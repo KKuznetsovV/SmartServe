@@ -1,15 +1,20 @@
 """Menu service — all business logic for categories, items, and modifiers."""
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
-from sqlalchemy.orm import selectinload
-from fastapi import HTTPException, status
 
-from app.db.models import MenuCategory, MenuItem, ModifierGroup, Modifier
+from fastapi import HTTPException, status
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.db.models import MenuCategory, MenuItem, Modifier, ModifierGroup
 from app.schemas.menu import (
-    MenuCategoryCreate, MenuCategoryUpdate,
-    MenuItemCreate, MenuItemUpdate,
-    ModifierGroupCreate, ModifierGroupUpdate,
-    ModifierCreate, BulkPriceUpdate,
+    BulkPriceUpdate,
+    MenuCategoryCreate,
+    MenuCategoryUpdate,
+    MenuItemCreate,
+    MenuItemUpdate,
+    ModifierCreate,
+    ModifierGroupCreate,
+    ModifierGroupUpdate,
 )
 
 
@@ -21,16 +26,12 @@ class MenuService:
 
     async def list_categories(self, location_id: str) -> list[MenuCategory]:
         result = await self.db.execute(
-            select(MenuCategory)
-            .where(MenuCategory.location_id == location_id)
-            .order_by(MenuCategory.sort_order)
+            select(MenuCategory).where(MenuCategory.location_id == location_id).order_by(MenuCategory.sort_order)
         )
         return list(result.scalars().all())
 
     async def get_category(self, category_id: str) -> MenuCategory:
-        result = await self.db.execute(
-            select(MenuCategory).where(MenuCategory.id == category_id)
-        )
+        result = await self.db.execute(select(MenuCategory).where(MenuCategory.id == category_id))
         cat = result.scalar_one_or_none()
         if not cat:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
@@ -65,14 +66,16 @@ class MenuService:
 
     async def list_items(self, category_id: str) -> list[MenuItem]:
         result = await self.db.execute(
-            select(MenuItem).where(MenuItem.category_id == category_id)
+            select(MenuItem)
+            .where(MenuItem.category_id == category_id)
             .options(selectinload(MenuItem.modifier_groups).selectinload(ModifierGroup.modifiers))
         )
         return list(result.scalars().all())
 
     async def get_item(self, item_id: str) -> MenuItem:
         result = await self.db.execute(
-            select(MenuItem).where(MenuItem.id == item_id)
+            select(MenuItem)
+            .where(MenuItem.id == item_id)
             .options(selectinload(MenuItem.modifier_groups).selectinload(ModifierGroup.modifiers))
         )
         item = result.scalar_one_or_none()
@@ -89,7 +92,8 @@ class MenuService:
         await self.db.refresh(item)
         # Eagerly load relationships for response serialization
         result = await self.db.execute(
-            select(MenuItem).where(MenuItem.id == item.id)
+            select(MenuItem)
+            .where(MenuItem.id == item.id)
             .options(selectinload(MenuItem.modifier_groups).selectinload(ModifierGroup.modifiers))
         )
         return result.scalar_one()
@@ -107,8 +111,11 @@ class MenuService:
 
     async def bulk_price_update(self, data: BulkPriceUpdate) -> int:
         """Returns count of updated items."""
-        q = select(MenuItem).join(MenuCategory, MenuItem.category_id == MenuCategory.id)\
+        q = (
+            select(MenuItem)
+            .join(MenuCategory, MenuItem.category_id == MenuCategory.id)
             .options(selectinload(MenuItem.modifier_groups).selectinload(ModifierGroup.modifiers))
+        )
         if data.category_id:
             q = q.where(MenuItem.category_id == data.category_id)
         else:
@@ -143,9 +150,7 @@ class MenuService:
         return group
 
     async def get_modifier_group(self, group_id: str) -> ModifierGroup:
-        result = await self.db.execute(
-            select(ModifierGroup).where(ModifierGroup.id == group_id)
-        )
+        result = await self.db.execute(select(ModifierGroup).where(ModifierGroup.id == group_id))
         group = result.scalar_one_or_none()
         if not group:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Modifier group not found")

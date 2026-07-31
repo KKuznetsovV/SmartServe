@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import get_db
-from app.db.models import User
-from app.services.printer import PrinterService
-from app.schemas.printer import PrinterOut, PrinterCreate, PrinterUpdate, PrinterRouteCreate
 from app.api.v1.deps import require_manager
+from app.db.models import User
+from app.db.session import get_db
+from app.schemas.printer import PrinterCreate, PrinterOut, PrinterRouteCreate, PrinterUpdate
+from app.services.printer import PrinterService
 
 router = APIRouter()
 

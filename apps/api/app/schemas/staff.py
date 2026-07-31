@@ -1,11 +1,10 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional
 
 
 class UserOut(BaseModel):
     id: str
     business_id: str
-    email: Optional[str] = None
+    email: str | None = None
     name: str
     role: str
     language: str
@@ -15,17 +14,17 @@ class UserOut(BaseModel):
 
 
 class StaffCreate(BaseModel):
-    email: Optional[EmailStr] = None
+    email: EmailStr | None = None
     name: str
     role: str = "waiter"
     language: str = "he"
-    password: Optional[str] = None
-    pin: Optional[str] = None
+    password: str | None = None
+    pin: str | None = None
 
 
 class StaffUpdate(BaseModel):
-    name: Optional[str] = None
-    role: Optional[str] = None
-    language: Optional[str] = None
-    active: Optional[bool] = None
-    pin: Optional[str] = None
+    name: str | None = None
+    role: str | None = None
+    language: str | None = None
+    active: bool | None = None
+    pin: str | None = None

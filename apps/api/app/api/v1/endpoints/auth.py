@@ -1,18 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import get_db
-from app.db.models import User
 from app.core.security import (
-    verify_password,
-    hash_password,
     create_access_token,
     create_refresh_token,
     decode_token,
+    verify_password,
 )
+from app.db.models import User
+from app.db.session import get_db
 
 router = APIRouter()
 bearer = HTTPBearer()
@@ -41,7 +40,7 @@ class RefreshRequest(BaseModel):
 
 @router.post("/login", response_model=TokenResponse)
 async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == body.email, User.active == True))
+    result = await db.execute(select(User).where(User.email == body.email, User.active))
     user = result.scalar_one_or_none()
     if not user or not user.password_hash or not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
@@ -57,13 +56,9 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
 @router.post("/pin", response_model=TokenResponse)
 async def pin_login(body: PinLoginRequest, db: AsyncSession = Depends(get_db)):
     # TODO: add Redis-based rate limiting (MAX_PIN_ATTEMPTS) in step/02
-    result = await db.execute(
-        select(User).where(User.active == True)
-    )
+    result = await db.execute(select(User).where(User.active))
     users = result.scalars().all()
-    matched = next(
-        (u for u in users if u.pin_hash and verify_password(body.pin, u.pin_hash)), None
-    )
+    matched = next((u for u in users if u.pin_hash and verify_password(body.pin, u.pin_hash)), None)
     if not matched:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid PIN")
 

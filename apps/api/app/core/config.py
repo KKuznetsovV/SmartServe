@@ -1,5 +1,4 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List
 
 
 class Settings(BaseSettings):
@@ -21,12 +20,12 @@ class Settings(BaseSettings):
 
     # AI
     ANTHROPIC_API_KEY: str = ""
-    AI_INTENT_MODEL: str = "claude-haiku-4-5"       # fast, cheap — intent classification
-    AI_COMPLEX_MODEL: str = "claude-sonnet-4-5"     # complex reasoning, report queries
+    AI_INTENT_MODEL: str = "claude-haiku-4-5"  # fast, cheap — intent classification
+    AI_COMPLEX_MODEL: str = "claude-sonnet-4-5"  # complex reasoning, report queries
     AI_INTENT_CONFIDENCE_THRESHOLD: float = 0.85
 
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8081"]
+    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8081"]
 
     # PIN brute-force protection
     MAX_PIN_ATTEMPTS: int = 5

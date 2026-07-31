@@ -1,9 +1,9 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
 from fastapi import HTTPException, status
+from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Printer, PrinterRoute
-from app.schemas.printer import PrinterCreate, PrinterUpdate, PrinterRouteCreate
+from app.schemas.printer import PrinterCreate, PrinterRouteCreate, PrinterUpdate
 
 
 class PrinterService:
@@ -11,9 +11,7 @@ class PrinterService:
         self.db = db
 
     async def list_printers(self, location_id: str) -> list[Printer]:
-        result = await self.db.execute(
-            select(Printer).where(Printer.location_id == location_id)
-        )
+        result = await self.db.execute(select(Printer).where(Printer.location_id == location_id))
         return list(result.scalars().all())
 
     async def get_printer(self, printer_id: str) -> Printer:
@@ -42,9 +40,7 @@ class PrinterService:
 
     async def set_route(self, data: PrinterRouteCreate) -> PrinterRoute:
         # Remove existing route for this category if any
-        await self.db.execute(
-            delete(PrinterRoute).where(PrinterRoute.category_id == data.category_id)
-        )
+        await self.db.execute(delete(PrinterRoute).where(PrinterRoute.category_id == data.category_id))
         route = PrinterRoute(printer_id=data.printer_id, category_id=data.category_id)
         self.db.add(route)
         await self.db.flush()

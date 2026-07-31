@@ -1,11 +1,10 @@
-from pydantic import BaseModel, field_validator
-from typing import Optional
+from pydantic import BaseModel
 
 
 class BusinessOut(BaseModel):
     id: str
     name: str
-    tax_id: Optional[str] = None
+    tax_id: str | None = None
     country: str
     currency: str
     created_at: str
@@ -14,16 +13,16 @@ class BusinessOut(BaseModel):
 
 
 class BusinessUpdate(BaseModel):
-    name: Optional[str] = None
-    tax_id: Optional[str] = None
-    currency: Optional[str] = None
+    name: str | None = None
+    tax_id: str | None = None
+    currency: str | None = None
 
 
 class LocationOut(BaseModel):
     id: str
     business_id: str
     name: str
-    address: Optional[str] = None
+    address: str | None = None
     timezone: str
     language: str
     active: bool
@@ -33,14 +32,14 @@ class LocationOut(BaseModel):
 
 class LocationCreate(BaseModel):
     name: str
-    address: Optional[str] = None
+    address: str | None = None
     timezone: str = "Asia/Jerusalem"
     language: str = "he"
 
 
 class LocationUpdate(BaseModel):
-    name: Optional[str] = None
-    address: Optional[str] = None
-    timezone: Optional[str] = None
-    language: Optional[str] = None
-    active: Optional[bool] = None
+    name: str | None = None
+    address: str | None = None
+    timezone: str | None = None
+    language: str | None = None
+    active: bool | None = None

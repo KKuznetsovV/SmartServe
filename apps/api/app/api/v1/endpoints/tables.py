@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import get_db
-from app.db.models import Table, User
-from app.schemas.table import TableOut, TableCreate, TableUpdate
 from app.api.v1.deps import get_current_user, require_manager
+from app.db.models import Table, User
+from app.db.session import get_db
+from app.schemas.table import TableCreate, TableOut, TableUpdate
 
 router = APIRouter()
 
@@ -16,7 +16,7 @@ async def list_tables(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
-    result = await db.execute(select(Table).where(Table.location_id == location_id, Table.active == True))
+    result = await db.execute(select(Table).where(Table.location_id == location_id, Table.active))
     return result.scalars().all()
 
 
@@ -40,6 +40,7 @@ async def update_table(
     _: User = Depends(require_manager),
 ):
     from fastapi import HTTPException, status
+
     result = await db.execute(select(Table).where(Table.id == table_id))
     table = result.scalar_one_or_none()
     if not table:
@@ -56,6 +57,7 @@ async def delete_table(
     _: User = Depends(require_manager),
 ):
     from fastapi import HTTPException, status
+
     result = await db.execute(select(Table).where(Table.id == table_id))
     table = result.scalar_one_or_none()
     if not table:

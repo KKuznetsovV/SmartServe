@@ -1,29 +1,30 @@
 """Order service — lifecycle management for orders and items."""
-from datetime import datetime, timezone
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
-from fastapi import HTTPException, status
 
-from app.db.models import Order, OrderItem, MenuItem, Table
+from datetime import UTC, datetime
+
+from fastapi import HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.db.models import MenuItem, Order, OrderItem, Table
 from app.schemas.order import OrderCreate, OrderItemCreate, OrderItemStatusUpdate
 
-
 VALID_ORDER_TRANSITIONS: dict[str, set[str]] = {
-    "open":      {"submitted", "cancelled"},
+    "open": {"submitted", "cancelled"},
     "submitted": {"preparing", "cancelled"},
     "preparing": {"ready", "cancelled"},
-    "ready":     {"served"},
-    "served":    {"paid"},
-    "paid":      set(),
+    "ready": {"served"},
+    "served": {"paid"},
+    "paid": set(),
     "cancelled": set(),
 }
 
 VALID_ITEM_TRANSITIONS: dict[str, set[str]] = {
-    "pending":   {"preparing", "cancelled"},
+    "pending": {"preparing", "cancelled"},
     "preparing": {"ready", "cancelled"},
-    "ready":     {"served"},
-    "served":    set(),
+    "ready": {"served"},
+    "served": set(),
     "cancelled": set(),
 }
 
@@ -41,9 +42,7 @@ class OrderService:
         return list(result.scalars().all())
 
     async def get_order(self, order_id: str) -> Order:
-        result = await self.db.execute(
-            select(Order).where(Order.id == order_id).options(selectinload(Order.items))
-        )
+        result = await self.db.execute(select(Order).where(Order.id == order_id).options(selectinload(Order.items)))
         order = result.scalar_one_or_none()
         if not order:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
@@ -51,9 +50,7 @@ class OrderService:
 
     async def create_order(self, data: OrderCreate) -> Order:
         if data.table_id:
-            table_result = await self.db.execute(
-                select(Table).where(Table.id == data.table_id, Table.active == True)
-            )
+            table_result = await self.db.execute(select(Table).where(Table.id == data.table_id, Table.active))
             if not table_result.scalar_one_or_none():
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Table not found")
 
@@ -79,9 +76,7 @@ class OrderService:
                 detail="Cannot add items to an order that is already being prepared",
             )
 
-        item_result = await self.db.execute(
-            select(MenuItem).where(MenuItem.id == data.menu_item_id, MenuItem.active == True)
-        )
+        item_result = await self.db.execute(select(MenuItem).where(MenuItem.id == data.menu_item_id, MenuItem.active))
         menu_item = item_result.scalar_one_or_none()
         if not menu_item:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Menu item not found or unavailable")
@@ -107,9 +102,7 @@ class OrderService:
         return order_item
 
     async def update_item_status(self, order_id: str, item_id: str, data: OrderItemStatusUpdate) -> OrderItem:
-        result = await self.db.execute(
-            select(OrderItem).where(OrderItem.id == item_id, OrderItem.order_id == order_id)
-        )
+        result = await self.db.execute(select(OrderItem).where(OrderItem.id == item_id, OrderItem.order_id == order_id))
         item = result.scalar_one_or_none()
         if not item:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order item not found")
@@ -132,7 +125,7 @@ class OrderService:
                 detail=f"Cannot transition order from '{order.status}' to '{new_status}'",
             )
         order.status = new_status
-        order.updated_at = datetime.now(timezone.utc)
+        order.updated_at = datetime.now(UTC)
         await self.db.flush()
         return order
 

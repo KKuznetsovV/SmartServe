@@ -1,6 +1,6 @@
-from pydantic import BaseModel
-from typing import Optional
 from datetime import datetime
+
+from pydantic import BaseModel
 
 
 class PaymentOut(BaseModel):
@@ -9,7 +9,7 @@ class PaymentOut(BaseModel):
     method: str
     amount: float
     status: str
-    gateway_ref: Optional[str] = None
+    gateway_ref: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

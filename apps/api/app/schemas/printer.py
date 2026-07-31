@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-from typing import Optional
 
 
 class PrinterOut(BaseModel):
@@ -7,7 +6,7 @@ class PrinterOut(BaseModel):
     location_id: str
     name: str
     type: str
-    ip: Optional[str] = None
+    ip: str | None = None
     port: int
     active: bool
 
@@ -18,16 +17,16 @@ class PrinterCreate(BaseModel):
     location_id: str
     name: str
     type: str = "receipt"  # receipt | kitchen | label
-    ip: Optional[str] = None
+    ip: str | None = None
     port: int = 9100
 
 
 class PrinterUpdate(BaseModel):
-    name: Optional[str] = None
-    type: Optional[str] = None
-    ip: Optional[str] = None
-    port: Optional[int] = None
-    active: Optional[bool] = None
+    name: str | None = None
+    type: str | None = None
+    ip: str | None = None
+    port: int | None = None
+    active: bool | None = None
 
 
 class PrinterRouteCreate(BaseModel):

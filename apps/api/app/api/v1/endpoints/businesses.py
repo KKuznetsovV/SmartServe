@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import get_db
+from app.api.v1.deps import get_current_user, require_manager, require_owner
 from app.db.models import Business, Location, User
-from app.schemas.business import BusinessOut, BusinessUpdate, LocationOut, LocationCreate
-from app.api.v1.deps import get_current_user, require_owner, require_manager
+from app.db.session import get_db
+from app.schemas.business import BusinessOut, BusinessUpdate, LocationCreate, LocationOut
 
 router = APIRouter()
 
@@ -68,7 +68,8 @@ async def list_staff(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_manager),
 ):
-    from app.services.staff import StaffService
     from app.schemas.staff import UserOut
+    from app.services.staff import StaffService
+
     users = await StaffService(db).list_staff(business_id)
     return [UserOut.model_validate(u) for u in users]

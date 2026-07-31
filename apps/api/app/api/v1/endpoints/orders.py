@@ -1,12 +1,17 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional
 
-from app.db.session import get_db
+from app.api.v1.deps import require_staff
 from app.db.models import User
+from app.db.session import get_db
+from app.schemas.order import (
+    OrderCreate,
+    OrderItemCreate,
+    OrderItemOut,
+    OrderItemStatusUpdate,
+    OrderOut,
+)
 from app.services.order import OrderService
-from app.schemas.order import OrderOut, OrderWithItemsOut, OrderCreate, OrderItemCreate, OrderItemOut, OrderItemStatusUpdate
-from app.api.v1.deps import get_current_user, require_staff
 
 router = APIRouter()
 
@@ -14,7 +19,7 @@ router = APIRouter()
 @router.get("/locations/{location_id}/orders", response_model=list[OrderOut])
 async def list_orders(
     location_id: str,
-    status: Optional[str] = Query(None),
+    status: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_staff),
 ):

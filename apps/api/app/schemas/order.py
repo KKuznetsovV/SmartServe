@@ -1,6 +1,6 @@
-from pydantic import BaseModel
-from typing import Optional
 from datetime import datetime
+
+from pydantic import BaseModel
 
 
 class OrderItemModifier(BaseModel):
@@ -17,7 +17,7 @@ class OrderItemOut(BaseModel):
     qty: int
     unit_price: float
     modifiers: list[OrderItemModifier] = []
-    notes: Optional[str] = None
+    notes: str | None = None
     status: str
 
     model_config = {"from_attributes": True}
@@ -27,7 +27,7 @@ class OrderItemCreate(BaseModel):
     menu_item_id: str
     qty: int = 1
     modifiers: list[OrderItemModifier] = []
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 class OrderItemStatusUpdate(BaseModel):
@@ -37,14 +37,14 @@ class OrderItemStatusUpdate(BaseModel):
 class OrderOut(BaseModel):
     id: str
     location_id: str
-    table_id: Optional[str] = None
-    table_name: Optional[str] = None
+    table_id: str | None = None
+    table_name: str | None = None
     channel: str
     status: str
     subtotal: float
     tax_amount: float
     total: float
-    notes: Optional[str] = None
+    notes: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -53,9 +53,9 @@ class OrderOut(BaseModel):
 
 class OrderCreate(BaseModel):
     location_id: str
-    table_id: Optional[str] = None
+    table_id: str | None = None
     channel: str = "dine_in"
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 class OrderStatusUpdate(BaseModel):
