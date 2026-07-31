@@ -5,6 +5,7 @@ from app.api.v1.deps import require_staff
 from app.api.v1.router_base import APIRouter
 from app.db.models import User
 from app.db.session import get_db
+from app.schemas.discount import ApplyDiscountIn
 from app.schemas.order import (
     OrderCreate,
     OrderItemCreate,
@@ -12,9 +13,8 @@ from app.schemas.order import (
     OrderItemStatusUpdate,
     OrderOut,
 )
-from app.schemas.discount import ApplyDiscountIn
-from app.services.order import OrderService
 from app.services.discount import DiscountService
+from app.services.order import OrderService
 
 router = APIRouter()
 
