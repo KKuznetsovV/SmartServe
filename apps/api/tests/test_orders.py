@@ -36,7 +36,7 @@ async def test_order_lifecycle(
     # Create order
     resp = await client.post(
         "/api/v1/orders",
-        json={"location_id": location.id, "channel": "dine_in"},
+        json={"locationId": location.id, "channel": "dine_in"},
         headers=headers,
     )
     assert resp.status_code == 201
@@ -46,11 +46,11 @@ async def test_order_lifecycle(
     # Add item to order
     resp = await client.post(
         f"/api/v1/orders/{order_id}/items",
-        json={"menu_item_id": item.id, "qty": 2},
+        json={"menuItemId": item.id, "qty": 2},
         headers=headers,
     )
     assert resp.status_code == 201
-    assert resp.json()["menu_item_name"] == "Burger"
+    assert resp.json()["menuItemName"] == "Burger"
 
     # Submit order
     resp = await client.post(f"/api/v1/orders/{order_id}/submit", headers=headers)
@@ -89,14 +89,14 @@ async def test_payment_completes_order(
 
     order_resp = await client.post(
         "/api/v1/orders",
-        json={"location_id": location.id, "channel": "takeaway"},
+        json={"locationId": location.id, "channel": "takeaway"},
         headers=headers,
     )
     order_id = order_resp.json()["id"]
 
     await client.post(
         f"/api/v1/orders/{order_id}/items",
-        json={"menu_item_id": item.id, "qty": 1},
+        json={"menuItemId": item.id, "qty": 1},
         headers=headers,
     )
 
@@ -107,7 +107,7 @@ async def test_payment_completes_order(
     # Pay in full
     resp = await client.post(
         "/api/v1/payments",
-        json={"order_id": order_id, "method": "card", "amount": total},
+        json={"orderId": order_id, "method": "card", "amount": total},
         headers=headers,
     )
     assert resp.status_code == 201

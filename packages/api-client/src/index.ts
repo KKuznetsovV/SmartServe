@@ -124,7 +124,7 @@ export function createApiClient(config: ApiClientConfig) {
 
     // Modifier Groups
     modifierGroups: {
-      create: (data: Omit<ModifierGroup, 'id' | 'modifiers'>) =>
+      create: (data: Omit<ModifierGroup, 'id'>) =>
         post<ModifierGroup>('/menu/modifier-groups', data),
       update: (id: string, data: Partial<ModifierGroup>) =>
         patch<ModifierGroup>(`/menu/modifier-groups/${id}`, data),

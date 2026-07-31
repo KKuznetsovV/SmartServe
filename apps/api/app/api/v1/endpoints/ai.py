@@ -4,10 +4,11 @@ import json
 import uuid
 
 import anthropic
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
+from app.api.v1.router_base import APIRouter
 from app.core.config import settings
 from app.core.security import decode_token
 
