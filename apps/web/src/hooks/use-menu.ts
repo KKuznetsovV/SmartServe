@@ -54,11 +54,11 @@ export function useDeleteCategory() {
 
 // ─── Items ────────────────────────────────────────────────────────────────────
 
-export function useMenuItems(categoryId: string | null) {
+export function useMenuItems(categoryId: string | null, enabled = true) {
   return useQuery({
     queryKey: ['items', categoryId],
     queryFn: () => apiClient.menuItems.list(categoryId!),
-    enabled: !!categoryId,
+    enabled: !!categoryId && enabled,
   })
 }
 

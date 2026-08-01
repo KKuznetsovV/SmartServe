@@ -1,17 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Pencil, Trash2, ChevronRight } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog'
 import { Spinner } from '@/components/ui/spinner'
 import { useAuthStore } from '@/lib/auth-store'
@@ -21,7 +18,9 @@ import {
   useUpdateCategory,
   useDeleteCategory,
 } from '@/hooks/use-menu'
-import type { MenuCategory } from '@smartserve/types'
+import { CategoryNode } from '@/components/menu/category-node'
+import { ItemFormDialog } from '@/components/menu/item-form-dialog'
+import type { MenuCategory, MenuItem } from '@smartserve/types'
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -30,12 +29,31 @@ const schema = z.object({
 })
 type FormData = z.infer<typeof schema>
 
+/** Ids of a category's descendants, so it can't be re-parented under one of its own children. */
+function getDescendantIds(categories: MenuCategory[], id: string): Set<string> {
+  const result = new Set<string>()
+  const stack = [id]
+  while (stack.length > 0) {
+    const current = stack.pop()!
+    for (const c of categories) {
+      if (c.parentId === current && !result.has(c.id)) {
+        result.add(c.id)
+        stack.push(c.id)
+      }
+    }
+  }
+  return result
+}
+
 export default function MenuPage() {
-  const router = useRouter()
   const activeLocationId = useAuthStore((s) => s.activeLocationId)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<MenuCategory | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const [itemDialogOpen, setItemDialogOpen] = useState(false)
+  const [itemDialogCategoryId, setItemDialogCategoryId] = useState<string | null>(null)
+  const [editingItem, setEditingItem] = useState<MenuItem | null>(null)
 
   const { data: categories = [], isLoading } = useCategories(activeLocationId)
   const createCategory = useCreateCategory()
@@ -50,7 +68,6 @@ export default function MenuPage() {
   } = useForm<FormData>({ resolver: zodResolver(schema) })
 
   const topLevelCategories = categories.filter((c) => !c.parentId)
-  const childrenOf = (parentId: string) => categories.filter((c) => c.parentId === parentId)
 
   const openCreate = () => {
     setEditing(null)
@@ -91,49 +108,19 @@ export default function MenuPage() {
     setDeletingId(null)
   }
 
-  const renderCategoryCard = (cat: MenuCategory) => (
-    <Card
-      key={cat.id}
-      className="group cursor-pointer transition-shadow hover:shadow-md"
-      onClick={() => router.push(`/menu/${cat.id}`)}
-    >
-      <CardContent className="flex items-center justify-between p-4">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="font-medium truncate">{cat.name}</span>
-            {cat.nameHe && (
-              <span className="text-sm text-muted-foreground dir-rtl">{cat.nameHe}</span>
-            )}
-          </div>
-          <Badge variant={cat.active ? 'success' : 'secondary'} className="mt-1">
-            {cat.active ? 'Active' : 'Hidden'}
-          </Badge>
-        </div>
-        <div className="flex shrink-0 items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={(e) => { e.stopPropagation(); openEdit(cat) }}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={(e) => { e.stopPropagation(); handleDelete(cat.id) }}
-            disabled={deletingId === cat.id}
-          >
-            {deletingId === cat.id ? (
-              <Spinner className="h-4 w-4" />
-            ) : (
-              <Trash2 className="h-4 w-4 text-destructive" />
-            )}
-          </Button>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        </div>
-      </CardContent>
-    </Card>
-  )
+  const openAddItem = (categoryId: string) => {
+    setEditingItem(null)
+    setItemDialogCategoryId(categoryId)
+    setItemDialogOpen(true)
+  }
+
+  const openEditItem = (item: MenuItem) => {
+    setEditingItem(item)
+    setItemDialogCategoryId(item.categoryId)
+    setItemDialogOpen(true)
+  }
+
+  const excludedParentIds = editing ? getDescendantIds(categories, editing.id).add(editing.id) : new Set<string>()
 
   if (!activeLocationId) {
     return (
@@ -157,7 +144,7 @@ export default function MenuPage() {
         </Button>
       </div>
 
-      {/* Categories */}
+      {/* Category tree */}
       {isLoading ? (
         <div className="flex justify-center py-12">
           <Spinner />
@@ -171,20 +158,19 @@ export default function MenuPage() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-6">
-          {topLevelCategories.map((cat) => {
-            const children = childrenOf(cat.id)
-            return (
-              <div key={cat.id}>
-                {renderCategoryCard(cat)}
-                {children.length > 0 && (
-                  <div className="ml-6 mt-3 grid gap-3 border-l-2 pl-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {children.map((child) => renderCategoryCard(child))}
-                  </div>
-                )}
-              </div>
-            )
-          })}
+        <div className="space-y-2">
+          {topLevelCategories.map((cat) => (
+            <CategoryNode
+              key={cat.id}
+              category={cat}
+              categories={categories}
+              onEdit={openEdit}
+              onDelete={handleDelete}
+              deletingId={deletingId}
+              onAddItem={openAddItem}
+              onEditItem={openEditItem}
+            />
+          ))}
         </div>
       )}
 
@@ -209,8 +195,8 @@ export default function MenuPage() {
               <Label htmlFor="parentId">Parent category (optional)</Label>
               <Select id="parentId" {...register('parentId')}>
                 <option value="">None (top-level category)</option>
-                {topLevelCategories
-                  .filter((c) => c.id !== editing?.id)
+                {categories
+                  .filter((c) => !excludedParentIds.has(c.id))
                   .map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -235,6 +221,13 @@ export default function MenuPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ItemFormDialog
+        open={itemDialogOpen}
+        onOpenChange={setItemDialogOpen}
+        categoryId={itemDialogCategoryId}
+        editing={editingItem}
+      />
     </div>
   )
 }
