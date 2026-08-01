@@ -83,6 +83,19 @@ def _parse_json_reply(message: anthropic.types.Message) -> dict:
         return json.loads(stripped)
 
 
+def _parse_menu_import_reply(message: anthropic.types.Message) -> dict:
+    """Like _parse_json_reply, but turns a truncated/invalid reply into a clean HTTP error
+    instead of an unhandled 500 (large menus can exceed max_tokens and cut the JSON off mid-item)."""
+    try:
+        return _parse_json_reply(message)
+    except (json.JSONDecodeError, IndexError) as exc:
+        if message.stop_reason == "max_tokens":
+            detail = "The menu was too large for the AI to process in one go — try uploading fewer items at a time"
+        else:
+            detail = "AI returned an invalid response, please try again"
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail) from exc
+
+
 async def _create_message(client: anthropic.Anthropic, **kwargs) -> anthropic.types.Message:
     """Call the Anthropic API off the event loop, turning SDK errors into clean HTTP responses."""
     try:
@@ -299,11 +312,11 @@ async def menu_import_start(
     message = await _create_message(
         client,
         model=settings.AI_COMPLEX_MODEL,
-        max_tokens=4096,
+        max_tokens=8192,
         system=system,
         messages=[{"role": "user", "content": user_content}],
     )
-    result = _parse_json_reply(message)
+    result = _parse_menu_import_reply(message)
 
     session_id = str(uuid.uuid4())
     _menu_import_sessions[session_id] = {
@@ -349,11 +362,11 @@ async def menu_import_message(
     message = await _create_message(
         client,
         model=settings.AI_COMPLEX_MODEL,
-        max_tokens=4096,
+        max_tokens=8192,
         system=system,
         messages=history,
     )
-    result = _parse_json_reply(message)
+    result = _parse_menu_import_reply(message)
 
     session["items"] = result.get("items", session["items"])
     session["history"] = [*history, {"role": "assistant", "content": json.dumps(result)}]
