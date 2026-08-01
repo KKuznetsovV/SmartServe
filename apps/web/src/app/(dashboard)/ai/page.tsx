@@ -8,6 +8,7 @@ import { useAuthStore } from '@/lib/auth-store'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import type { AiCommandResponse, MenuImportItem } from '@smartserve/types'
 
 type EntryStatus = 'pending' | 'confirmed' | 'dismissed' | 'error'
@@ -53,6 +54,7 @@ export default function AiPage() {
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const aiCommand = useAiCommand()
   const aiConfirm = useAiConfirm()
 
@@ -67,6 +69,14 @@ export default function AiPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [history, importItems])
+
+  // Auto-grow the textarea to fit pasted content (up to a max height, then it scrolls)
+  useEffect(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 240)}px`
+  }, [input])
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -370,7 +380,7 @@ export default function AiPage() {
       </div>
 
       {/* Input bar */}
-      <div className="flex gap-2 pt-4 border-t">
+      <div className="flex gap-2 pt-4 border-t items-end">
         <input
           ref={fileInputRef}
           type="file"
@@ -388,15 +398,24 @@ export default function AiPage() {
         >
           <Paperclip className="h-4 w-4" />
         </Button>
-        <Input
+        <Textarea
+          ref={textareaRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              handleSend()
+            }
+          }}
           placeholder={
-            importSessionId ? 'Reply to continue the menu import... (Enter to send)' : 'Type a command... (Enter to send)'
+            importSessionId
+              ? 'Reply to continue the menu import... (Enter to send, Shift+Enter for a new line)'
+              : 'Type a command or paste a whole menu... (Enter to send, Shift+Enter for a new line)'
           }
           disabled={isLoading}
-          className="flex-1"
+          rows={1}
+          className="flex-1 resize-none max-h-60 overflow-y-auto"
         />
         <Button onClick={handleSend} disabled={isLoading || !input.trim()}>
           {isLoading ? '…' : 'Send'}
