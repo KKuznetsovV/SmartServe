@@ -114,7 +114,7 @@ businesses (id, name, tax_id, country, currency, created_at)
         │                      modifiers_json, notes, status)
         ├── payments (id, order_id, method, amount, status, gateway_ref)
         ├── printers (id, location_id, name, type, ip, port, active)
-        │     └── printer_routes (id, printer_id, category_id)  -- route category→printer
+        │     └── printer_routes (id, printer_id, item_id)  -- route item→printer (an item may route to several)
         ├── inventory_items (id, location_id, menu_item_id, quantity, unit, threshold)
         └── staff_shifts (id, user_id, clock_in, clock_out, role)
 ```

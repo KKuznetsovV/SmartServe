@@ -31,11 +31,12 @@ class PrinterUpdate(BaseModel):
 
 class PrinterRouteCreate(BaseModel):
     printer_id: str
-    category_id: str
+    item_id: str
 
 
 class PrinterRouteOut(BaseModel):
+    id: str
     printer_id: str
-    category_id: str
+    item_id: str
 
     model_config = {"from_attributes": True}

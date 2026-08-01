@@ -10,9 +10,11 @@ import {
   useCreatePrinter,
   useUpdatePrinter,
   useDeletePrinter,
-  useSetPrinterRoute,
+  useAddPrinterRoute,
+  useDeletePrinterRoute,
 } from '@/hooks/use-printers'
 import { useCategories } from '@/hooks/use-menu'
+import { useLocationStock } from '@/hooks/use-stock'
 import { useAuthStore } from '@/lib/auth-store'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -49,10 +51,12 @@ export default function PrintersPage() {
   const { data: printers, isLoading } = usePrinters(locationId)
   const { data: routes } = usePrinterRoutes(locationId)
   const { data: categories } = useCategories(locationId)
+  const { data: items } = useLocationStock(locationId)
   const createPrinter = useCreatePrinter()
   const updatePrinter = useUpdatePrinter()
   const deletePrinter = useDeletePrinter()
-  const setRoute = useSetPrinterRoute()
+  const addRoute = useAddPrinterRoute()
+  const deleteRoute = useDeletePrinterRoute()
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Printer | null>(null)
@@ -89,13 +93,26 @@ export default function PrintersPage() {
     await deletePrinter.mutateAsync({ id: p.id, locationId: p.locationId })
   }
 
-  // Build a map: categoryId → printerId from existing routes
-  const routeMap: Record<string, string> = {}
-  for (const r of routes ?? []) routeMap[r.categoryId] = r.printerId
+  // Build a map: `${itemId}:${printerId}` → routeId from existing routes, for O(1) lookup
+  const routeIdByKey: Record<string, string> = {}
+  for (const r of routes ?? []) routeIdByKey[`${r.itemId}:${r.printerId}`] = r.id
 
-  async function handleRouteChange(categoryId: string, printerId: string) {
+  async function handleRouteToggle(itemId: string, printerId: string, checked: boolean) {
     if (!locationId) return
-    await setRoute.mutateAsync({ route: { categoryId, printerId }, locationId })
+    if (checked) {
+      await addRoute.mutateAsync({ printerId, itemId, locationId })
+    } else {
+      const routeId = routeIdByKey[`${itemId}:${printerId}`]
+      if (routeId) await deleteRoute.mutateAsync({ routeId, locationId })
+    }
+  }
+
+  // Group items by category, so routing is shown per-item within its category
+  const itemsByCategory = new Map<string, NonNullable<typeof items>>()
+  for (const item of items ?? []) {
+    const list = itemsByCategory.get(item.categoryId) ?? []
+    list.push(item)
+    itemsByCategory.set(item.categoryId, list)
   }
 
   return (
@@ -145,31 +162,53 @@ export default function PrintersPage() {
       </div>
 
       {/* Routing section */}
-      {(categories?.length ?? 0) > 0 && (printers?.length ?? 0) > 0 && (
+      {(items?.length ?? 0) > 0 && (printers?.length ?? 0) > 0 && (
         <div className="space-y-3">
           <h2 className="text-lg font-semibold">Print Routing</h2>
           <p className="text-sm text-muted-foreground">
-            Assign which printer handles each menu category.
+            Choose which printer(s) each item&apos;s tickets print to — an item can be routed to several printers
+            at once (e.g. kitchen + receipt).
           </p>
           <Card>
-            <CardContent className="p-4 space-y-3">
-              {categories?.map((cat) => (
-                <div key={cat.id} className="flex items-center justify-between gap-4">
-                  <span className="text-sm font-medium flex-1">{cat.name}</span>
-                  <Select
-                    className="w-40"
-                    value={routeMap[cat.id] ?? ''}
-                    onChange={(e) => handleRouteChange(cat.id, e.target.value)}
-                  >
-                    <option value="">— None —</option>
-                    {printers?.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-              ))}
+            <CardContent className="p-4 space-y-6">
+              {categories
+                ?.filter((cat) => (itemsByCategory.get(cat.id)?.length ?? 0) > 0)
+                .map((cat) => (
+                  <div key={cat.id} className="space-y-2">
+                    <h3 className="text-sm font-semibold text-muted-foreground">{cat.name}</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-xs text-muted-foreground">
+                            <th className="py-1 pr-4 font-medium">Item</th>
+                            {printers?.map((p) => (
+                              <th key={p.id} className="py-1 px-2 font-medium text-center whitespace-nowrap">
+                                {p.name}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {itemsByCategory.get(cat.id)?.map((item) => (
+                            <tr key={item.id} className="border-t">
+                              <td className="py-1.5 pr-4">{item.name}</td>
+                              {printers?.map((p) => (
+                                <td key={p.id} className="py-1.5 px-2 text-center">
+                                  <input
+                                    type="checkbox"
+                                    className="h-4 w-4 accent-primary"
+                                    checked={!!routeIdByKey[`${item.id}:${p.id}`]}
+                                    onChange={(e) => handleRouteToggle(item.id, p.id, e.target.checked)}
+                                  />
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ))}
             </CardContent>
           </Card>
         </div>

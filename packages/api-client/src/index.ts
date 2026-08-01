@@ -224,7 +224,9 @@ export function createApiClient(config: ApiClientConfig) {
       delete: (id: string) => del<void>(`/printers/${id}`),
       listRoutes: (locationId: string) =>
         get<PrinterRoute[]>(`/locations/${locationId}/printer-routes`),
-      setRoute: (data: PrinterRoute) => post<PrinterRoute>('/printer-routes', data),
+      addRoute: (printerId: string, itemId: string) =>
+        post<PrinterRoute>('/printer-routes', { printerId, itemId }),
+      deleteRoute: (routeId: string) => del<void>(`/printer-routes/${routeId}`),
     },
 
     // Staff

@@ -161,10 +161,12 @@ class MenuService:
             self.db.add(mod)
 
         await self.db.flush()
-        return group
+        return await self.get_modifier_group(group.id)
 
     async def get_modifier_group(self, group_id: str) -> ModifierGroup:
-        result = await self.db.execute(select(ModifierGroup).where(ModifierGroup.id == group_id))
+        result = await self.db.execute(
+            select(ModifierGroup).where(ModifierGroup.id == group_id).options(selectinload(ModifierGroup.modifiers))
+        )
         group = result.scalar_one_or_none()
         if not group:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Modifier group not found")

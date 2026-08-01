@@ -8,7 +8,6 @@ import { useAuthStore } from '@/lib/auth-store'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
 import type { AiCommandResponse, MenuImportItem } from '@smartserve/types'
 
 type EntryStatus = 'pending' | 'confirmed' | 'dismissed' | 'error'
@@ -302,7 +301,7 @@ export default function AiPage() {
               ) : (
                 <div className="space-y-2 max-h-80 overflow-y-auto">
                   {importItems.map((item, i) => (
-                    <div key={i} className="grid grid-cols-[1fr_1fr_5rem_7rem_2rem] gap-2 items-center text-sm">
+                    <div key={i} className="grid grid-cols-[1fr_1fr_5rem_9rem_2rem] gap-2 items-center text-sm">
                       <Input
                         value={item.name}
                         onChange={(e) => updateImportItem(i, { name: e.target.value })}
@@ -319,19 +318,28 @@ export default function AiPage() {
                         onChange={(e) => updateImportItem(i, { price: Number(e.target.value) })}
                         placeholder="Price"
                       />
-                      <Select
-                        value={item.printerType ?? ''}
-                        onChange={(e) =>
-                          updateImportItem(i, {
-                            printerType: (e.target.value || null) as MenuImportItem['printerType'],
-                          })
-                        }
-                      >
-                        <option value="">No printer</option>
-                        <option value="kitchen">Kitchen</option>
-                        <option value="receipt">Receipt</option>
-                        <option value="label">Label</option>
-                      </Select>
+                      <div className="flex gap-2 text-xs">
+                        {(['kitchen', 'receipt', 'label'] as const).map((type) => {
+                          const active = item.printerTypes?.includes(type) ?? false
+                          return (
+                            <label key={type} className="flex items-center gap-1 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                className="h-3.5 w-3.5"
+                                checked={active}
+                                onChange={(e) => {
+                                  const current = item.printerTypes ?? []
+                                  const printerTypes = e.target.checked
+                                    ? [...current, type]
+                                    : current.filter((t) => t !== type)
+                                  updateImportItem(i, { printerTypes })
+                                }}
+                              />
+                              {type[0].toUpperCase()}
+                            </label>
+                          )
+                        })}
+                      </div>
                       <Button size="icon" variant="ghost" onClick={() => removeImportItem(i)} title="Remove item">
                         <Trash2 className="h-4 w-4" />
                       </Button>

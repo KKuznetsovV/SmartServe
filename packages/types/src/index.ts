@@ -218,8 +218,9 @@ export const PrinterSchema = z.object({
 export type Printer = z.infer<typeof PrinterSchema>
 
 export const PrinterRouteSchema = z.object({
+  id: z.string().uuid(),
   printerId: z.string().uuid(),
-  categoryId: z.string().uuid(),
+  itemId: z.string().uuid(),
 })
 export type PrinterRoute = z.infer<typeof PrinterRouteSchema>
 
@@ -271,7 +272,7 @@ export const MenuImportItemSchema = z.object({
   price: z.number().nullable().optional(),
   currency: z.string().nullable().optional(),
   category: z.string().nullable().optional(),
-  printerType: z.enum(['kitchen', 'receipt', 'label']).nullable().optional(),
+  printerTypes: z.array(z.enum(['kitchen', 'receipt', 'label'])).optional().default([]),
 })
 export type MenuImportItem = z.infer<typeof MenuImportItemSchema>
 

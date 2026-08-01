@@ -1,5 +1,5 @@
 from fastapi import HTTPException, status
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Printer, PrinterRoute
@@ -38,13 +38,24 @@ class PrinterService:
         printer = await self.get_printer(printer_id)
         await self.db.delete(printer)
 
-    async def set_route(self, data: PrinterRouteCreate) -> PrinterRoute:
-        # Remove existing route for this category if any
-        await self.db.execute(delete(PrinterRoute).where(PrinterRoute.category_id == data.category_id))
-        route = PrinterRoute(printer_id=data.printer_id, category_id=data.category_id)
+    async def add_route(self, data: PrinterRouteCreate) -> PrinterRoute:
+        existing = await self.db.execute(
+            select(PrinterRoute).where(PrinterRoute.printer_id == data.printer_id, PrinterRoute.item_id == data.item_id)
+        )
+        route = existing.scalar_one_or_none()
+        if route:
+            return route
+        route = PrinterRoute(printer_id=data.printer_id, item_id=data.item_id)
         self.db.add(route)
         await self.db.flush()
         return route
+
+    async def delete_route(self, route_id: str) -> None:
+        result = await self.db.execute(select(PrinterRoute).where(PrinterRoute.id == route_id))
+        route = result.scalar_one_or_none()
+        if not route:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Printer route not found")
+        await self.db.delete(route)
 
     async def list_routes(self, location_id: str) -> list[PrinterRoute]:
         result = await self.db.execute(

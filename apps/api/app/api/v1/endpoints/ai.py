@@ -194,9 +194,10 @@ Extract every distinct menu item you can find: name, an optional short descripti
 For each item, suggest:
 - "category": a short category name (use one of the business's EXISTING categories below when it clearly fits,
   otherwise propose a new, sensible category name)
-- "printerType": one of "kitchen", "receipt", "label", or null if you are not confident — pick based on the
-  business's EXISTING printers below (e.g. food categories usually route to a "kitchen" printer, drinks/receipts
-  to a "receipt" printer)
+- "printerTypes": an array of printer types this item's tickets should print to — each one of "kitchen",
+  "receipt", "label". Most items need to print to MORE THAN ONE printer at once (e.g. a burger prints a ticket
+  to the kitchen printer AND a copy to the receipt printer); include every printer type that makes sense, not
+  just one. Use an empty array only if you are not confident. Pick based on the business's EXISTING printers below.
 
 This business's existing categories: {categories}
 This business's existing printers (name/type): {printers}
@@ -205,17 +206,17 @@ Return ONLY valid JSON, no markdown fences, in exactly this format:
 {{
   "items": [
     {{"name": "...", "nameHe": null, "description": null, "price": 42.0, "currency": "ILS",
-      "category": "...", "printerType": "kitchen"}}
+      "category": "...", "printerTypes": ["kitchen", "receipt"]}}
   ],
   "message": "<a short reply to the user, in the language they used>",
   "needsClarification": <true|false>
 }}
 
 Set "needsClarification" to true and use "message" to ask a specific, single follow-up question when: prices are
-missing or illegible, a group of items has no obvious category, or printer routing for a category is genuinely
+missing or illegible, a group of items has no obvious category, or printer routing for an item is genuinely
 ambiguous between two existing printers of the same type. Otherwise set it to false and put a brief summary
 (e.g. item count and categories found) in "message". Keep conversing with the user turn-by-turn until every item
-has a clear category and, where possible, a printer assignment — incorporate their replies to refine "items".
+has a clear category and, where possible, printer assignments — incorporate their replies to refine "items".
 """
 
 _menu_import_sessions: dict[str, dict] = {}
@@ -415,22 +416,21 @@ async def menu_import_apply(
             price=float(raw.get("price") or 0),
         )
         db.add(item)
+        await db.flush()
         items_created += 1
 
-        printer_type = raw.get("printerType")
-        if printer_type:
+        printer_types = raw.get("printerTypes") or ([raw["printerType"]] if raw.get("printerType") else [])
+        for printer_type in printer_types:
             printer = printer_by_type.get(printer_type)
-            if printer:
-                existing_route = await db.execute(
-                    select(PrinterRoute).where(
-                        PrinterRoute.printer_id == printer.id, PrinterRoute.category_id == category.id
-                    )
-                )
-                if not existing_route.scalar_one_or_none():
-                    db.add(PrinterRoute(printer_id=printer.id, category_id=category.id))
-                    routes_created += 1
-            else:
-                unrouted.append(name)
+            if not printer:
+                unrouted.append(f"{name} ({printer_type})")
+                continue
+            existing_route = await db.execute(
+                select(PrinterRoute).where(PrinterRoute.printer_id == printer.id, PrinterRoute.item_id == item.id)
+            )
+            if not existing_route.scalar_one_or_none():
+                db.add(PrinterRoute(printer_id=printer.id, item_id=item.id))
+                routes_created += 1
 
     await db.flush()
     del _menu_import_sessions[body.session_id]

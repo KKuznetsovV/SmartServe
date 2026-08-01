@@ -49,12 +49,21 @@ async def delete_printer(
 
 
 @router.post("/printer-routes", response_model=PrinterRouteOut, status_code=201)
-async def set_printer_route(
+async def add_printer_route(
     data: PrinterRouteCreate,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_manager),
 ):
-    return await PrinterService(db).set_route(data)
+    return await PrinterService(db).add_route(data)
+
+
+@router.delete("/printer-routes/{route_id}", status_code=204)
+async def delete_printer_route(
+    route_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_manager),
+):
+    await PrinterService(db).delete_route(route_id)
 
 
 @router.get("/locations/{location_id}/printer-routes", response_model=list[PrinterRouteOut])

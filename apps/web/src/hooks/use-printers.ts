@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { apiClient } from '@/lib/api'
-import type { Printer, PrinterRoute } from '@smartserve/types'
+import type { Printer } from '@smartserve/types'
 
 export function usePrinters(locationId: string | null) {
   return useQuery({
@@ -58,11 +58,23 @@ export function useDeletePrinter() {
   })
 }
 
-export function useSetPrinterRoute() {
+export function useAddPrinterRoute() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ route }: { route: PrinterRoute; locationId: string }) =>
-      apiClient.printers.setRoute(route),
+    mutationFn: ({ printerId, itemId }: { printerId: string; itemId: string; locationId: string }) =>
+      apiClient.printers.addRoute(printerId, itemId),
+    onSuccess: (_, { locationId }) => {
+      qc.invalidateQueries({ queryKey: ['printer-routes', locationId] })
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useDeletePrinterRoute() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ routeId }: { routeId: string; locationId: string }) =>
+      apiClient.printers.deleteRoute(routeId),
     onSuccess: (_, { locationId }) => {
       qc.invalidateQueries({ queryKey: ['printer-routes', locationId] })
     },

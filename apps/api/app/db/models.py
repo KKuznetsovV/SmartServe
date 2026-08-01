@@ -119,6 +119,7 @@ class MenuItem(Base):
 
     category: Mapped[MenuCategory] = relationship(back_populates="items")
     modifier_groups: Mapped[list[ModifierGroup]] = relationship(back_populates="item")
+    printer_routes: Mapped[list[PrinterRoute]] = relationship(back_populates="item")
 
 
 class ModifierGroup(Base):
@@ -276,16 +277,17 @@ class Printer(Base):
 
 
 class PrinterRoute(Base):
-    """Routes a menu category's orders to a specific printer."""
+    """Routes a menu item's orders to a specific printer — an item can route to several printers at once."""
 
     __tablename__ = "printer_routes"
-    __table_args__ = (UniqueConstraint("printer_id", "category_id"),)
+    __table_args__ = (UniqueConstraint("printer_id", "item_id"),)
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     printer_id: Mapped[str] = mapped_column(ForeignKey("printers.id"), nullable=False)
-    category_id: Mapped[str] = mapped_column(ForeignKey("menu_categories.id"), nullable=False)
+    item_id: Mapped[str] = mapped_column(ForeignKey("menu_items.id"), nullable=False)
 
     printer: Mapped[Printer] = relationship(back_populates="routes")
+    item: Mapped[MenuItem] = relationship(back_populates="printer_routes")
 
 
 # ─── Shifts ───────────────────────────────────────────────────────────────────
