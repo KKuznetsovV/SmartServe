@@ -39,7 +39,7 @@ const INTENT_LABELS: Record<string, string> = {
 }
 
 const ACCEPTED_FILE_TYPES =
-  'image/png,image/jpeg,image/webp,image/gif,application/pdf,text/csv,text/plain,.pdf,.csv,.txt'
+  'image/png,image/jpeg,image/webp,image/gif,application/pdf,text/csv,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,.csv,.txt,.docx'
 
 function confidenceColor(c: number) {
   if (c >= 0.85) return 'text-green-600'
