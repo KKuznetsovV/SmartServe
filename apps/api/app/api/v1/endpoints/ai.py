@@ -252,9 +252,7 @@ async def _dispatch_intent(intent: str, params: dict, location_id: str, db: Asyn
         category_hint = params.get("category_hint") or params.get("category")
         idx = _fuzzy_match(category_hint, [c.name for c in categories])
         category = categories[idx] if idx is not None else categories[0]
-        item = await menu_service.create_item(
-            MenuItemCreate(category_id=category.id, name=name, price=float(price))
-        )
+        item = await menu_service.create_item(MenuItemCreate(category_id=category.id, name=name, price=float(price)))
         return f"Created '{item.name}' ({item.price:.2f}) in '{category.name}'"
 
     if intent == "menu.update_item":

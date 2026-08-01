@@ -49,7 +49,9 @@ class MenuService:
         cat = await self.get_category(category_id)
         if data.parent_id:
             if data.parent_id == category_id:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A category cannot be its own parent")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST, detail="A category cannot be its own parent"
+                )
             await self._validate_parent(data.parent_id, cat.location_id)
         for field, value in data.model_dump(exclude_none=True).items():
             setattr(cat, field, value)
@@ -59,7 +61,9 @@ class MenuService:
     async def _validate_parent(self, parent_id: str, location_id: str) -> None:
         parent = await self.get_category(parent_id)
         if parent.location_id != location_id:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Parent category is not in this location")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Parent category is not in this location"
+            )
 
     async def delete_category(self, category_id: str) -> None:
         cat = await self.get_category(category_id)
