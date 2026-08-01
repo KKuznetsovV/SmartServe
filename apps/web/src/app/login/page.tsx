@@ -24,6 +24,7 @@ type FormData = z.infer<typeof schema>
 export default function LoginPage() {
   const router = useRouter()
   const setAuth = useAuthStore((s) => s.setAuth)
+  const setTokens = useAuthStore((s) => s.setTokens)
   const setActiveLocation = useAuthStore((s) => s.setActiveLocation)
   const [loading, setLoading] = useState(false)
 
@@ -37,6 +38,8 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const tokens = await apiClient.auth.login(data.email, data.password)
+      // Store tokens first so the /auth/me request carries the Authorization header
+      setTokens(tokens.accessToken, tokens.refreshToken)
       const user = await apiClient.auth.me()
       setAuth(tokens.accessToken, tokens.refreshToken, user)
 

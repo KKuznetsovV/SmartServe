@@ -15,7 +15,6 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -35,7 +34,7 @@ def _now() -> datetime:
 class Business(Base):
     __tablename__ = "businesses"
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     tax_id: Mapped[str | None] = mapped_column(String(50))
     country: Mapped[str] = mapped_column(String(2), default="IL")
@@ -50,7 +49,7 @@ class Business(Base):
 class Location(Base):
     __tablename__ = "locations"
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     business_id: Mapped[str] = mapped_column(ForeignKey("businesses.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     address: Mapped[str | None] = mapped_column(Text)
@@ -71,7 +70,7 @@ class Location(Base):
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     business_id: Mapped[str] = mapped_column(ForeignKey("businesses.id"), nullable=False)
     email: Mapped[str | None] = mapped_column(String(255), unique=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -91,7 +90,7 @@ class User(Base):
 class MenuCategory(Base):
     __tablename__ = "menu_categories"
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     location_id: Mapped[str] = mapped_column(ForeignKey("locations.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     name_he: Mapped[str | None] = mapped_column(String(255))
@@ -105,7 +104,7 @@ class MenuCategory(Base):
 class MenuItem(Base):
     __tablename__ = "menu_items"
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     category_id: Mapped[str] = mapped_column(ForeignKey("menu_categories.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     name_he: Mapped[str | None] = mapped_column(String(255))
@@ -125,7 +124,7 @@ class MenuItem(Base):
 class ModifierGroup(Base):
     __tablename__ = "modifier_groups"
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     item_id: Mapped[str] = mapped_column(ForeignKey("menu_items.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     name_he: Mapped[str | None] = mapped_column(String(255))
@@ -140,7 +139,7 @@ class ModifierGroup(Base):
 class Modifier(Base):
     __tablename__ = "modifiers"
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     group_id: Mapped[str] = mapped_column(ForeignKey("modifier_groups.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     name_he: Mapped[str | None] = mapped_column(String(255))
@@ -156,7 +155,7 @@ class Modifier(Base):
 class Table(Base):
     __tablename__ = "tables"
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     location_id: Mapped[str] = mapped_column(ForeignKey("locations.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(50), nullable=False)
     capacity: Mapped[int] = mapped_column(Integer, default=4)
@@ -176,7 +175,7 @@ class Discount(Base):
     __tablename__ = "discounts"
     __table_args__ = (UniqueConstraint("business_id", "code"),)
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     business_id: Mapped[str] = mapped_column(ForeignKey("businesses.id"), nullable=False)
     code: Mapped[str] = mapped_column(String(50), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -203,7 +202,7 @@ class Order(Base):
         Index("ix_orders_location_created", "location_id", "created_at"),
     )
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     location_id: Mapped[str] = mapped_column(ForeignKey("locations.id"), nullable=False)
     table_id: Mapped[str | None] = mapped_column(ForeignKey("tables.id"))
     discount_id: Mapped[str | None] = mapped_column(ForeignKey("discounts.id"))
@@ -228,7 +227,7 @@ class OrderItem(Base):
     __tablename__ = "order_items"
     __table_args__ = (Index("ix_order_items_order_id", "order_id"),)
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     order_id: Mapped[str] = mapped_column(ForeignKey("orders.id"), nullable=False)
     menu_item_id: Mapped[str] = mapped_column(ForeignKey("menu_items.id"), nullable=False)
     menu_item_name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -247,7 +246,7 @@ class OrderItem(Base):
 class Payment(Base):
     __tablename__ = "payments"
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     order_id: Mapped[str] = mapped_column(ForeignKey("orders.id"), nullable=False)
     method: Mapped[str] = mapped_column(String(50), nullable=False)
     amount: Mapped[float] = mapped_column(Float, nullable=False)
@@ -264,7 +263,7 @@ class Payment(Base):
 class Printer(Base):
     __tablename__ = "printers"
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     location_id: Mapped[str] = mapped_column(ForeignKey("locations.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     type: Mapped[str] = mapped_column(String(50), default="receipt")
@@ -282,7 +281,7 @@ class PrinterRoute(Base):
     __tablename__ = "printer_routes"
     __table_args__ = (UniqueConstraint("printer_id", "category_id"),)
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     printer_id: Mapped[str] = mapped_column(ForeignKey("printers.id"), nullable=False)
     category_id: Mapped[str] = mapped_column(ForeignKey("menu_categories.id"), nullable=False)
 
@@ -295,7 +294,7 @@ class PrinterRoute(Base):
 class Shift(Base):
     __tablename__ = "shifts"
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     location_id: Mapped[str] = mapped_column(ForeignKey("locations.id"), nullable=False)
     opened_by: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
     closed_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
