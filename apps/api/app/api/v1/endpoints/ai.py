@@ -36,6 +36,7 @@ SUPPORTED_INTENTS = [
     "menu.toggle_availability",
     "menu.create_category",
     "menu.reorganize_categories",
+    "menu.move_items_to_category",
     "menu.create_modifier_group",
     "printer.route",
     "printer.troubleshoot",
@@ -66,6 +67,8 @@ Examples:
 - "Send burgers to the kitchen printer" → intent: printer.route, params: {{item_hint: "burger", printer_hint: "kitchen"}}
 - "Reorganize my menu into Food and Drinks main sections" → intent: menu.reorganize_categories,
   params: {{new_top_categories: ["Food", "Drinks"]}}
+- "Move Cola and Lemonade into the Soft Drinks category" → intent: menu.move_items_to_category,
+  params: {{item_hints: ["Cola", "Lemonade"], category_hint: "Soft Drinks"}}
 """
 
 
@@ -239,6 +242,9 @@ async def _dispatch_intent(intent: str, params: dict, location_id: str, db: Asyn
     if intent == "menu.reorganize_categories":
         return await _dispatch_reorganize_categories(params, location_id, menu_service)
 
+    if intent == "menu.move_items_to_category":
+        return await _dispatch_move_items_to_category(params, location_id, menu_service)
+
     if intent == "menu.create_item":
         name = params.get("name")
         price = params.get("price")
@@ -315,6 +321,47 @@ async def _resolve_item(params: dict, location_id: str, menu_service: MenuServic
     if idx is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"No item matching '{hint}' was found")
     return items[idx]
+
+
+async def _dispatch_move_items_to_category(params: dict, location_id: str, menu_service: MenuService) -> str:
+    raw_items = params.get("item_hints") or params.get("items") or params.get("item_names") or params.get("item_hint")
+    if isinstance(raw_items, str):
+        raw_items = [s.strip() for s in raw_items.split(",") if s.strip()]
+    if not raw_items:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Could not determine which items to move")
+
+    category_hint = params.get("category_hint") or params.get("category") or params.get("target_category")
+    if not category_hint:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Could not determine the target category")
+
+    categories = await menu_service.list_categories(location_id)
+    cat_idx = _fuzzy_match(category_hint, [c.name for c in categories])
+    if cat_idx is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"No category matching '{category_hint}' was found"
+        )
+    target = categories[cat_idx]
+
+    items = await menu_service.list_all_items(location_id)
+    moved, not_found = [], []
+    for hint in raw_items:
+        idx = _fuzzy_match(hint, [i.name for i in items])
+        if idx is None:
+            not_found.append(hint)
+            continue
+        item = items[idx]
+        await menu_service.update_item(item.id, MenuItemUpdate(category_id=target.id))
+        moved.append(item.name)
+
+    if not moved:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"None of the items ({', '.join(raw_items)}) were found"
+        )
+
+    message = f"Moved {', '.join(moved)} to '{target.name}'"
+    if not_found:
+        message += f" (couldn't find: {', '.join(not_found)})"
+    return message
 
 
 async def _dispatch_reorganize_categories(params: dict, location_id: str, menu_service: MenuService) -> str:
