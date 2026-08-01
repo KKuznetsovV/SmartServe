@@ -92,6 +92,7 @@ class MenuCategory(Base):
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     location_id: Mapped[str] = mapped_column(ForeignKey("locations.id"), nullable=False)
+    parent_id: Mapped[str | None] = mapped_column(ForeignKey("menu_categories.id"), nullable=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     name_he: Mapped[str | None] = mapped_column(String(255))
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
@@ -99,6 +100,8 @@ class MenuCategory(Base):
 
     location: Mapped[Location] = relationship(back_populates="menu_categories")
     items: Mapped[list[MenuItem]] = relationship(back_populates="category")
+    parent: Mapped[MenuCategory | None] = relationship(remote_side=[id], back_populates="children")
+    children: Mapped[list[MenuCategory]] = relationship(back_populates="parent")
 
 
 class MenuItem(Base):

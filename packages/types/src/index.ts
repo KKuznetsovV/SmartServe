@@ -63,6 +63,7 @@ export type TokenPair = z.infer<typeof TokenPairSchema>
 export const MenuCategorySchema = z.object({
   id: z.string().uuid(),
   locationId: z.string().uuid(),
+  parentId: z.string().uuid().nullable().optional(),
   name: z.string().min(1),
   nameHe: z.string().optional(),
   sortOrder: z.number().int().default(0),

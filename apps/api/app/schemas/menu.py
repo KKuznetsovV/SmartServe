@@ -59,6 +59,7 @@ class ModifierGroupUpdate(BaseModel):
 class MenuCategoryOut(BaseModel):
     id: str
     location_id: str
+    parent_id: str | None = None
     name: str
     name_he: str | None = None
     sort_order: int
@@ -69,12 +70,14 @@ class MenuCategoryOut(BaseModel):
 
 class MenuCategoryCreate(BaseModel):
     location_id: str
+    parent_id: str | None = None
     name: str
     name_he: str | None = None
     sort_order: int = 0
 
 
 class MenuCategoryUpdate(BaseModel):
+    parent_id: str | None = None
     name: str | None = None
     name_he: str | None = None
     sort_order: int | None = None
