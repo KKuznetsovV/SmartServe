@@ -83,6 +83,21 @@ def _parse_json_reply(message: anthropic.types.Message) -> dict:
         return json.loads(stripped)
 
 
+async def _create_message(client: anthropic.Anthropic, **kwargs) -> anthropic.types.Message:
+    """Call the Anthropic API off the event loop, turning SDK errors into clean HTTP responses."""
+    try:
+        return await asyncio.to_thread(client.messages.create, **kwargs)
+    except anthropic.RateLimitError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="AI service is busy, please try again shortly"
+        ) from exc
+    except anthropic.APIStatusError as exc:
+        message = exc.body.get("error", {}).get("message") if isinstance(exc.body, dict) else str(exc)
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"AI service error: {message}") from exc
+    except anthropic.APIError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"AI service error: {exc}") from exc
+
+
 @router.post("/command")
 async def ai_command(
     body: CommandRequest,
@@ -100,8 +115,8 @@ async def ai_command(
 
     system = INTENT_SYSTEM_PROMPT.format(intents=", ".join(SUPPORTED_INTENTS))
 
-    message = await asyncio.to_thread(
-        client.messages.create,
+    message = await _create_message(
+        client,
         model=settings.AI_INTENT_MODEL,
         max_tokens=256,
         system=system,
@@ -112,8 +127,8 @@ async def ai_command(
         result = _parse_json_reply(message)
     except json.JSONDecodeError, IndexError, KeyError:
         # Fallback to Sonnet when Haiku produces malformed output
-        message = await asyncio.to_thread(
-            client.messages.create,
+        message = await _create_message(
+            client,
             model=settings.AI_COMPLEX_MODEL,
             max_tokens=512,
             system=system,
@@ -125,8 +140,8 @@ async def ai_command(
 
     # If confidence is low, use Sonnet for a more careful classification
     if confidence < settings.AI_INTENT_CONFIDENCE_THRESHOLD:
-        message = await asyncio.to_thread(
-            client.messages.create,
+        message = await _create_message(
+            client,
             model=settings.AI_COMPLEX_MODEL,
             max_tokens=512,
             system=system,
@@ -280,8 +295,8 @@ async def menu_import_start(
     system = MENU_IMPORT_SYSTEM_PROMPT.format(categories=categories, printers=printers)
     user_content = [block, {"type": "text", "text": "Extract the menu items from this file."}]
 
-    message = await asyncio.to_thread(
-        client.messages.create,
+    message = await _create_message(
+        client,
         model=settings.AI_COMPLEX_MODEL,
         max_tokens=4096,
         system=system,
@@ -330,8 +345,8 @@ async def menu_import_message(
 
     history = [*session["history"], {"role": "user", "content": body.message}]
 
-    message = await asyncio.to_thread(
-        client.messages.create,
+    message = await _create_message(
+        client,
         model=settings.AI_COMPLEX_MODEL,
         max_tokens=4096,
         system=system,

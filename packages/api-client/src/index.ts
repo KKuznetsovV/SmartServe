@@ -149,13 +149,13 @@ export function createApiClient(config: ApiClientConfig) {
 
     // Menu Categories
     menuCategories: {
-      list: (locationId: string) => get<MenuCategory[]>(`/locations/${locationId}/menu/categories`),
+      list: (locationId: string) => get<MenuCategory[]>(`/menu/locations/${locationId}/categories`),
       create: (data: Omit<MenuCategory, 'id'>) => post<MenuCategory>('/menu/categories', data),
       update: (id: string, data: Partial<MenuCategory>) =>
         patch<MenuCategory>(`/menu/categories/${id}`, data),
       delete: (id: string) => del<void>(`/menu/categories/${id}`),
       reorder: (locationId: string, ids: string[]) =>
-        post<void>(`/locations/${locationId}/menu/categories/reorder`, { ids }),
+        post<void>(`/menu/locations/${locationId}/categories/reorder`, { ids }),
     },
 
     // Menu Items
