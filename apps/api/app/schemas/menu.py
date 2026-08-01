@@ -95,6 +95,7 @@ class MenuItemOut(BaseModel):
     tax_rate: float
     image_url: str | None = None
     preparation_time_min: int
+    sort_order: int
     active: bool
     in_stock: bool
     modifier_groups: list[ModifierGroupOut] = []
@@ -112,6 +113,7 @@ class MenuItemCreate(BaseModel):
     tax_rate: float = 0.17
     image_url: str | None = None
     preparation_time_min: int = 10
+    sort_order: int | None = None
 
 
 class MenuItemUpdate(BaseModel):
@@ -123,6 +125,7 @@ class MenuItemUpdate(BaseModel):
     tax_rate: float | None = None
     image_url: str | None = None
     preparation_time_min: int | None = None
+    sort_order: int | None = None
     active: bool | None = None
     in_stock: bool | None = None
     category_id: str | None = None

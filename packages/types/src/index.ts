@@ -104,6 +104,7 @@ export const MenuItemSchema = z.object({
   taxRate: z.number().min(0).max(1).default(0.17), // 17% Israeli VAT
   imageUrl: z.string().url().optional(),
   preparationTimeMin: z.number().int().min(0).default(10),
+  sortOrder: z.number().int().default(0),
   active: z.boolean().default(true),
   inStock: z.boolean().default(true),
   modifierGroups: z.array(ModifierGroupSchema).default([]),

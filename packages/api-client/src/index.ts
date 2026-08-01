@@ -162,7 +162,7 @@ export function createApiClient(config: ApiClientConfig) {
     menuItems: {
       list: (categoryId: string) => get<MenuItem[]>(`/menu/categories/${categoryId}/items`),
       get: (id: string) => get<MenuItem>(`/menu/items/${id}`),
-      create: (data: Omit<MenuItem, 'id' | 'modifierGroups'>) =>
+      create: (data: Omit<MenuItem, 'id' | 'modifierGroups' | 'sortOrder'> & { sortOrder?: number }) =>
         post<MenuItem>('/menu/items', data),
       update: (id: string, data: Partial<MenuItem>) => patch<MenuItem>(`/menu/items/${id}`, data),
       delete: (id: string) => del<void>(`/menu/items/${id}`),
@@ -170,6 +170,8 @@ export function createApiClient(config: ApiClientConfig) {
         patch<MenuItem>(`/menu/items/${id}/stock`, { inStock }),
       listStock: (locationId: string) =>
         get<MenuItem[]>(`/menu/locations/${locationId}/stock`),
+      reorder: (categoryId: string, ids: string[]) =>
+        post<void>(`/menu/categories/${categoryId}/items/reorder`, { ids }),
     },
 
     // Modifier Groups

@@ -117,6 +117,7 @@ class MenuItem(Base):
     tax_rate: Mapped[float] = mapped_column(Float, default=0.17)
     image_url: Mapped[str | None] = mapped_column(Text)
     preparation_time_min: Mapped[int] = mapped_column(Integer, default=10)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     in_stock: Mapped[bool] = mapped_column(Boolean, default=True)
 

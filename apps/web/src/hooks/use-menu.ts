@@ -65,7 +65,7 @@ export function useMenuItems(categoryId: string | null, enabled = true) {
 export function useCreateMenuItem() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: Omit<MenuItem, 'id' | 'modifierGroups'>) =>
+    mutationFn: (data: Omit<MenuItem, 'id' | 'modifierGroups' | 'sortOrder'> & { sortOrder?: number }) =>
       apiClient.menuItems.create(data),
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ['items', variables.categoryId] })
@@ -78,10 +78,13 @@ export function useCreateMenuItem() {
 export function useUpdateMenuItem() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<MenuItem> }) =>
+    mutationFn: ({ id, data }: { id: string; data: Partial<MenuItem>; oldCategoryId?: string }) =>
       apiClient.menuItems.update(id, data),
-    onSuccess: (item) => {
+    onSuccess: (item, variables) => {
       qc.invalidateQueries({ queryKey: ['items', item.categoryId] })
+      if (variables.oldCategoryId && variables.oldCategoryId !== item.categoryId) {
+        qc.invalidateQueries({ queryKey: ['items', variables.oldCategoryId] })
+      }
       toast.success('Item updated')
     },
     onError: (e: Error) => toast.error(e.message),
@@ -108,6 +111,18 @@ export function useToggleItemStock() {
       apiClient.menuItems.setStock(id, inStock),
     onSuccess: (item) => {
       qc.invalidateQueries({ queryKey: ['items', item.categoryId] })
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useReorderMenuItems() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ categoryId, ids }: { categoryId: string; ids: string[] }) =>
+      apiClient.menuItems.reorder(categoryId, ids),
+    onSuccess: (_, { categoryId }) => {
+      qc.invalidateQueries({ queryKey: ['items', categoryId] })
     },
     onError: (e: Error) => toast.error(e.message),
   })

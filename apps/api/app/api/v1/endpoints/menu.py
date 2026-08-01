@@ -134,6 +134,16 @@ async def list_location_stock(
     return await MenuService(db).list_all_items(location_id)
 
 
+@router.post("/categories/{category_id}/items/reorder", status_code=204)
+async def reorder_items(
+    category_id: str,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_manager),
+):
+    await MenuService(db).reorder_items(category_id, body["ids"])
+
+
 @router.delete("/items/{item_id}", status_code=204)
 async def delete_item(
     item_id: str,

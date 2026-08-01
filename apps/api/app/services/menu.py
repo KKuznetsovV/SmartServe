@@ -1,7 +1,7 @@
 """Menu service — all business logic for categories, items, and modifiers."""
 
 from fastapi import HTTPException, status
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -84,6 +84,7 @@ class MenuService:
             select(MenuItem)
             .where(MenuItem.category_id == category_id)
             .options(selectinload(MenuItem.modifier_groups).selectinload(ModifierGroup.modifiers))
+            .order_by(MenuItem.sort_order, MenuItem.name)
         )
         return list(result.scalars().all())
 
@@ -101,7 +102,10 @@ class MenuService:
     async def create_item(self, data: MenuItemCreate) -> MenuItem:
         # Verify category exists
         await self.get_category(data.category_id)
-        item = MenuItem(**data.model_dump())
+        payload = data.model_dump()
+        if payload.get("sort_order") is None:
+            payload["sort_order"] = await self._next_sort_order(data.category_id)
+        item = MenuItem(**payload)
         self.db.add(item)
         await self.db.flush()
         await self.db.refresh(item)
@@ -115,10 +119,28 @@ class MenuService:
 
     async def update_item(self, item_id: str, data: MenuItemUpdate) -> MenuItem:
         item = await self.get_item(item_id)
-        for field, value in data.model_dump(exclude_none=True).items():
+        updates = data.model_dump(exclude_none=True)
+        # Moving to a different category with no explicit position: append to the end of it
+        if updates.get("category_id") and updates["category_id"] != item.category_id and "sort_order" not in updates:
+            updates["sort_order"] = await self._next_sort_order(updates["category_id"])
+        for field, value in updates.items():
             setattr(item, field, value)
         await self.db.flush()
         return await self.get_item(item_id)
+
+    async def _next_sort_order(self, category_id: str) -> int:
+        result = await self.db.execute(
+            select(func.count()).select_from(MenuItem).where(MenuItem.category_id == category_id)
+        )
+        return result.scalar_one()
+
+    async def reorder_items(self, category_id: str, ids: list[str]) -> None:
+        for order, item_id in enumerate(ids):
+            await self.db.execute(
+                update(MenuItem)
+                .where(MenuItem.id == item_id, MenuItem.category_id == category_id)
+                .values(sort_order=order)
+            )
 
     async def delete_item(self, item_id: str) -> None:
         item = await self.get_item(item_id)
@@ -160,7 +182,7 @@ class MenuService:
             .join(MenuCategory, MenuItem.category_id == MenuCategory.id)
             .where(MenuCategory.location_id == location_id, MenuItem.active.is_(True))
             .options(selectinload(MenuItem.modifier_groups).selectinload(ModifierGroup.modifiers))
-            .order_by(MenuCategory.sort_order, MenuItem.name)
+            .order_by(MenuCategory.sort_order, MenuItem.sort_order, MenuItem.name)
         )
         return list(result.scalars().all())
 
