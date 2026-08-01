@@ -216,116 +216,107 @@ function ItemCard({
   const deleteMG = useDeleteModifierGroup()
 
   return (
-    <Card>
-      <CardContent className="p-0">
-        {/* Main row */}
-        <div className="flex items-center gap-3 p-4">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-medium">{item.name}</span>
-              {item.nameHe && (
-                <span className="text-sm text-muted-foreground" dir="rtl">
-                  {item.nameHe}
-                </span>
-              )}
-              <Badge variant={item.inStock ? 'success' : 'warning'}>
-                {item.inStock ? 'In Stock' : 'Out of Stock'}
-              </Badge>
-            </div>
-            {item.description && (
-              <p className="mt-0.5 text-xs text-muted-foreground truncate">{item.description}</p>
+    <Card
+      role="button"
+      tabIndex={0}
+      onClick={() => setExpanded((v) => !v)}
+      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setExpanded((v) => !v)}
+      className="cursor-pointer select-none transition-shadow hover:shadow-md"
+    >
+      <CardContent className="space-y-2 p-4">
+        {/* Compact rectangle: name + price + stock badge, always visible */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <span className="block truncate font-medium">{item.name}</span>
+            {item.nameHe && (
+              <span className="block truncate text-xs text-muted-foreground" dir="rtl">
+                {item.nameHe}
+              </span>
             )}
           </div>
-          <div className="shrink-0 font-semibold">{formatPrice(item.price)}</div>
-          <div className="flex shrink-0 items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() =>
-                toggleStock.mutate({ id: item.id, inStock: !item.inStock, categoryId })
-              }
-              title={item.inStock ? 'Mark out of stock' : 'Mark in stock'}
-            >
-              {item.inStock ? (
-                <Power className="h-4 w-4 text-emerald-600" />
-              ) : (
-                <PowerOff className="h-4 w-4 text-amber-500" />
-              )}
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => onEdit(item)}>
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => deleteItem.mutate({ id: item.id, categoryId })}
-              disabled={deleteItem.isPending}
-            >
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
-            {(item.modifierGroups?.length ?? 0) > 0 && (
+          {expanded ? (
+            <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+          )}
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-semibold">{formatPrice(item.price)}</span>
+          <Badge variant={item.inStock ? 'success' : 'warning'}>
+            {item.inStock ? 'In Stock' : 'Out of Stock'}
+          </Badge>
+        </div>
+
+        {/* Expanded: description + edit options + modifier groups */}
+        {expanded && (
+          <div className="space-y-3 border-t pt-3" onClick={(e) => e.stopPropagation()}>
+            {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
+
+            <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setExpanded((v) => !v)}
+                onClick={() => toggleStock.mutate({ id: item.id, inStock: !item.inStock, categoryId })}
+                title={item.inStock ? 'Mark out of stock' : 'Mark in stock'}
               >
-                {expanded ? (
-                  <ChevronUp className="h-4 w-4" />
+                {item.inStock ? (
+                  <Power className="h-4 w-4 text-emerald-600" />
                 ) : (
-                  <ChevronDown className="h-4 w-4" />
+                  <PowerOff className="h-4 w-4 text-amber-500" />
                 )}
               </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Modifier groups */}
-        {expanded && item.modifierGroups && item.modifierGroups.length > 0 && (
-          <div className="border-t px-4 pb-4">
-            <div className="mt-3 space-y-3">
-              {item.modifierGroups.map((mg: ModifierGroup) => (
-                <div key={mg.id} className="rounded-md bg-muted/50 p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">{mg.name}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteMG.mutate({ id: mg.id, itemId: item.id })}
-                    >
-                      <Trash2 className="h-3 w-3 text-destructive" />
-                    </Button>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {mg.modifiers?.map((mod) => (
-                      <Badge key={mod.id} variant="outline" className="text-xs">
-                        {mod.name}
-                        {mod.priceDelta !== 0 && (
-                          <span className="ml-1 text-muted-foreground">
-                            {mod.priceDelta > 0 ? '+' : ''}
-                            {formatPrice(mod.priceDelta)}
-                          </span>
-                        )}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              ))}
+              <Button variant="ghost" size="icon" onClick={() => onEdit(item)}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => deleteItem.mutate({ id: item.id, categoryId })}
+                disabled={deleteItem.isPending}
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
             </div>
+
+            {item.modifierGroups && item.modifierGroups.length > 0 && (
+              <div className="space-y-3">
+                {item.modifierGroups.map((mg: ModifierGroup) => (
+                  <div key={mg.id} className="rounded-md bg-muted/50 p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-sm font-medium">{mg.name}</span>
+                      <Button variant="ghost" size="sm" onClick={() => deleteMG.mutate({ id: mg.id, itemId: item.id })}>
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {mg.modifiers?.map((mod) => (
+                        <Badge key={mod.id} variant="outline" className="text-xs">
+                          {mod.name}
+                          {mod.priceDelta !== 0 && (
+                            <span className="ml-1 text-muted-foreground">
+                              {mod.priceDelta > 0 ? '+' : ''}
+                              {formatPrice(mod.priceDelta)}
+                            </span>
+                          )}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-muted-foreground"
+              onClick={() => setMgDialogOpen(true)}
+            >
+              <Plus className="mr-1 h-3 w-3" />
+              Add Modifier Group
+            </Button>
           </div>
         )}
-
-        {/* Add modifier group button */}
-        <div className="border-t px-4 py-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-xs text-muted-foreground"
-            onClick={() => setMgDialogOpen(true)}
-          >
-            <Plus className="mr-1 h-3 w-3" />
-            Add Modifier Group
-          </Button>
-        </div>
       </CardContent>
       <ModifierGroupDialog
         open={mgDialogOpen}
@@ -430,7 +421,7 @@ export default function CategoryItemsPage() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {items.map((item) => (
             <ItemCard key={item.id} item={item} categoryId={categoryId} onEdit={openEdit} />
           ))}
