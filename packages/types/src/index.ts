@@ -262,6 +262,35 @@ export const AiCommandResponseSchema = z.object({
 })
 export type AiCommandResponse = z.infer<typeof AiCommandResponseSchema>
 
+// ─── AI Menu Import ───────────────────────────────────────────────────────────
+
+export const MenuImportItemSchema = z.object({
+  name: z.string(),
+  nameHe: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
+  price: z.number().nullable().optional(),
+  currency: z.string().nullable().optional(),
+  category: z.string().nullable().optional(),
+  printerType: z.enum(['kitchen', 'receipt', 'label']).nullable().optional(),
+})
+export type MenuImportItem = z.infer<typeof MenuImportItemSchema>
+
+export const MenuImportTurnSchema = z.object({
+  sessionId: z.string(),
+  items: z.array(MenuImportItemSchema),
+  message: z.string(),
+  needsClarification: z.boolean(),
+})
+export type MenuImportTurn = z.infer<typeof MenuImportTurnSchema>
+
+export const MenuImportApplyResponseSchema = z.object({
+  categoriesCreated: z.number().int(),
+  itemsCreated: z.number().int(),
+  routesCreated: z.number().int(),
+  unrouted: z.array(z.string()),
+})
+export type MenuImportApplyResponse = z.infer<typeof MenuImportApplyResponseSchema>
+
 // ─── WebSocket Events ─────────────────────────────────────────────────────────
 
 export const WsEventType = z.enum([

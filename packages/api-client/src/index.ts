@@ -16,6 +16,9 @@ import type {
   TokenPair,
   AiCommandRequest,
   AiCommandResponse,
+  MenuImportItem,
+  MenuImportTurn,
+  MenuImportApplyResponse,
   ApiError,
   ReportSummary,
 } from '@smartserve/types'
@@ -71,8 +74,10 @@ async function request<T>(
   isRetry = false,
 ): Promise<T> {
   const token = config.getAccessToken()
+  const isFormData = options.body instanceof FormData
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    // Let the browser set the multipart boundary itself for FormData bodies
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers as Record<string, string>),
   }
   if (token) {
@@ -110,6 +115,7 @@ export function createApiClient(config: ApiClientConfig) {
   const get = <T>(path: string) => request<T>(config, path)
   const post = <T>(path: string, body: unknown) =>
     request<T>(config, path, { method: 'POST', body: JSON.stringify(body) })
+  const postForm = <T>(path: string, body: FormData) => request<T>(config, path, { method: 'POST', body })
   const put = <T>(path: string, body: unknown) =>
     request<T>(config, path, { method: 'PUT', body: JSON.stringify(body) })
   const patch = <T>(path: string, body: unknown) =>
@@ -257,8 +263,19 @@ export function createApiClient(config: ApiClientConfig) {
     },
 
     // AI
-    ai: {      command: (data: AiCommandRequest) => post<AiCommandResponse>('/ai/command', data),
+    ai: {
+      command: (data: AiCommandRequest) => post<AiCommandResponse>('/ai/command', data),
       confirm: (executionId: string) => post<{ success: boolean; message: string }>('/ai/confirm', { executionId }),
+      importMenuFile: (locationId: string, file: File) => {
+        const form = new FormData()
+        form.append('location_id', locationId)
+        form.append('file', file)
+        return postForm<MenuImportTurn>('/ai/menu-import', form)
+      },
+      importMenuMessage: (sessionId: string, message: string) =>
+        post<MenuImportTurn>('/ai/menu-import/message', { sessionId, message }),
+      importMenuApply: (sessionId: string, items?: MenuImportItem[]) =>
+        post<MenuImportApplyResponse>('/ai/menu-import/apply', { sessionId, items }),
     },
   }
 }

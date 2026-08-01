@@ -1,12 +1,15 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useAiCommand, useAiConfirm } from '@/hooks/use-ai'
+import { toast } from 'sonner'
+import { Paperclip, X, Trash2 } from 'lucide-react'
+import { useAiCommand, useAiConfirm, useMenuImportUpload, useMenuImportMessage, useMenuImportApply } from '@/hooks/use-ai'
 import { useAuthStore } from '@/lib/auth-store'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import type { AiCommandResponse } from '@smartserve/types'
+import { Select } from '@/components/ui/select'
+import type { AiCommandResponse, MenuImportItem } from '@smartserve/types'
 
 type EntryStatus = 'pending' | 'confirmed' | 'dismissed' | 'error'
 
@@ -16,6 +19,7 @@ interface HistoryEntry {
   status: EntryStatus
   response?: AiCommandResponse
   resultMessage?: string
+  isImport?: boolean
 }
 
 const INTENT_LABELS: Record<string, string> = {
@@ -35,6 +39,9 @@ const INTENT_LABELS: Record<string, string> = {
   'help.general': 'Help',
 }
 
+const ACCEPTED_FILE_TYPES =
+  'image/png,image/jpeg,image/webp,image/gif,application/pdf,text/csv,text/plain,.pdf,.csv,.txt'
+
 function confidenceColor(c: number) {
   if (c >= 0.85) return 'text-green-600'
   if (c >= 0.6) return 'text-amber-600'
@@ -46,20 +53,69 @@ export default function AiPage() {
   const [input, setInput] = useState('')
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const bottomRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const aiCommand = useAiCommand()
   const aiConfirm = useAiConfirm()
 
+  // Menu import (upload menu photo/PDF/sheet, converse with AI to organize it)
+  const [importSessionId, setImportSessionId] = useState<string | null>(null)
+  const [importNeedsClarification, setImportNeedsClarification] = useState(false)
+  const [importItems, setImportItems] = useState<MenuImportItem[]>([])
+  const uploadMenu = useMenuImportUpload()
+  const importMessage = useMenuImportMessage()
+  const importApply = useMenuImportApply()
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [history])
+  }, [history, importItems])
+
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !locationId) return
+
+    const entryId = crypto.randomUUID()
+    setHistory((h) => [...h, { id: entryId, message: `📎 ${file.name}`, status: 'pending', isImport: true }])
+
+    try {
+      const turn = await uploadMenu.mutateAsync({ locationId, file })
+      setImportSessionId(turn.sessionId)
+      setImportNeedsClarification(turn.needsClarification)
+      setImportItems(turn.items)
+      setHistory((h) =>
+        h.map((e) => (e.id === entryId ? { ...e, status: 'confirmed', resultMessage: turn.message } : e)),
+      )
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to read that file'
+      setHistory((h) => h.map((e) => (e.id === entryId ? { ...e, status: 'error', resultMessage: msg } : e)))
+    }
+  }
 
   async function handleSend() {
     const message = input.trim()
     if (!message || !locationId) return
+    setInput('')
+
+    // While a menu import is in progress, the chat continues the import conversation
+    if (importSessionId) {
+      const entryId = crypto.randomUUID()
+      setHistory((h) => [...h, { id: entryId, message, status: 'pending', isImport: true }])
+      try {
+        const turn = await importMessage.mutateAsync({ sessionId: importSessionId, message })
+        setImportNeedsClarification(turn.needsClarification)
+        setImportItems(turn.items)
+        setHistory((h) =>
+          h.map((e) => (e.id === entryId ? { ...e, status: 'confirmed', resultMessage: turn.message } : e)),
+        )
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed'
+        setHistory((h) => h.map((e) => (e.id === entryId ? { ...e, status: 'error', resultMessage: msg } : e)))
+      }
+      return
+    }
 
     const entryId = crypto.randomUUID()
     setHistory((h) => [...h, { id: entryId, message, status: 'pending' }])
-    setInput('')
 
     try {
       const response = await aiCommand.mutateAsync({
@@ -100,7 +156,34 @@ export default function AiPage() {
     setHistory((h) => h.map((e) => (e.id === id ? { ...e, status: 'dismissed' } : e)))
   }
 
-  const isLoading = aiCommand.isPending || aiConfirm.isPending
+  function updateImportItem(index: number, patch: Partial<MenuImportItem>) {
+    setImportItems((items) => items.map((it, i) => (i === index ? { ...it, ...patch } : it)))
+  }
+
+  function removeImportItem(index: number) {
+    setImportItems((items) => items.filter((_, i) => i !== index))
+  }
+
+  function cancelImport() {
+    setImportSessionId(null)
+    setImportItems([])
+    setImportNeedsClarification(false)
+  }
+
+  async function handleApplyImport() {
+    if (!importSessionId || !locationId) return
+    try {
+      const result = await importApply.mutateAsync({ sessionId: importSessionId, items: importItems, locationId })
+      toast.success(
+        `Added ${result.itemsCreated} item(s) across ${result.categoriesCreated} new categor${result.categoriesCreated === 1 ? 'y' : 'ies'}, routed ${result.routesCreated} printer link(s)${result.unrouted.length ? `. No matching printer for: ${result.unrouted.join(', ')}` : ''}.`,
+      )
+      cancelImport()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to apply menu import')
+    }
+  }
+
+  const isLoading = aiCommand.isPending || aiConfirm.isPending || uploadMenu.isPending || importMessage.isPending
 
   return (
     <div className="p-6 flex flex-col h-[calc(100vh-4rem)] max-w-2xl mx-auto">
@@ -111,7 +194,7 @@ export default function AiPage() {
         {history.length === 0 && (
           <div className="text-center text-muted-foreground text-sm py-12 space-y-2">
             <p className="text-4xl">🤖</p>
-            <p>Type a command in natural language.</p>
+            <p>Type a command in natural language, or upload a menu file to import it.</p>
             <p className="text-xs">{'e.g. "Add margherita pizza for ₪58" or "הגדל את כל מחירי הפסטה ב-10%"'}</p>
           </div>
         )}
@@ -129,6 +212,20 @@ export default function AiPage() {
             {entry.status === 'pending' && !entry.response && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground pl-1">
                 <span className="animate-pulse">●●●</span>
+              </div>
+            )}
+
+            {entry.isImport && entry.resultMessage && (
+              <div className="flex justify-start">
+                <div
+                  className={
+                    entry.status === 'error'
+                      ? 'bg-red-50 text-red-700 rounded-2xl rounded-tl-sm px-4 py-2 max-w-[80%] text-sm'
+                      : 'bg-accent rounded-2xl rounded-tl-sm px-4 py-2 max-w-[80%] text-sm'
+                  }
+                >
+                  {entry.resultMessage}
+                </div>
               </div>
             )}
 
@@ -179,7 +276,7 @@ export default function AiPage() {
               <p className="text-xs text-muted-foreground pl-1">Dismissed.</p>
             )}
 
-            {entry.status === 'error' && !entry.response && (
+            {entry.status === 'error' && !entry.response && !entry.isImport && (
               <Card className="border-red-200 bg-red-50">
                 <CardContent className="p-3">
                   <p className="text-xs text-red-600">{entry.resultMessage}</p>
@@ -189,16 +286,107 @@ export default function AiPage() {
           </div>
         ))}
 
+        {/* Active menu import review panel */}
+        {importSessionId && (
+          <Card className="border-primary/30">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold">Menu import — review before applying</p>
+                <Button size="sm" variant="ghost" onClick={cancelImport} title="Cancel import">
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {importItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No items extracted yet.</p>
+              ) : (
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {importItems.map((item, i) => (
+                    <div key={i} className="grid grid-cols-[1fr_1fr_5rem_7rem_2rem] gap-2 items-center text-sm">
+                      <Input
+                        value={item.name}
+                        onChange={(e) => updateImportItem(i, { name: e.target.value })}
+                        placeholder="Item name"
+                      />
+                      <Input
+                        value={item.category ?? ''}
+                        onChange={(e) => updateImportItem(i, { category: e.target.value })}
+                        placeholder="Category"
+                      />
+                      <Input
+                        type="number"
+                        value={item.price ?? ''}
+                        onChange={(e) => updateImportItem(i, { price: Number(e.target.value) })}
+                        placeholder="Price"
+                      />
+                      <Select
+                        value={item.printerType ?? ''}
+                        onChange={(e) =>
+                          updateImportItem(i, {
+                            printerType: (e.target.value || null) as MenuImportItem['printerType'],
+                          })
+                        }
+                      >
+                        <option value="">No printer</option>
+                        <option value="kitchen">Kitchen</option>
+                        <option value="receipt">Receipt</option>
+                        <option value="label">Label</option>
+                      </Select>
+                      <Button size="icon" variant="ghost" onClick={() => removeImportItem(i)} title="Remove item">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-center justify-between gap-2 pt-2 border-t">
+                <p className="text-xs text-muted-foreground">
+                  {importNeedsClarification
+                    ? 'Reply below to refine categories, prices, or printer routing.'
+                    : `${importItems.length} item(s) ready to import.`}
+                </p>
+                <Button
+                  size="sm"
+                  onClick={handleApplyImport}
+                  disabled={importApply.isPending || importItems.length === 0}
+                >
+                  {importApply.isPending ? 'Applying…' : 'Apply to Menu'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div ref={bottomRef} />
       </div>
 
       {/* Input bar */}
       <div className="flex gap-2 pt-4 border-t">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPTED_FILE_TYPES}
+          className="hidden"
+          onChange={handleFileSelect}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isLoading}
+          title="Upload a menu photo, PDF, or spreadsheet"
+        >
+          <Paperclip className="h-4 w-4" />
+        </Button>
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-          placeholder="Type a command... (Enter to send)"
+          placeholder={
+            importSessionId ? 'Reply to continue the menu import... (Enter to send)' : 'Type a command... (Enter to send)'
+          }
           disabled={isLoading}
           className="flex-1"
         />
@@ -209,3 +397,4 @@ export default function AiPage() {
     </div>
   )
 }
+
