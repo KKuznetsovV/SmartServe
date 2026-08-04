@@ -80,7 +80,7 @@ class OrderService:
         )
         self.db.add(order)
         await self.db.flush()
-        return order
+        return await self.get_order(order.id)
 
     async def add_item(self, order_id: str, data: OrderItemCreate) -> OrderItem:
         order = await self.get_order(order_id)

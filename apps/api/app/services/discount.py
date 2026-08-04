@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.db.models import Discount, Order
 from app.schemas.discount import ApplyDiscountIn, DiscountCreate, DiscountUpdate
@@ -66,7 +67,9 @@ class DiscountService:
         await self.db.delete(discount)
 
     async def apply_to_order(self, order_id: str, data: ApplyDiscountIn) -> Order:
-        order_result = await self.db.execute(select(Order).where(Order.id == order_id))
+        order_result = await self.db.execute(
+            select(Order).where(Order.id == order_id).options(selectinload(Order.items))
+        )
         order = order_result.scalar_one_or_none()
         if not order:
             raise HTTPException(status_code=404, detail="Order not found")

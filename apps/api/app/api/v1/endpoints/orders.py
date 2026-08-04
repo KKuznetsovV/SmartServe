@@ -11,7 +11,7 @@ from app.schemas.order import (
     OrderItemCreate,
     OrderItemOut,
     OrderItemStatusUpdate,
-    OrderOut,
+    OrderWithItemsOut,
 )
 from app.services.discount import DiscountService
 from app.services.order import OrderService
@@ -19,7 +19,7 @@ from app.services.order import OrderService
 router = APIRouter()
 
 
-@router.get("/locations/{location_id}/orders", response_model=list[OrderOut])
+@router.get("/locations/{location_id}/orders", response_model=list[OrderWithItemsOut])
 async def list_orders(
     location_id: str,
     status: str | None = Query(None),
@@ -31,7 +31,7 @@ async def list_orders(
     return await OrderService(db).list_orders(location_id, status, limit=limit, offset=offset)
 
 
-@router.get("/orders/{order_id}", response_model=OrderOut)
+@router.get("/orders/{order_id}", response_model=OrderWithItemsOut)
 async def get_order(
     order_id: str,
     db: AsyncSession = Depends(get_db),
@@ -40,7 +40,7 @@ async def get_order(
     return await OrderService(db).get_order(order_id)
 
 
-@router.post("/orders", response_model=OrderOut, status_code=201)
+@router.post("/orders", response_model=OrderWithItemsOut, status_code=201)
 async def create_order(
     data: OrderCreate,
     db: AsyncSession = Depends(get_db),
@@ -70,7 +70,7 @@ async def update_item_status(
     return await OrderService(db).update_item_status(order_id, item_id, data)
 
 
-@router.post("/orders/{order_id}/submit", response_model=OrderOut)
+@router.post("/orders/{order_id}/submit", response_model=OrderWithItemsOut)
 async def submit_order(
     order_id: str,
     db: AsyncSession = Depends(get_db),
@@ -79,7 +79,7 @@ async def submit_order(
     return await OrderService(db).transition_order(order_id, "submitted")
 
 
-@router.post("/orders/{order_id}/cancel", response_model=OrderOut)
+@router.post("/orders/{order_id}/cancel", response_model=OrderWithItemsOut)
 async def cancel_order(
     order_id: str,
     db: AsyncSession = Depends(get_db),
@@ -88,7 +88,7 @@ async def cancel_order(
     return await OrderService(db).transition_order(order_id, "cancelled")
 
 
-@router.post("/orders/{order_id}/discount", response_model=OrderOut)
+@router.post("/orders/{order_id}/discount", response_model=OrderWithItemsOut)
 async def apply_discount(
     order_id: str,
     data: ApplyDiscountIn,
@@ -98,7 +98,7 @@ async def apply_discount(
     return await DiscountService(db).apply_to_order(order_id, data)
 
 
-@router.get("/public/locations/{location_id}/orders", response_model=list[OrderOut])
+@router.get("/public/locations/{location_id}/orders", response_model=list[OrderWithItemsOut])
 async def public_active_orders(
     location_id: str,
     db: AsyncSession = Depends(get_db),
