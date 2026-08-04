@@ -1,0 +1,12 @@
+import type { TokenPair, User } from '@smartserve/types'
+
+import type { Http } from './client'
+
+export function createAuthResource(http: Http) {
+  return {
+    login: (email: string, password: string) => http.post<TokenPair>('/auth/login', { email, password }),
+    pinLogin: (locationId: string, pin: string) => http.post<TokenPair>('/auth/pin', { locationId, pin }),
+    refresh: (refreshToken: string) => http.post<TokenPair>('/auth/refresh', { refreshToken }),
+    me: () => http.get<User>('/auth/me'),
+  }
+}
