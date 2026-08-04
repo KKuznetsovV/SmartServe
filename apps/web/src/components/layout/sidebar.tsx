@@ -28,13 +28,13 @@ const navItems = [
   { href: '/menu', icon: UtensilsCrossed, key: 'menu', managerOnly: true },
   { href: '/orders', icon: ClipboardList, key: 'orders' },
   { href: '/tables', icon: Grid3x3, key: 'tables' },
-  { href: '/staff', icon: Users, key: 'staff' },
-  { href: '/printers', icon: Printer, key: 'printers' },
+  { href: '/staff', icon: Users, key: 'staff', managerOnly: true },
+  { href: '/printers', icon: Printer, key: 'printers', managerOnly: true },
   { href: '/reports', icon: BarChart3, key: 'reports' },
   { href: '/ai', icon: Sparkles, key: 'ai' },
   { href: '/stock', icon: Package, key: 'stock' },
   { href: '/shifts', icon: Clock, key: 'shifts' },
-  { href: '/settings/discounts', icon: Tag, key: 'discounts' },
+  { href: '/settings/discounts', icon: Tag, key: 'discounts', managerOnly: true },
   { href: '/settings', icon: Settings, key: 'settings' },
 ]
 
