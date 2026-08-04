@@ -25,7 +25,7 @@ import { useTranslations } from 'next-intl'
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, key: 'dashboard' },
-  { href: '/menu', icon: UtensilsCrossed, key: 'menu' },
+  { href: '/menu', icon: UtensilsCrossed, key: 'menu', managerOnly: true },
   { href: '/orders', icon: ClipboardList, key: 'orders' },
   { href: '/tables', icon: Grid3x3, key: 'tables' },
   { href: '/staff', icon: Users, key: 'staff' },
@@ -45,6 +45,7 @@ export function Sidebar() {
   const pathname = usePathname()
   const { user, clearAuth } = useAuthStore()
   const activeLocationId = useAuthStore((s) => s.activeLocationId)
+  const isManager = user?.role === 'owner' || user?.role === 'manager'
   const tNav = useTranslations('nav')
   const tAuth = useTranslations('auth')
 
@@ -58,23 +59,25 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-4">
-        {navItems.map(({ href, icon: Icon, key }) => (
-          <Link
-            key={key}
-            href={href}
-            className={cn(
-              'flex items-center gap-3 rounded-md mx-2 px-3 py-2 text-sm font-medium transition-colors',
-              pathname.startsWith(href) && href !== '/dashboard'
-                ? 'bg-primary text-primary-foreground'
-                : pathname === href
+        {navItems
+          .filter((item) => !item.managerOnly || isManager)
+          .map(({ href, icon: Icon, key }) => (
+            <Link
+              key={key}
+              href={href}
+              className={cn(
+                'flex items-center gap-3 rounded-md mx-2 px-3 py-2 text-sm font-medium transition-colors',
+                pathname.startsWith(href) && href !== '/dashboard'
                   ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-foreground',
-            )}
-          >
-            <Icon className="h-4 w-4 shrink-0" />
-            {tNav(key as Parameters<typeof tNav>[0])}
-          </Link>
-        ))}
+                  : pathname === href
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+              )}
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              {tNav(key as Parameters<typeof tNav>[0])}
+            </Link>
+          ))}
         <a
           href={kdsItem.href}
           target="_blank"
