@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     AI_INTENT_CONFIDENCE_THRESHOLD: float = 0.85
 
     # CORS
-    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8081"]
+    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:3001", "http://localhost:8081"]
 
     # PIN brute-force protection
     MAX_PIN_ATTEMPTS: int = 5
