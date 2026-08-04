@@ -1,5 +1,3 @@
-import type { ApiError } from '@smartserve/types'
-
 export interface ApiClientConfig {
   baseUrl: string
   getAccessToken: () => string | null
@@ -80,8 +78,22 @@ async function request<T>(
   }
 
   if (!response.ok) {
-    const err: ApiError = await response.json()
-    throw new Error(err.error?.message ?? `HTTP ${response.status}`)
+    const body = await response.json().catch(() => null)
+    // FastAPI's default error shape is { detail: string | { msg }[] }; also
+    // support { error: { message } } in case a handler ever returns that instead.
+    let message = `HTTP ${response.status}`
+    if (typeof body?.error?.message === 'string') {
+      message = body.error.message
+    } else if (typeof body?.detail === 'string') {
+      message = body.detail
+    } else if (Array.isArray(body?.detail)) {
+      const joined = body.detail
+        .map((d: { msg?: string }) => d.msg)
+        .filter(Boolean)
+        .join('; ')
+      if (joined) message = joined
+    }
+    throw new Error(message)
   }
 
   // 204 No Content
