@@ -6,6 +6,7 @@ import { useOrder, useSubmitOrder, useCancelOrder } from '@/hooks/use-orders'
 import { useOrderPayments } from '@/hooks/use-payments'
 import { useApplyDiscount } from '@/hooks/use-discounts'
 import { PaymentDialog } from './payment-dialog'
+import { AddItemDialog } from './add-item-dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -53,6 +54,7 @@ export default function OrderDetailPage({ params }: Props) {
   const { orderId } = use(params)
   const router = useRouter()
   const [paymentOpen, setPaymentOpen] = useState(false)
+  const [addItemOpen, setAddItemOpen] = useState(false)
   const [discountCode, setDiscountCode] = useState('')
 
   const { data: order, isLoading } = useOrder(orderId)
@@ -95,6 +97,7 @@ export default function OrderDetailPage({ params }: Props) {
   const canSubmit = order.status === 'open' && order.items.length > 0
   const canCancel = !['paid', 'cancelled'].includes(order.status)
   const canPay = !['paid', 'cancelled', 'open'].includes(order.status)
+  const canAddItems = ['open', 'submitted'].includes(order.status)
 
   const paidAmount = (payments ?? []).reduce((sum: number, p) => sum + p.amount, 0)
   const remaining = Math.max(0, order.total - paidAmount)
@@ -128,12 +131,20 @@ export default function OrderDetailPage({ params }: Props) {
 
       {/* Items */}
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-2 flex-row items-center justify-between">
           <CardTitle className="text-base">Items ({order.items.length})</CardTitle>
+          {canAddItems && (
+            <Button size="sm" onClick={() => setAddItemOpen(true)}>
+              + Add Item
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="space-y-2">
           {order.items.length === 0 && (
-            <p className="text-sm text-muted-foreground">No items yet.</p>
+            <p className="text-sm text-muted-foreground">
+              No items yet.
+              {canAddItems && ' Use "Add Item" above to start building this order.'}
+            </p>
           )}
           {order.items.map((item) => (
             <div
@@ -284,6 +295,12 @@ export default function OrderDetailPage({ params }: Props) {
         onOpenChange={setPaymentOpen}
         orderId={orderId}
         remaining={remaining}
+      />
+      <AddItemDialog
+        open={addItemOpen}
+        onOpenChange={setAddItemOpen}
+        orderId={orderId}
+        locationId={order.locationId}
       />
     </div>
   )
