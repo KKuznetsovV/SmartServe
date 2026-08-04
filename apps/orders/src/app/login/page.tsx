@@ -45,12 +45,9 @@ export default function LoginPage() {
     if (!selected) return
     setSubmitting(true)
     try {
-      const tokens = await apiClient.auth.pinLogin(locationId, value)
+      const tokens = await apiClient.auth.pinLogin(locationId, selected.id, value)
       setTokens(tokens.accessToken, tokens.refreshToken)
       const user = await apiClient.auth.me()
-      if (user.id !== selected.id) {
-        throw new Error('PIN does not match selected user')
-      }
       setAuth(tokens.accessToken, tokens.refreshToken, user)
       setActiveLocation(user.businessId, locationId)
       router.push('/orders')

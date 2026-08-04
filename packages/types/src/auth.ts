@@ -22,6 +22,7 @@ export type Login = z.infer<typeof LoginSchema>
 
 export const PinLoginSchema = z.object({
   locationId: z.string().uuid(),
+  userId: z.string().uuid(),
   pin: z.string().length(4).regex(/^\d{4}$/),
 })
 export type PinLogin = z.infer<typeof PinLoginSchema>

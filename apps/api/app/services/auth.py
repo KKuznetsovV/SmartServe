@@ -32,21 +32,27 @@ class AuthService:
         )
         return list(result.scalars().all())
 
-    async def pin_login(self, location_id: str, pin: str) -> TokenResponse:
-        # Scope PIN matching to the location's business — prevents cross-tenant login
+    async def pin_login(self, location_id: str, user_id: str, pin: str) -> TokenResponse:
+        # Duplicate PINs across staff are allowed (business owner's choice), so the caller
+        # must identify which user they're authenticating as (picked via the staff list) —
+        # we only verify the PIN against that specific user's hash, never brute-force match.
         loc_result = await self.db.execute(select(Location).where(Location.id == location_id, Location.active))
         location = loc_result.scalar_one_or_none()
         if not location:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid PIN")
 
         result = await self.db.execute(
-            select(User).where(User.business_id == location.business_id, User.active, User.pin_hash.is_not(None))
+            select(User).where(
+                User.id == user_id,
+                User.business_id == location.business_id,
+                User.active,
+                User.pin_hash.is_not(None),
+            )
         )
-        users = result.scalars().all()
-        matched = next((u for u in users if u.pin_hash and verify_password(pin, u.pin_hash)), None)
-        if not matched:
+        user = result.scalar_one_or_none()
+        if not user or not user.pin_hash or not verify_password(pin, user.pin_hash):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid PIN")
-        return self._issue_tokens(matched)
+        return self._issue_tokens(user)
 
     async def refresh(self, refresh_token: str) -> TokenResponse:
         payload = decode_token(refresh_token, expected_type="refresh")

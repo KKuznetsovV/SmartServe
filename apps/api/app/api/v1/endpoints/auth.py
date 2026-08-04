@@ -34,7 +34,7 @@ async def pin_staff(
 @router.post("/pin", response_model=TokenResponse)
 @limiter.limit("20/minute")
 async def pin_login(request: Request, body: PinLoginRequest, db: AsyncSession = Depends(get_db)):
-    return await AuthService(db).pin_login(body.location_id, body.pin)
+    return await AuthService(db).pin_login(body.location_id, body.user_id, body.pin)
 
 
 @router.post("/refresh", response_model=TokenResponse)

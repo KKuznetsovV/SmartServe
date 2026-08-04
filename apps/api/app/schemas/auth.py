@@ -12,6 +12,7 @@ class LoginRequest(BaseSchema):
 
 class PinLoginRequest(BaseSchema):
     location_id: str
+    user_id: str
     pin: str
 
 

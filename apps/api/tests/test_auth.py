@@ -1,4 +1,5 @@
 """Tests for auth hardening: tenant-scoped PIN login and refresh claim preservation."""
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,9 +23,9 @@ async def _make_pin_user(db: AsyncSession, business_id: str, pin: str, name: str
 async def test_pin_login_scoped_to_business(
     client: AsyncClient, db: AsyncSession, business: Business, location: Location
 ):
-    await _make_pin_user(db, business.id, "1234", "Waiter A")
+    user = await _make_pin_user(db, business.id, "1234", "Waiter A")
 
-    resp = await client.post("/api/v1/auth/pin", json={"locationId": location.id, "pin": "1234"})
+    resp = await client.post("/api/v1/auth/pin", json={"locationId": location.id, "userId": user.id, "pin": "1234"})
     assert resp.status_code == 200
     payload = decode_token(resp.json()["accessToken"])
     assert payload["business_id"] == business.id
@@ -36,17 +37,34 @@ async def test_pin_login_rejects_other_business_pin(
     other_biz = Business(name="Other Restaurant", country="IL", currency="ILS")
     db.add(other_biz)
     await db.flush()
-    await _make_pin_user(db, other_biz.id, "9999", "Other Waiter")
+    other_user = await _make_pin_user(db, other_biz.id, "9999", "Other Waiter")
 
     # PIN belongs to a user of another business — must be rejected at this location
-    resp = await client.post("/api/v1/auth/pin", json={"locationId": location.id, "pin": "9999"})
+    resp = await client.post(
+        "/api/v1/auth/pin", json={"locationId": location.id, "userId": other_user.id, "pin": "9999"}
+    )
     assert resp.status_code == 401
 
 
 async def test_pin_login_invalid_location(client: AsyncClient, db: AsyncSession, business: Business):
-    await _make_pin_user(db, business.id, "1234", "Waiter A")
-    resp = await client.post("/api/v1/auth/pin", json={"locationId": "nonexistent", "pin": "1234"})
+    user = await _make_pin_user(db, business.id, "1234", "Waiter A")
+    resp = await client.post("/api/v1/auth/pin", json={"locationId": "nonexistent", "userId": user.id, "pin": "1234"})
     assert resp.status_code == 401
+
+
+async def test_pin_login_duplicate_pin_disambiguated_by_user_id(
+    client: AsyncClient, db: AsyncSession, business: Business, location: Location
+):
+    # Duplicate PINs across staff are allowed — login must authenticate the selected user, not
+    # an arbitrary match, when two users share the same PIN.
+    user_a = await _make_pin_user(db, business.id, "1111", "Waiter A")
+    user_b = await _make_pin_user(db, business.id, "1111", "Waiter B")
+
+    resp = await client.post("/api/v1/auth/pin", json={"locationId": location.id, "userId": user_b.id, "pin": "1111"})
+    assert resp.status_code == 200
+    payload = decode_token(resp.json()["accessToken"])
+    assert payload["sub"] == user_b.id
+    assert payload["sub"] != user_a.id
 
 
 async def test_refresh_preserves_claims(client: AsyncClient, db: AsyncSession, owner_user: tuple[User, str]):
@@ -62,9 +80,7 @@ async def test_refresh_preserves_claims(client: AsyncClient, db: AsyncSession, o
     assert payload["role"] == user.role
 
 
-async def test_refresh_rejects_deactivated_user(
-    client: AsyncClient, db: AsyncSession, owner_user: tuple[User, str]
-):
+async def test_refresh_rejects_deactivated_user(client: AsyncClient, db: AsyncSession, owner_user: tuple[User, str]):
     user, _ = owner_user
     login = await client.post("/api/v1/auth/login", json={"email": user.email, "password": "password123"})
     refresh_token = login.json()["refreshToken"]
