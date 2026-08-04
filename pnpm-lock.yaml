@@ -18,6 +18,91 @@ importers:
         specifier: ^5.8.0
         version: 5.9.3
 
+  apps/orders:
+    dependencies:
+      '@hookform/resolvers':
+        specifier: ^3.10.0
+        version: 3.10.0(react-hook-form@7.83.0(react@19.2.8))
+      '@smartserve/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
+      '@smartserve/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      '@tanstack/react-query':
+        specifier: ^5.74.4
+        version: 5.101.4(react@19.2.8)
+      class-variance-authority:
+        specifier: ^0.7.1
+        version: 0.7.1
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      lucide-react:
+        specifier: ^0.511.0
+        version: 0.511.0(react@19.2.8)
+      next:
+        specifier: 15.3.0
+        version: 15.3.0(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.62.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      next-intl:
+        specifier: ^4.1.0
+        version: 4.13.4(next@15.3.0(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.62.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)(typescript@5.9.3)
+      react:
+        specifier: ^19.1.0
+        version: 19.2.8
+      react-dom:
+        specifier: ^19.1.0
+        version: 19.2.8(react@19.2.8)
+      react-hook-form:
+        specifier: ^7.56.4
+        version: 7.83.0(react@19.2.8)
+      sonner:
+        specifier: ^2.0.7
+        version: 2.0.7(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      tailwind-merge:
+        specifier: ^2.6.0
+        version: 2.6.1
+      zod:
+        specifier: ^3.24.0
+        version: 3.25.76
+      zustand:
+        specifier: ^5.0.3
+        version: 5.0.14(@types/react@19.2.17)(react@19.2.8)(use-sync-external-store@1.6.0(react@19.2.8))
+    devDependencies:
+      '@eslint/eslintrc':
+        specifier: ^3.3.6
+        version: 3.3.6(supports-color@8.1.1)
+      '@tailwindcss/postcss':
+        specifier: ^4.1.7
+        version: 4.3.3
+      '@types/node':
+        specifier: ^22.15.0
+        version: 22.20.1
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: ^19.1.0
+        version: 19.2.3(@types/react@19.2.17)
+      eslint:
+        specifier: ^9.26.0
+        version: 9.39.5(jiti@2.7.0)(supports-color@8.1.1)
+      eslint-config-next:
+        specifier: 15.3.0
+        version: 15.3.0(eslint@9.39.5(jiti@2.7.0)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@5.9.3)
+      prettier:
+        specifier: ^3.5.0
+        version: 3.9.6
+      prettier-plugin-tailwindcss:
+        specifier: ^0.6.11
+        version: 0.6.14(prettier@3.9.6)
+      tailwindcss:
+        specifier: ^4.1.7
+        version: 4.3.3
+      typescript:
+        specifier: ^5.8.0
+        version: 5.9.3
+
   apps/pos:
     dependencies:
       '@react-native-async-storage/async-storage':

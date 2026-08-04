@@ -5,8 +5,6 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
   UtensilsCrossed,
-  ClipboardList,
-  Grid3x3,
   Users,
   Printer,
   BarChart3,
@@ -17,7 +15,6 @@ import {
   Tag,
   Package,
   Clock,
-  Monitor,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/lib/auth-store'
@@ -26,8 +23,6 @@ import { useTranslations } from 'next-intl'
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, key: 'dashboard' },
   { href: '/menu', icon: UtensilsCrossed, key: 'menu', managerOnly: true },
-  { href: '/orders', icon: ClipboardList, key: 'orders' },
-  { href: '/tables', icon: Grid3x3, key: 'tables' },
   { href: '/staff', icon: Users, key: 'staff', managerOnly: true },
   { href: '/printers', icon: Printer, key: 'printers', managerOnly: true },
   { href: '/reports', icon: BarChart3, key: 'reports' },
@@ -38,13 +33,9 @@ const navItems = [
   { href: '/settings', icon: Settings, key: 'settings' },
 ]
 
-// KDS and customer display open in a new tab
-const kdsItem = { href: '/kitchen', icon: ChefHat, label: 'Kitchen Display' }
-
 export function Sidebar() {
   const pathname = usePathname()
   const { user, clearAuth } = useAuthStore()
-  const activeLocationId = useAuthStore((s) => s.activeLocationId)
   const isManager = user?.role === 'owner' || user?.role === 'manager'
   const tNav = useTranslations('nav')
   const tAuth = useTranslations('auth')
@@ -78,26 +69,6 @@ export function Sidebar() {
               {tNav(key as Parameters<typeof tNav>[0])}
             </Link>
           ))}
-        <a
-          href={kdsItem.href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-3 rounded-md mx-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-        >
-          <kdsItem.icon className="h-4 w-4 shrink-0" />
-          {kdsItem.label}
-        </a>
-        {activeLocationId && (
-          <a
-            href={`/display/${activeLocationId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 rounded-md mx-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-          >
-            <Monitor className="h-4 w-4 shrink-0" />
-            Customer Display
-          </a>
-        )}
       </nav>
 
       {/* User */}

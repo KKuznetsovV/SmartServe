@@ -57,5 +57,16 @@ services:
     depends_on:
       - api
 
+  orders:
+    build:
+      context: .
+      dockerfile: apps/orders/Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    depends_on:
+      - api
+
 volumes:
   postgres_data:

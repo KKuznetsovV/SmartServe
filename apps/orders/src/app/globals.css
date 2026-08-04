@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+/* Map CSS vars to Tailwind v4 color utilities */
+@theme inline {
+  --color-background: hsl(var(--bg));
+  --color-foreground: hsl(var(--fg));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-fg));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-fg));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-fg));
+  --color-accent: hsl(var(--accent));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-fg));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-fg));
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+}
+
+@layer base {
+  :root {
+    --bg: 0 0% 100%;
+    --fg: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-fg: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-fg: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-fg: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96%;
+    --muted-fg: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-fg: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+  .dark {
+    --bg: 222.2 84% 4.9%;
+    --fg: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-fg: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-fg: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-fg: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-fg: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-fg: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+  }
+  * {
+    border-color: hsl(var(--border));
+  }
+  body {
+    background-color: hsl(var(--bg));
+    color: hsl(var(--fg));
+  }
+}

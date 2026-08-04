@@ -20,6 +20,18 @@ class AuthService:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
         return self._issue_tokens(user)
 
+    async def list_pin_staff(self, location_id: str) -> list[User]:
+        loc_result = await self.db.execute(select(Location).where(Location.id == location_id, Location.active))
+        location = loc_result.scalar_one_or_none()
+        if not location:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
+        result = await self.db.execute(
+            select(User)
+            .where(User.business_id == location.business_id, User.active, User.pin_hash.is_not(None))
+            .order_by(User.name)
+        )
+        return list(result.scalars().all())
+
     async def pin_login(self, location_id: str, pin: str) -> TokenResponse:
         # Scope PIN matching to the location's business — prevents cross-tenant login
         loc_result = await self.db.execute(select(Location).where(Location.id == location_id, Location.active))

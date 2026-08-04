@@ -26,6 +26,13 @@ export const PinLoginSchema = z.object({
 })
 export type PinLogin = z.infer<typeof PinLoginSchema>
 
+export const PinStaffSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1),
+  role: UserRole,
+})
+export type PinStaff = z.infer<typeof PinStaffSchema>
+
 export const TokenPairSchema = z.object({
   accessToken: z.string(),
   refreshToken: z.string(),

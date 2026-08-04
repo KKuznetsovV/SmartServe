@@ -1,4 +1,4 @@
-from fastapi import Depends, Request
+from fastapi import Depends, Query, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.router_base import APIRouter
 from app.db.session import get_db
-from app.schemas.auth import LoginRequest, PinLoginRequest, RefreshRequest, TokenResponse
+from app.schemas.auth import LoginRequest, PinLoginRequest, PinStaffOut, RefreshRequest, TokenResponse
 from app.services.auth import AuthService
 
 router = APIRouter()
@@ -18,6 +18,17 @@ limiter = Limiter(key_func=get_remote_address)
 @limiter.limit("10/minute")
 async def login(request: Request, body: LoginRequest, db: AsyncSession = Depends(get_db)):
     return await AuthService(db).login(body.email, body.password)
+
+
+@router.get("/pin/staff", response_model=list[PinStaffOut])
+@limiter.limit("30/minute")
+async def pin_staff(
+    request: Request,
+    location_id: str = Query(alias="locationId"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Public staff-picker list for the PIN-login screen (name + role only)."""
+    return await AuthService(db).list_pin_staff(location_id)
 
 
 @router.post("/pin", response_model=TokenResponse)

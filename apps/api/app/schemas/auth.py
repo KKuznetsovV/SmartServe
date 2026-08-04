@@ -15,6 +15,16 @@ class PinLoginRequest(BaseSchema):
     pin: str
 
 
+class PinStaffOut(BaseSchema):
+    """Minimal staff info for the PIN-login user picker — no email/pin data exposed."""
+
+    id: str
+    name: str
+    role: str
+
+    model_config = {"from_attributes": True}
+
+
 class TokenResponse(BaseSchema):
     access_token: str
     refresh_token: str
