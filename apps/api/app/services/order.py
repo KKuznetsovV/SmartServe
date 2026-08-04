@@ -21,7 +21,9 @@ VALID_ORDER_TRANSITIONS: dict[str, set[str]] = {
 }
 
 VALID_ITEM_TRANSITIONS: dict[str, set[str]] = {
-    "pending": {"preparing", "cancelled"},
+    # "ready" is reachable directly from "pending" too, since the kitchen display's
+    # "All Ready" bulk action marks every active item ready in one step.
+    "pending": {"preparing", "ready", "cancelled"},
     "preparing": {"ready", "cancelled"},
     "ready": {"served"},
     "served": set(),
