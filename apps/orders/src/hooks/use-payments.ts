@@ -16,8 +16,9 @@ export function useOrderPayments(orderId: string | null) {
 export function useCreatePayment() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: Pick<Payment, 'orderId' | 'method' | 'amount'>) =>
-      apiClient.payments.create(data),
+    mutationFn: (
+      data: Pick<Payment, 'orderId' | 'method' | 'amount'> & Partial<Pick<Payment, 'tipAmount' | 'guestNumber'>>,
+    ) => apiClient.payments.create(data),
     onSuccess: (p) => {
       qc.invalidateQueries({ queryKey: ['payments', p.orderId] })
       qc.invalidateQueries({ queryKey: ['order', p.orderId] })

@@ -11,6 +11,8 @@ export const PaymentSchema = z.object({
   orderId: z.string().uuid(),
   method: PaymentMethod,
   amount: z.number().min(0),
+  tipAmount: z.number().min(0).default(0),
+  guestNumber: z.number().int().min(1).nullable().optional(),
   status: PaymentStatus.default('pending'),
   gatewayRef: z.string().optional(),
   createdAt: z.string().datetime(),

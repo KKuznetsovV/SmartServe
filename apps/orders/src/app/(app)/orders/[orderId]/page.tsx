@@ -563,6 +563,8 @@ export default function OrderDetailPage({ params }: Props) {
         open={paymentOpen}
         onOpenChange={setPaymentOpen}
         orderId={orderId}
+        order={order}
+        payments={payments ?? []}
         remaining={remaining}
       />
       <GuestAssignDialog
