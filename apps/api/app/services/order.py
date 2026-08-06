@@ -144,6 +144,30 @@ class OrderService:
                 .values(sort_order=order)
             )
 
+    async def remove_item(self, order_id: str, item_id: str) -> None:
+        order = await self.get_order(order_id)
+        if order.status != "open":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot remove items once the order has been submitted; cancel the item instead",
+            )
+        item = next((i for i in order.items if i.id == item_id), None)
+        if not item:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order item not found")
+
+        menu_item_result = await self.db.execute(select(MenuItem).where(MenuItem.id == item.menu_item_id))
+        menu_item = menu_item_result.scalar_one_or_none()
+        tax_rate = menu_item.tax_rate if menu_item else 0.0
+        item_total = -(item.unit_price * item.qty)
+
+        # Remove from the already-loaded in-memory collection too — deleting the
+        # row alone doesn't sync the parent's cached `items` list within the same
+        # session, which would otherwise still show the deleted item on refetch.
+        order.items.remove(item)
+        await self.db.delete(item)
+        await self.db.flush()
+        await self._recalculate_totals(order, tax_rate, item_total)
+
     async def transition_order(self, order_id: str, new_status: str) -> Order:
         order = await self.get_order(order_id)
         if new_status not in VALID_ORDER_TRANSITIONS.get(order.status, set()):

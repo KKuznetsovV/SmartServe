@@ -20,6 +20,7 @@ import {
   useAddOrderItem,
   useUpdateOrderItemStatus,
   useReorderOrderItems,
+  useRemoveOrderItem,
 } from '@/hooks/use-orders'
 import { useOrderPayments } from '@/hooks/use-payments'
 import { useApplyDiscount } from '@/hooks/use-discounts'
@@ -79,6 +80,7 @@ export default function OrderDetailPage({ params }: Props) {
   const addItem = useAddOrderItem()
   const updateItemStatus = useUpdateOrderItemStatus()
   const reorderItems = useReorderOrderItems()
+  const removeItem = useRemoveOrderItem()
   const { setNodeRef: setDropRef, isOver } = useDroppable({ id: 'order-drop-zone' })
   // A distance threshold keeps a plain tap from being swallowed as a zero-distance drag
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
@@ -119,18 +121,27 @@ export default function OrderDetailPage({ params }: Props) {
     const { active, over } = event
     setActiveDrag(null)
     const data = active.data.current as ActiveDrag | undefined
-    if (!data) return
+    if (!data || !order) return
 
     if (data.type === 'menu-item') {
-      if (over?.id === 'order-drop-zone') handleItemChosen(data.item)
+      // Dropping anywhere over the items card counts as adding to the order — the
+      // card itself and each existing row are separate droppable regions.
+      const orderItemIds = new Set(order.items.map((i) => i.id))
+      if (over && (over.id === 'order-drop-zone' || orderItemIds.has(String(over.id)))) {
+        handleItemChosen(data.item)
+      }
       return
     }
 
-    // Dragging an existing order item: drop on the trash zone to cancel it,
-    // or drop on another item to reorder the list.
-    if (!order) return
+    // Dragging an existing order item: drop on the trash zone to remove it
+    // (or cancel it, once the order has already been submitted), or drop on
+    // another item to reorder the list.
     if (over?.id === 'cancel-zone') {
-      updateItemStatus.mutate({ orderId, itemId: data.item.id, status: 'cancelled' })
+      if (order.status === 'open') {
+        removeItem.mutate({ orderId, itemId: data.item.id })
+      } else {
+        updateItemStatus.mutate({ orderId, itemId: data.item.id, status: 'cancelled' })
+      }
       return
     }
     if (over && over.id !== active.id) {
@@ -359,7 +370,10 @@ export default function OrderDetailPage({ params }: Props) {
           {activeDrag?.type === 'menu-item' && <MenuItemCardPreview item={activeDrag.item} />}
           {activeDrag?.type === 'order-item' && <OrderItemRowPreview item={activeDrag.item} />}
         </DragOverlay>
-        <CancelDropZone visible={activeDrag?.type === 'order-item'} />
+        <CancelDropZone
+          visible={activeDrag?.type === 'order-item'}
+          mode={order.status === 'open' ? 'remove' : 'cancel'}
+        />
       </DndContext>
 
       <PaymentDialog

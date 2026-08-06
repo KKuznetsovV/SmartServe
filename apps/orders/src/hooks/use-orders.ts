@@ -106,6 +106,32 @@ export function useReorderOrderItems() {
   })
 }
 
+export function useRemoveOrderItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ orderId, itemId }: { orderId: string; itemId: string }) =>
+      apiClient.orders.removeItem(orderId, itemId),
+    onMutate: async ({ orderId, itemId }) => {
+      await qc.cancelQueries({ queryKey: ['order', orderId] })
+      const previous = qc.getQueryData<Order>(['order', orderId])
+      if (previous) {
+        qc.setQueryData<Order>(['order', orderId], {
+          ...previous,
+          items: previous.items.filter((i) => i.id !== itemId),
+        })
+      }
+      return { previous }
+    },
+    onError: (e: Error, { orderId }, context) => {
+      if (context?.previous) qc.setQueryData(['order', orderId], context.previous)
+      toast.error(e.message)
+    },
+    onSettled: (_, __, { orderId }) => {
+      qc.invalidateQueries({ queryKey: ['order', orderId] })
+    },
+  })
+}
+
 export function useCancelOrder() {
   const qc = useQueryClient()
   return useMutation({

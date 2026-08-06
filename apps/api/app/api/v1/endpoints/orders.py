@@ -80,6 +80,16 @@ async def reorder_order_items(
     await OrderService(db).reorder_items(order_id, body["ids"])
 
 
+@router.delete("/orders/{order_id}/items/{item_id}", status_code=204)
+async def remove_order_item(
+    order_id: str,
+    item_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_staff),
+):
+    await OrderService(db).remove_item(order_id, item_id)
+
+
 @router.post("/orders/{order_id}/submit", response_model=OrderWithItemsOut)
 async def submit_order(
     order_id: str,

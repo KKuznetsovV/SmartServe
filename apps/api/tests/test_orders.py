@@ -1,4 +1,5 @@
 """Integration tests for order lifecycle."""
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -121,6 +122,63 @@ async def test_reorder_order_items(
 
     order = (await client.get(f"/api/v1/orders/{order_id}", headers=headers)).json()
     assert [i["id"] for i in order["items"]] == [second_id, first_id]
+
+
+@pytest.mark.asyncio
+async def test_remove_order_item(
+    client: AsyncClient,
+    db: AsyncSession,
+    business: Business,
+    manager_user: tuple[User, str],
+):
+    _, token = manager_user
+    location = Location(business_id=business.id, name="Main")
+    db.add(location)
+    await db.flush()
+    category = MenuCategory(location_id=location.id, name="Food", sort_order=0)
+    db.add(category)
+    await db.flush()
+    burger = MenuItem(category_id=category.id, name="Burger", price=45.0, tax_rate=0.17, preparation_time_min=15)
+    fries = MenuItem(category_id=category.id, name="Fries", price=15.0, tax_rate=0.17, preparation_time_min=10)
+    db.add_all([burger, fries])
+    await db.flush()
+
+    headers = {"Authorization": f"Bearer {token}"}
+
+    order_resp = await client.post(
+        "/api/v1/orders",
+        json={"locationId": location.id, "channel": "dine_in"},
+        headers=headers,
+    )
+    order_id = order_resp.json()["id"]
+
+    burger_item = (
+        await client.post(
+            f"/api/v1/orders/{order_id}/items",
+            json={"menuItemId": burger.id, "qty": 1},
+            headers=headers,
+        )
+    ).json()
+    fries_item = (
+        await client.post(
+            f"/api/v1/orders/{order_id}/items",
+            json={"menuItemId": fries.id, "qty": 1},
+            headers=headers,
+        )
+    ).json()
+
+    # Removing an item on an open order deletes it outright and recalculates totals
+    resp = await client.delete(f"/api/v1/orders/{order_id}/items/{fries_item['id']}", headers=headers)
+    assert resp.status_code == 204
+
+    order = (await client.get(f"/api/v1/orders/{order_id}", headers=headers)).json()
+    assert [i["id"] for i in order["items"]] == [burger_item["id"]]
+    assert order["subtotal"] == 45.0
+
+    # Once submitted, items can no longer be removed outright (only cancelled)
+    await client.post(f"/api/v1/orders/{order_id}/submit", headers=headers)
+    resp = await client.delete(f"/api/v1/orders/{order_id}/items/{burger_item['id']}", headers=headers)
+    assert resp.status_code == 400
 
 
 @pytest.mark.asyncio

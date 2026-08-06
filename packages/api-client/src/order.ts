@@ -14,6 +14,7 @@ export function createOrdersResource(http: Http) {
       http.patch<OrderItem>(`/orders/${orderId}/items/${itemId}/status`, { status }),
     reorderItems: (orderId: string, ids: string[]) =>
       http.post<void>(`/orders/${orderId}/items/reorder`, { ids }),
+    removeItem: (orderId: string, itemId: string) => http.del<void>(`/orders/${orderId}/items/${itemId}`),
     submit: (orderId: string) => http.post<Order>(`/orders/${orderId}/submit`, {}),
     cancel: (orderId: string) => http.post<Order>(`/orders/${orderId}/cancel`, {}),
     applyDiscount: (orderId: string, code: string) => http.post<Order>(`/orders/${orderId}/discount`, { code }),
