@@ -12,6 +12,11 @@ export function createOrdersResource(http: Http) {
       http.post<OrderItem>(`/orders/${orderId}/items`, item),
     updateItemStatus: (orderId: string, itemId: string, status: string) =>
       http.patch<OrderItem>(`/orders/${orderId}/items/${itemId}/status`, { status }),
+    updateItem: (
+      orderId: string,
+      itemId: string,
+      data: Partial<Pick<OrderItem, 'qty' | 'notes' | 'modifiers'>>,
+    ) => http.patch<OrderItem>(`/orders/${orderId}/items/${itemId}`, data),
     reorderItems: (orderId: string, ids: string[]) =>
       http.post<void>(`/orders/${orderId}/items/reorder`, { ids }),
     removeItem: (orderId: string, itemId: string) => http.del<void>(`/orders/${orderId}/items/${itemId}`),

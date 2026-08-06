@@ -35,6 +35,12 @@ class OrderItemStatusUpdate(BaseModel):
     status: str  # pending | preparing | ready | served | cancelled
 
 
+class OrderItemUpdate(BaseModel):
+    qty: int | None = None
+    notes: str | None = None
+    modifiers: list[OrderItemModifier] | None = None
+
+
 class OrderOut(BaseModel):
     id: str
     location_id: str

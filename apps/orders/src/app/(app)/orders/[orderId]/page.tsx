@@ -19,9 +19,11 @@ import {
   useCancelOrder,
   useAddOrderItem,
   useUpdateOrderItemStatus,
+  useUpdateOrderItem,
   useReorderOrderItems,
   useRemoveOrderItem,
 } from '@/hooks/use-orders'
+import { useMenuItem } from '@/hooks/use-menu'
 import { useOrderPayments } from '@/hooks/use-payments'
 import { useApplyDiscount } from '@/hooks/use-discounts'
 import { PaymentDialog } from './payment-dialog'
@@ -69,16 +71,19 @@ export default function OrderDetailPage({ params }: Props) {
   const router = useRouter()
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [configuringItem, setConfiguringItem] = useState<MenuItem | null>(null)
+  const [editingItem, setEditingItem] = useState<OrderItem | null>(null)
   const [discountCode, setDiscountCode] = useState('')
   const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null)
 
   const { data: order, isLoading } = useOrder(orderId)
   const { data: payments } = useOrderPayments(orderId)
+  const { data: editingMenuItem } = useMenuItem(editingItem?.menuItemId ?? null)
   const submitOrder = useSubmitOrder()
   const cancelOrder = useCancelOrder()
   const applyDiscount = useApplyDiscount()
   const addItem = useAddOrderItem()
   const updateItemStatus = useUpdateOrderItemStatus()
+  const updateItem = useUpdateOrderItem()
   const reorderItems = useReorderOrderItems()
   const removeItem = useRemoveOrderItem()
   const { setNodeRef: setDropRef, isOver } = useDroppable({ id: 'order-drop-zone' })
@@ -173,6 +178,18 @@ export default function OrderDetailPage({ params }: Props) {
     )
   }
 
+  function handleEditConfirm(result: ItemConfigResult) {
+    if (!editingItem) return
+    updateItem.mutate(
+      {
+        orderId,
+        itemId: editingItem.id,
+        data: { qty: result.qty, notes: result.notes, modifiers: result.modifiers },
+      },
+      { onSuccess: () => setEditingItem(null) },
+    )
+  }
+
   if (isLoading) {
     return (
       <div className="p-6">
@@ -246,7 +263,7 @@ export default function OrderDetailPage({ params }: Props) {
           )}
           <SortableContext items={order.items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
             {order.items.map((item) => (
-              <OrderItemRow key={item.id} item={item} draggable={canAddItems} />
+              <OrderItemRow key={item.id} item={item} draggable={canAddItems} onEdit={setEditingItem} />
             ))}
           </SortableContext>
         </CardContent>
@@ -383,10 +400,29 @@ export default function OrderDetailPage({ params }: Props) {
         remaining={remaining}
       />
       <ItemConfigDialog
+        open={!!configuringItem}
         item={configuringItem}
         onOpenChange={(open) => !open && setConfiguringItem(null)}
         onConfirm={handleConfigConfirm}
         pending={addItem.isPending}
+      />
+      <ItemConfigDialog
+        open={!!editingItem}
+        item={editingMenuItem ?? null}
+        onOpenChange={(open) => !open && setEditingItem(null)}
+        onConfirm={handleEditConfirm}
+        pending={updateItem.isPending}
+        title={editingItem ? `Edit ${editingItem.menuItemName}` : undefined}
+        confirmLabel="Save Changes"
+        initial={
+          editingItem
+            ? {
+                qty: editingItem.qty,
+                notes: editingItem.notes,
+                modifierIds: editingItem.modifiers.map((m) => m.modifierId),
+              }
+            : undefined
+        }
       />
     </div>
   )

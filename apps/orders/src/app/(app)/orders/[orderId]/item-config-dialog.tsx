@@ -16,26 +16,56 @@ export interface ItemConfigResult {
   unitPrice: number
 }
 
+export interface ItemConfigInitial {
+  qty: number
+  notes?: string
+  modifierIds: string[]
+}
+
 interface Props {
+  /** Controls dialog visibility independently of `item`, since edit mode may still be loading the item. */
+  open: boolean
   item: MenuItem | null
   onOpenChange: (open: boolean) => void
   onConfirm: (result: ItemConfigResult) => void
   pending?: boolean
+  initial?: ItemConfigInitial
+  title?: string
+  confirmLabel?: string
 }
 
-/** Quantity/notes/modifier picker shown before adding an item that has modifier groups. */
-export function ItemConfigDialog({ item, onOpenChange, onConfirm, pending }: Props) {
+/** Quantity/notes/modifier picker shown before adding an item that has modifier groups, or when editing one already on the order. */
+export function ItemConfigDialog({
+  open,
+  item,
+  onOpenChange,
+  onConfirm,
+  pending,
+  initial,
+  title,
+  confirmLabel,
+}: Props) {
   const [qty, setQty] = useState(1)
   const [notes, setNotes] = useState('')
   const [selectedModifiers, setSelectedModifiers] = useState<Record<string, string[]>>({})
 
   useEffect(() => {
-    if (item) {
+    if (!item) return
+    if (initial) {
+      setQty(initial.qty)
+      setNotes(initial.notes ?? '')
+      const byGroup: Record<string, string[]> = {}
+      for (const group of item.modifierGroups) {
+        const ids = group.modifiers.filter((m) => initial.modifierIds.includes(m.id)).map((m) => m.id)
+        if (ids.length > 0) byGroup[group.id] = ids
+      }
+      setSelectedModifiers(byGroup)
+    } else {
       setQty(1)
       setNotes('')
       setSelectedModifiers({})
     }
-  }, [item])
+  }, [item, initial])
 
   function toggleModifier(group: ModifierGroup, modifier: Modifier) {
     setSelectedModifiers((prev) => {
@@ -68,11 +98,17 @@ export function ItemConfigDialog({ item, onOpenChange, onConfirm, pending }: Pro
   }
 
   return (
-    <Dialog open={!!item} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{item?.name}</DialogTitle>
+          <DialogTitle>{title ?? item?.name}</DialogTitle>
         </DialogHeader>
+
+        {!item && (
+          <div className="flex justify-center py-6">
+            <Spinner />
+          </div>
+        )}
 
         {item && (
           <div className="space-y-4">
@@ -143,7 +179,7 @@ export function ItemConfigDialog({ item, onOpenChange, onConfirm, pending }: Pro
               </Button>
               <Button type="button" onClick={handleConfirm} disabled={!canSubmit || pending}>
                 {pending && <Spinner className="mr-2 h-4 w-4" />}
-                Add to Order
+                {confirmLabel ?? 'Add to Order'}
               </Button>
             </div>
           </div>

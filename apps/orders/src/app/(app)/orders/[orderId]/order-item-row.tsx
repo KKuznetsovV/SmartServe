@@ -2,7 +2,7 @@
 
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical } from 'lucide-react'
+import { GripVertical, Pencil } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn, formatPrice } from '@/lib/utils'
 import type { OrderItem } from '@smartserve/types'
@@ -19,15 +19,19 @@ interface Props {
   item: OrderItem
   /** Whether drag-to-reorder / drag-out-to-cancel is enabled (order is still open/submitted). */
   draggable: boolean
+  /** Called when the edit (pencil) button is tapped — omit to hide the button entirely. */
+  onEdit?: (item: OrderItem) => void
 }
 
 /** A single order item row: drag the handle to reorder, or drag it onto the cancel zone to remove it. */
-export function OrderItemRow({ item, draggable }: Props) {
+export function OrderItemRow({ item, draggable, onEdit }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
     data: { type: 'order-item' as const, item },
     disabled: !draggable,
   })
+
+  const canEdit = draggable && !['served', 'cancelled'].includes(item.status)
 
   return (
     <div
@@ -63,7 +67,19 @@ export function OrderItemRow({ item, draggable }: Props) {
           </Badge>
         </div>
       </div>
-      <span className="whitespace-nowrap text-sm font-medium">{formatPrice(item.unitPrice * item.qty)}</span>
+      <div className="flex items-center gap-2">
+        {canEdit && onEdit && (
+          <button
+            type="button"
+            onClick={() => onEdit(item)}
+            className="text-muted-foreground hover:text-foreground"
+            aria-label="Edit item"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+        )}
+        <span className="whitespace-nowrap text-sm font-medium">{formatPrice(item.unitPrice * item.qty)}</span>
+      </div>
     </div>
   )
 }

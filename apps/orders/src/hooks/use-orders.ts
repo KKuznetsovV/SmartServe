@@ -80,6 +80,25 @@ export function useUpdateOrderItemStatus() {
   })
 }
 
+export function useUpdateOrderItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      orderId,
+      itemId,
+      data,
+    }: {
+      orderId: string
+      itemId: string
+      data: Partial<Pick<OrderItem, 'qty' | 'notes' | 'modifiers'>>
+    }) => apiClient.orders.updateItem(orderId, itemId, data),
+    onSuccess: (item) => {
+      qc.invalidateQueries({ queryKey: ['order', item.orderId] })
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
 export function useReorderOrderItems() {
   const qc = useQueryClient()
   return useMutation({
