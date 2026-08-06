@@ -99,6 +99,88 @@ async def test_dine_in_order_requires_guest_count(
 
 
 @pytest.mark.asyncio
+async def test_split_order_across_guests(
+    client: AsyncClient,
+    db: AsyncSession,
+    business: Business,
+    manager_user: tuple[User, str],
+):
+    _, token = manager_user
+    headers = {"Authorization": f"Bearer {token}"}
+
+    location = Location(business_id=business.id, name="Main")
+    db.add(location)
+    await db.flush()
+    category = MenuCategory(location_id=location.id, name="Food", sort_order=0)
+    db.add(category)
+    await db.flush()
+    burger = MenuItem(category_id=category.id, name="Burger", price=45.0, tax_rate=0.17, preparation_time_min=15)
+    fries = MenuItem(category_id=category.id, name="Fries", price=15.0, tax_rate=0.17, preparation_time_min=10)
+    db.add_all([burger, fries])
+    await db.flush()
+
+    order_resp = await client.post(
+        "/api/v1/orders",
+        json={"locationId": location.id, "channel": "dine_in", "guestCount": 2},
+        headers=headers,
+    )
+    order_id = order_resp.json()["id"]
+
+    burger_item = (
+        await client.post(
+            f"/api/v1/orders/{order_id}/items",
+            json={"menuItemId": burger.id, "qty": 1},
+            headers=headers,
+        )
+    ).json()
+    fries_item = (
+        await client.post(
+            f"/api/v1/orders/{order_id}/items",
+            json={"menuItemId": fries.id, "qty": 1},
+            headers=headers,
+        )
+    ).json()
+
+    # Splitting with only one guest assigned should fail
+    resp = await client.post(
+        f"/api/v1/orders/{order_id}/split",
+        json={
+            "assignments": [
+                {"itemId": burger_item["id"], "guestNumber": 1},
+                {"itemId": fries_item["id"], "guestNumber": 1},
+            ]
+        },
+        headers=headers,
+    )
+    assert resp.status_code == 400
+
+    resp = await client.post(
+        f"/api/v1/orders/{order_id}/split",
+        json={
+            "assignments": [
+                {"itemId": burger_item["id"], "guestNumber": 1},
+                {"itemId": fries_item["id"], "guestNumber": 2},
+            ]
+        },
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    children = resp.json()
+    assert len(children) == 2
+    guest_numbers = sorted(c["guestNumber"] for c in children)
+    assert guest_numbers == [1, 2]
+    for child in children:
+        assert child["splitFromOrderId"] == order_id
+        assert len(child["items"]) == 1
+        assert child["status"] == "open"
+
+    # Original order is now marked split and has no items left
+    resp = await client.get(f"/api/v1/orders/{order_id}", headers=headers)
+    assert resp.json()["status"] == "split"
+    assert resp.json()["items"] == []
+
+
+@pytest.mark.asyncio
 async def test_reorder_order_items(
     client: AsyncClient,
     db: AsyncSession,

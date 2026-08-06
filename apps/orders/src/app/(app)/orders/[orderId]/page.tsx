@@ -31,6 +31,7 @@ import { MenuPanel, MenuItemCardPreview } from './menu-panel'
 import { ItemConfigDialog, type ItemConfigResult } from './item-config-dialog'
 import { OrderItemRow, OrderItemRowPreview } from './order-item-row'
 import { CancelDropZone } from './cancel-drop-zone'
+import { SplitOrderDialog } from './split-order-dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -52,6 +53,7 @@ const ORDER_STATUS_VARIANT: Record<
   served: 'default',
   paid: 'default',
   cancelled: 'destructive',
+  split: 'secondary',
 }
 
 const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
@@ -70,6 +72,7 @@ export default function OrderDetailPage({ params }: Props) {
   const { orderId } = use(params)
   const router = useRouter()
   const [paymentOpen, setPaymentOpen] = useState(false)
+  const [splitOpen, setSplitOpen] = useState(false)
   const [configuringItem, setConfiguringItem] = useState<MenuItem | null>(null)
   const [editingItem, setEditingItem] = useState<OrderItem | null>(null)
   const [discountCode, setDiscountCode] = useState('')
@@ -213,6 +216,7 @@ export default function OrderDetailPage({ params }: Props) {
   const canCancel = !['paid', 'cancelled'].includes(order.status)
   const canPay = !['paid', 'cancelled', 'open'].includes(order.status)
   const canAddItems = ['open', 'submitted'].includes(order.status)
+  const canSplit = order.status === 'open' && order.items.length > 1
 
   const paidAmount = (payments ?? []).reduce((sum: number, p) => sum + p.amount, 0)
   const remaining = Math.max(0, order.total - paidAmount)
@@ -369,6 +373,11 @@ export default function OrderDetailPage({ params }: Props) {
         {canPay && remaining > 0 && (
           <Button onClick={() => setPaymentOpen(true)}>Collect Payment</Button>
         )}
+        {canSplit && (
+          <Button variant="outline" onClick={() => setSplitOpen(true)}>
+            Split Order
+          </Button>
+        )}
         {canCancel && (
           <Button
             variant="outline"
@@ -398,6 +407,12 @@ export default function OrderDetailPage({ params }: Props) {
         onOpenChange={setPaymentOpen}
         orderId={orderId}
         remaining={remaining}
+      />
+      <SplitOrderDialog
+        open={splitOpen}
+        onOpenChange={setSplitOpen}
+        order={order}
+        onSplit={() => router.push('/orders')}
       />
       <ItemConfigDialog
         open={!!configuringItem}

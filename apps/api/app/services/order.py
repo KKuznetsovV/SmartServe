@@ -1,5 +1,6 @@
 """Order service — lifecycle management for orders and items."""
 
+from collections import defaultdict
 from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
@@ -8,7 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.models import MenuItem, Order, OrderItem, Table
-from app.schemas.order import OrderCreate, OrderItemCreate, OrderItemStatusUpdate, OrderItemUpdate
+from app.schemas.order import (
+    OrderCreate,
+    OrderItemCreate,
+    OrderItemStatusUpdate,
+    OrderItemUpdate,
+    OrderSplitRequest,
+)
 
 VALID_ORDER_TRANSITIONS: dict[str, set[str]] = {
     "open": {"submitted", "cancelled"},
@@ -18,6 +25,7 @@ VALID_ORDER_TRANSITIONS: dict[str, set[str]] = {
     "served": {"paid"},
     "paid": set(),
     "cancelled": set(),
+    "split": set(),
 }
 
 VALID_ITEM_TRANSITIONS: dict[str, set[str]] = {
@@ -220,6 +228,76 @@ class OrderService:
         order.updated_at = datetime.now(UTC)
         await self.db.flush()
         return order
+
+    async def split_order(self, order_id: str, data: OrderSplitRequest) -> list[Order]:
+        """Split an open order into separate child orders, one per guest number.
+
+        Every item on the order must be assigned to a guest; each resulting child
+        order is a normal standalone order (own kitchen ticket, own payment) linked
+        back to the original via split_from_order_id.
+        """
+        order = await self.get_order(order_id)
+        if order.status != "open":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only open orders can be split",
+            )
+        if not order.items:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Order has no items to split")
+
+        item_map = {item.id: item for item in order.items}
+        assigned_ids = {a.item_id for a in data.assignments}
+        if assigned_ids != set(item_map.keys()):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Every item on the order must be assigned to a guest to split it",
+            )
+
+        by_guest: dict[int, list[OrderItem]] = defaultdict(list)
+        for assignment in data.assignments:
+            by_guest[assignment.guest_number].append(item_map[assignment.item_id])
+
+        if len(by_guest) < 2:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Split requires items to be assigned to at least two different guests",
+            )
+
+        children: list[Order] = []
+        for guest_number, items in by_guest.items():
+            child = Order(
+                location_id=order.location_id,
+                table_id=order.table_id,
+                channel=order.channel,
+                guest_count=order.guest_count,
+                guest_number=guest_number,
+                split_from_order_id=order.id,
+                status="open",
+                subtotal=0.0,
+                tax_amount=0.0,
+                total=0.0,
+            )
+            self.db.add(child)
+            await self.db.flush()
+
+            for item in items:
+                item.order_id = child.id
+
+            menu_item_result = await self.db.execute(select(MenuItem).where(MenuItem.id == items[0].menu_item_id))
+            menu_item = menu_item_result.scalar_one_or_none()
+            tax_rate = menu_item.tax_rate if menu_item else 0.0
+            child.subtotal = round(sum(i.unit_price * i.qty for i in items), 2)
+            child.tax_amount = round(child.subtotal * tax_rate, 2)
+            child.total = round(child.subtotal + child.tax_amount, 2)
+            children.append(child)
+
+        order.status = "split"
+        order.subtotal = 0.0
+        order.tax_amount = 0.0
+        order.total = 0.0
+        order.updated_at = datetime.now(UTC)
+        await self.db.flush()
+        return [await self.get_order(child.id) for child in children]
 
     async def _recalculate_totals(self, order: Order, tax_rate: float, item_total: float) -> None:
         order.subtotal = round(order.subtotal + item_total, 2)

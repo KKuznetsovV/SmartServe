@@ -12,6 +12,7 @@ from app.schemas.order import (
     OrderItemOut,
     OrderItemStatusUpdate,
     OrderItemUpdate,
+    OrderSplitRequest,
     OrderWithItemsOut,
 )
 from app.services.discount import DiscountService
@@ -128,6 +129,16 @@ async def apply_discount(
     _: User = Depends(require_staff),
 ):
     return await DiscountService(db).apply_to_order(order_id, data)
+
+
+@router.post("/orders/{order_id}/split", response_model=list[OrderWithItemsOut])
+async def split_order(
+    order_id: str,
+    data: OrderSplitRequest,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_staff),
+):
+    return await OrderService(db).split_order(order_id, data)
 
 
 @router.get("/public/locations/{location_id}/orders", response_model=list[OrderWithItemsOut])

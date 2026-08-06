@@ -21,6 +21,7 @@ const STATUS_VARIANT: Record<OrderStatus, 'default' | 'secondary' | 'destructive
   served: 'default',
   paid: 'default',
   cancelled: 'destructive',
+  split: 'secondary',
 }
 
 const STATUS_COLOR: Record<OrderStatus, string> = {
@@ -31,6 +32,7 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
   served: 'text-green-700',
   paid: 'text-green-800',
   cancelled: 'text-red-500',
+  split: 'text-slate-500',
 }
 
 export default function DashboardPage() {
