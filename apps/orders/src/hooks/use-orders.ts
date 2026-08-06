@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { apiClient } from '@/lib/api'
+import type { ItemSelection } from '@smartserve/api-client'
 import type { Order, OrderItem } from '@smartserve/types'
 
 export function useOrders(locationId: string | null, status?: string) {
@@ -191,7 +192,7 @@ export function useAssignGuests() {
       assignments,
     }: {
       orderId: string
-      assignments: { itemId: string; guestNumber: number | null }[]
+      assignments: (ItemSelection & { guestNumber: number | null })[]
     }) => apiClient.orders.assignGuests(orderId, assignments),
     onSuccess: (o) => {
       qc.invalidateQueries({ queryKey: ['order', o.id] })
@@ -205,15 +206,15 @@ export function useApplyItemDiscount() {
   return useMutation({
     mutationFn: ({
       orderId,
-      itemIds,
+      items,
       discountType,
       discountValue,
     }: {
       orderId: string
-      itemIds: string[]
+      items: ItemSelection[]
       discountType: 'percent' | 'fixed' | null
       discountValue: number | null
-    }) => apiClient.orders.applyItemDiscount(orderId, itemIds, discountType, discountValue),
+    }) => apiClient.orders.applyItemDiscount(orderId, items, discountType, discountValue),
     onSuccess: (o) => {
       qc.invalidateQueries({ queryKey: ['order', o.id] })
       toast.success('Discount applied')
@@ -225,8 +226,8 @@ export function useApplyItemDiscount() {
 export function useSetItemComp() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ orderId, itemIds, comped }: { orderId: string; itemIds: string[]; comped: boolean }) =>
-      apiClient.orders.setItemComp(orderId, itemIds, comped),
+    mutationFn: ({ orderId, items, comped }: { orderId: string; items: ItemSelection[]; comped: boolean }) =>
+      apiClient.orders.setItemComp(orderId, items, comped),
     onSuccess: (o, { comped }) => {
       qc.invalidateQueries({ queryKey: ['order', o.id] })
       toast.success(comped ? 'Marked on the house' : 'Comp removed')
@@ -240,13 +241,13 @@ export function useDeleteOrderItems() {
   return useMutation({
     mutationFn: ({
       orderId,
-      itemIds,
+      items,
       override,
     }: {
       orderId: string
-      itemIds: string[]
+      items: ItemSelection[]
       override?: { managerUserId: string; pin: string; reason: string }
-    }) => apiClient.orders.deleteItems(orderId, itemIds, override),
+    }) => apiClient.orders.deleteItems(orderId, items, override),
     onSuccess: (o) => {
       qc.invalidateQueries({ queryKey: ['order', o.id] })
       toast.success('Item deleted')

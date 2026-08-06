@@ -5,18 +5,19 @@ import { useApplyItemDiscount } from '@/hooks/use-orders'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import type { ItemSelection } from '@smartserve/api-client'
 
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
   orderId: string
-  itemIds: string[]
+  items: ItemSelection[]
   onDone?: () => void
 }
 
 /** Applies (or clears) a manual per-item discount — distinct from the order-level discount
  * code feature; this is a manager/waiter-entered %/fixed reduction on specific line items. */
-export function ItemDiscountDialog({ open, onOpenChange, orderId, itemIds, onDone }: Props) {
+export function ItemDiscountDialog({ open, onOpenChange, orderId, items, onDone }: Props) {
   const [discountType, setDiscountType] = useState<'percent' | 'fixed'>('percent')
   const [value, setValue] = useState('')
   const applyItemDiscount = useApplyItemDiscount()
@@ -24,14 +25,14 @@ export function ItemDiscountDialog({ open, onOpenChange, orderId, itemIds, onDon
   async function handleApply() {
     const parsed = Number(value)
     if (!value.trim() || Number.isNaN(parsed) || parsed <= 0) return
-    await applyItemDiscount.mutateAsync({ orderId, itemIds, discountType, discountValue: parsed })
+    await applyItemDiscount.mutateAsync({ orderId, items, discountType, discountValue: parsed })
     onOpenChange(false)
     setValue('')
     onDone?.()
   }
 
   async function handleClear() {
-    await applyItemDiscount.mutateAsync({ orderId, itemIds, discountType: null, discountValue: null })
+    await applyItemDiscount.mutateAsync({ orderId, items, discountType: null, discountValue: null })
     onOpenChange(false)
     setValue('')
     onDone?.()
@@ -41,11 +42,11 @@ export function ItemDiscountDialog({ open, onOpenChange, orderId, itemIds, onDon
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Discount Item{itemIds.length === 1 ? '' : 's'}</DialogTitle>
+          <DialogTitle>Discount Item{items.length === 1 ? '' : 's'}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Applies to {itemIds.length} selected item{itemIds.length === 1 ? '' : 's'}.
+            Applies to {items.length} selected item{items.length === 1 ? '' : 's'}.
           </p>
           <div className="flex gap-2">
             <Button

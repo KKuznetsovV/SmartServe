@@ -277,6 +277,7 @@ class OrderService:
             item = item_map.get(assignment.item_id)
             if not item:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order item not found")
+            item = await self._split_item_for_quantity(order, item, assignment.quantity)
             item.guest_number = assignment.guest_number
 
         order.updated_at = datetime.now(UTC)
@@ -295,10 +296,11 @@ class OrderService:
             )
 
         item_map = {item.id: item for item in order.items}
-        for item_id in data.item_ids:
-            item = item_map.get(item_id)
+        for selection in data.items:
+            item = item_map.get(selection.item_id)
             if not item:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order item not found")
+            item = await self._split_item_for_quantity(order, item, selection.quantity)
             item.discount_type = data.discount_type
             item.discount_value = data.discount_value
             line_total = item.unit_price * item.qty
@@ -321,10 +323,11 @@ class OrderService:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot edit a closed order")
 
         item_map = {item.id: item for item in order.items}
-        for item_id in data.item_ids:
-            item = item_map.get(item_id)
+        for selection in data.items:
+            item = item_map.get(selection.item_id)
             if not item:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order item not found")
+            item = await self._split_item_for_quantity(order, item, selection.quantity)
             item.is_comped = data.comped
             item.comped_by = comped_by_user_id if data.comped else None
 
@@ -354,10 +357,11 @@ class OrderService:
 
         item_map = {item.id: item for item in order.items}
         items_to_delete = []
-        for item_id in data.item_ids:
-            item = item_map.get(item_id)
+        for selection in data.items:
+            item = item_map.get(selection.item_id)
             if not item:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order item not found")
+            item = await self._split_item_for_quantity(order, item, selection.quantity)
             items_to_delete.append(item)
 
         for item in items_to_delete:
@@ -369,6 +373,37 @@ class OrderService:
         order.updated_at = datetime.now(UTC)
         await self.db.flush()
         return await self.get_order(order_id)
+
+    async def _split_item_for_quantity(self, order: Order, item: OrderItem, quantity: int | None) -> OrderItem:
+        """Splits off `quantity` units of `item` into a new row so a bulk action (guest
+        tag/discount/comp/delete) can target a partial quantity while the rest of the line
+        stays untouched. Returns the row the action should actually be applied to — either
+        the new split-off row, or `item` itself when no partial split was requested."""
+        if quantity is None or quantity >= item.qty:
+            return item
+        if quantity < 1:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="quantity must be at least 1")
+
+        item.qty -= quantity
+        split_item = OrderItem(
+            order_id=order.id,
+            menu_item_id=item.menu_item_id,
+            menu_item_name=item.menu_item_name,
+            qty=quantity,
+            unit_price=item.unit_price,
+            modifiers=item.modifiers,
+            notes=item.notes,
+            status=item.status,
+            sort_order=item.sort_order,
+            fire_course=item.fire_course,
+            guest_number=item.guest_number,
+        )
+        self.db.add(split_item)
+        await self.db.flush()
+        # Keep the already-loaded collection in sync so this session's later reads
+        # (recompute totals, delete-from-collection) see the new row immediately.
+        order.items.append(split_item)
+        return split_item
 
     async def _recalculate_totals(self, order: Order, tax_rate: float, item_total: float) -> None:
         order.subtotal = round(order.subtotal + item_total, 2)

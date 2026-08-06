@@ -4,12 +4,13 @@ import { useState } from 'react'
 import { useAssignGuests } from '@/hooks/use-orders'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import type { ItemSelection } from '@smartserve/api-client'
 
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
   orderId: string
-  itemIds: string[]
+  items: ItemSelection[]
   guestCount: number
   onDone?: () => void
 }
@@ -17,7 +18,7 @@ interface Props {
 /** Tags the selected items with a guest number, in place — never creates a new order.
  * This is purely organizational (e.g. so a table can later be paid per-guest); it is
  * entirely optional and only some items on an order need to be tagged. */
-export function GuestAssignDialog({ open, onOpenChange, orderId, itemIds, guestCount, onDone }: Props) {
+export function GuestAssignDialog({ open, onOpenChange, orderId, items, guestCount, onDone }: Props) {
   const [guestNumber, setGuestNumber] = useState<number | null>(1)
   const assignGuests = useAssignGuests()
   const guestOptions = Array.from({ length: Math.max(guestCount, 2) }, (_, i) => i + 1)
@@ -25,7 +26,7 @@ export function GuestAssignDialog({ open, onOpenChange, orderId, itemIds, guestC
   async function handleConfirm() {
     await assignGuests.mutateAsync({
       orderId,
-      assignments: itemIds.map((itemId) => ({ itemId, guestNumber })),
+      assignments: items.map((item) => ({ ...item, guestNumber })),
     })
     onOpenChange(false)
     onDone?.()
@@ -39,7 +40,7 @@ export function GuestAssignDialog({ open, onOpenChange, orderId, itemIds, guestC
         </DialogHeader>
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Tag {itemIds.length} item{itemIds.length === 1 ? '' : 's'} with a guest number, or clear the tag
+            Tag {items.length} item{items.length === 1 ? '' : 's'} with a guest number, or clear the tag
             to share it across the table again.
           </p>
           <div className="flex flex-wrap gap-2">

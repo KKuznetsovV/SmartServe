@@ -190,7 +190,7 @@ async def test_item_discount_and_comp(
     # 10% discount on the burger (45.0 * 0.10 = 4.5)
     resp = await client.post(
         f"/api/v1/orders/{order_id}/items/discount",
-        json={"itemIds": [burger_item["id"]], "discountType": "percent", "discountValue": 10},
+        json={"items": [{"itemId": burger_item["id"]}], "discountType": "percent", "discountValue": 10},
         headers=headers,
     )
     assert resp.status_code == 200
@@ -203,7 +203,7 @@ async def test_item_discount_and_comp(
     # Mark the fries on the house — it should drop out of the subtotal entirely
     resp = await client.post(
         f"/api/v1/orders/{order_id}/items/comp",
-        json={"itemIds": [fries_item["id"]], "comped": True},
+        json={"items": [{"itemId": fries_item["id"]}], "comped": True},
         headers=headers,
     )
     assert resp.status_code == 200
@@ -230,7 +230,7 @@ async def test_delete_submitted_item_requires_manager_override(
     # Deleting while still open needs no override
     resp = await client.post(
         f"/api/v1/orders/{order_id}/items/delete",
-        json={"itemIds": [fries_item["id"]]},
+        json={"items": [{"itemId": fries_item["id"]}]},
         headers=headers,
     )
     assert resp.status_code == 200
@@ -241,7 +241,7 @@ async def test_delete_submitted_item_requires_manager_override(
     # Once submitted, deleting without an override is rejected
     resp = await client.post(
         f"/api/v1/orders/{order_id}/items/delete",
-        json={"itemIds": [burger_item["id"]]},
+        json={"items": [{"itemId": burger_item["id"]}]},
         headers=headers,
     )
     assert resp.status_code == 400
@@ -250,7 +250,7 @@ async def test_delete_submitted_item_requires_manager_override(
     resp = await client.post(
         f"/api/v1/orders/{order_id}/items/delete",
         json={
-            "itemIds": [burger_item["id"]],
+            "items": [{"itemId": burger_item["id"]}],
             "override": {"managerUserId": manager.id, "pin": "0000", "reason": "wrong item"},
         },
         headers=headers,
@@ -261,13 +261,50 @@ async def test_delete_submitted_item_requires_manager_override(
     resp = await client.post(
         f"/api/v1/orders/{order_id}/items/delete",
         json={
-            "itemIds": [burger_item["id"]],
+            "items": [{"itemId": burger_item["id"]}],
             "override": {"managerUserId": manager.id, "pin": "1234", "reason": "wrong item"},
         },
         headers=headers,
     )
     assert resp.status_code == 200
     assert resp.json()["items"] == []
+
+
+@pytest.mark.asyncio
+async def test_partial_quantity_split_on_item_action(
+    client: AsyncClient,
+    db: AsyncSession,
+    business: Business,
+    manager_user: tuple[User, str],
+):
+    _, token = manager_user
+    headers = {"Authorization": f"Bearer {token}"}
+    location, order_id, burger_item, _fries_item = await _make_order_with_two_items(client, db, business, headers)
+
+    # Bump the burger to qty 3 so we can split off a partial quantity for a bulk action
+    resp = await client.patch(
+        f"/api/v1/orders/{order_id}/items/{burger_item['id']}",
+        json={"qty": 3},
+        headers=headers,
+    )
+    assert resp.status_code == 200
+
+    # Comp only 1 of the 3 burgers — should split into a qty=1 comped row + qty=2 untouched row
+    resp = await client.post(
+        f"/api/v1/orders/{order_id}/items/comp",
+        json={"items": [{"itemId": burger_item["id"], "quantity": 1}], "comped": True},
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    burgers = [i for i in body["items"] if i["menuItemName"] == "Burger"]
+    assert len(burgers) == 2
+    comped = next(i for i in burgers if i["isComped"])
+    remaining = next(i for i in burgers if not i["isComped"])
+    assert comped["qty"] == 1
+    assert remaining["qty"] == 2
+    # subtotal = (2 * 45, uncomped burger) + 15 fries = 105
+    assert body["subtotal"] == pytest.approx(105.0)
 
 
 @pytest.mark.asyncio

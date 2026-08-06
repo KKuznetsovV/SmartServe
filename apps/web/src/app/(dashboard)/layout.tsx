@@ -4,11 +4,13 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sidebar } from '@/components/layout/sidebar'
 import { useAuthStore } from '@/lib/auth-store'
+import { useTokenRefresh } from '@/hooks/use-token-refresh'
 import { Spinner } from '@/components/ui/spinner'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const accessToken = useAuthStore((s) => s.accessToken)
+  useTokenRefresh()
 
   useEffect(() => {
     if (!accessToken) {
