@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import type { OrderStatus, OrderChannel } from '@smartserve/types'
 
@@ -47,6 +48,7 @@ export default function OrdersPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [selectedTableId, setSelectedTableId] = useState<string>('')
   const [channel, setChannel] = useState<OrderChannel>('dine_in')
+  const [guestCount, setGuestCount] = useState<string>('')
 
   const { data: orders, isLoading } = useOrders(locationId, statusFilter || undefined)
   const { data: tables } = useTables(locationId)
@@ -54,16 +56,23 @@ export default function OrdersPage() {
 
   useLocationWs(locationId)
 
+  const guestCountRequired = channel === 'dine_in'
+  const parsedGuestCount = guestCount ? Number(guestCount) : undefined
+  const guestCountInvalid = guestCountRequired && (!parsedGuestCount || parsedGuestCount < 1)
+
   async function handleCreateOrder() {
     if (!locationId) return
+    if (guestCountInvalid) return
     await createOrder.mutateAsync({
       locationId,
       tableId: selectedTableId || undefined,
       channel,
+      guestCount: parsedGuestCount,
     })
     setShowCreate(false)
     setSelectedTableId('')
     setChannel('dine_in')
+    setGuestCount('')
   }
 
   return (
@@ -94,8 +103,20 @@ export default function OrdersPage() {
               <option value="online">Online</option>
             </Select>
           </div>
+          {guestCountRequired && (
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Number of Guests</label>
+              <Input
+                type="number"
+                min={1}
+                value={guestCount}
+                onChange={(e) => setGuestCount(e.target.value)}
+                placeholder="e.g. 4"
+              />
+            </div>
+          )}
           <div className="flex gap-2">
-            <Button size="sm" onClick={handleCreateOrder} disabled={createOrder.isPending}>
+            <Button size="sm" onClick={handleCreateOrder} disabled={createOrder.isPending || guestCountInvalid}>
               Create
             </Button>
             <Button size="sm" variant="outline" onClick={() => setShowCreate(false)}>
@@ -144,6 +165,11 @@ export default function OrdersPage() {
                     <span className="text-xs text-muted-foreground">
                       {CHANNEL_LABELS[order.channel]}
                     </span>
+                    {order.guestCount != null && (
+                      <span className="text-xs text-muted-foreground">
+                        {order.guestCount} guest{order.guestCount !== 1 ? 's' : ''}
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {new Date(order.createdAt).toLocaleTimeString('he-IL')}

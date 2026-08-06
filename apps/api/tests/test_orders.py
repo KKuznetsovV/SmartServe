@@ -37,12 +37,13 @@ async def test_order_lifecycle(
     # Create order
     resp = await client.post(
         "/api/v1/orders",
-        json={"locationId": location.id, "channel": "dine_in"},
+        json={"locationId": location.id, "channel": "dine_in", "guestCount": 2},
         headers=headers,
     )
     assert resp.status_code == 201
     order_id = resp.json()["id"]
     assert resp.json()["status"] == "open"
+    assert resp.json()["guestCount"] == 2
 
     # Add item to order
     resp = await client.post(
@@ -69,6 +70,35 @@ async def test_order_lifecycle(
 
 
 @pytest.mark.asyncio
+async def test_dine_in_order_requires_guest_count(
+    client: AsyncClient,
+    db: AsyncSession,
+    business: Business,
+    manager_user: tuple[User, str],
+):
+    _, token = manager_user
+    location = Location(business_id=business.id, name="Main")
+    db.add(location)
+    await db.flush()
+
+    headers = {"Authorization": f"Bearer {token}"}
+
+    resp = await client.post(
+        "/api/v1/orders",
+        json={"locationId": location.id, "channel": "dine_in"},
+        headers=headers,
+    )
+    assert resp.status_code == 400
+
+    resp = await client.post(
+        "/api/v1/orders",
+        json={"locationId": location.id, "channel": "takeaway"},
+        headers=headers,
+    )
+    assert resp.status_code == 201
+
+
+@pytest.mark.asyncio
 async def test_reorder_order_items(
     client: AsyncClient,
     db: AsyncSession,
@@ -91,7 +121,7 @@ async def test_reorder_order_items(
 
     order_resp = await client.post(
         "/api/v1/orders",
-        json={"locationId": location.id, "channel": "dine_in"},
+        json={"locationId": location.id, "channel": "dine_in", "guestCount": 2},
         headers=headers,
     )
     order_id = order_resp.json()["id"]
@@ -147,7 +177,7 @@ async def test_remove_order_item(
 
     order_resp = await client.post(
         "/api/v1/orders",
-        json={"locationId": location.id, "channel": "dine_in"},
+        json={"locationId": location.id, "channel": "dine_in", "guestCount": 2},
         headers=headers,
     )
     order_id = order_resp.json()["id"]
@@ -204,7 +234,7 @@ async def test_update_order_item(
     order_id = (
         await client.post(
             "/api/v1/orders",
-            json={"locationId": location.id, "channel": "dine_in"},
+            json={"locationId": location.id, "channel": "dine_in", "guestCount": 2},
             headers=headers,
         )
     ).json()["id"]

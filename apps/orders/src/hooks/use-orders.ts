@@ -25,7 +25,7 @@ export function useOrder(orderId: string | null) {
 export function useCreateOrder() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: Pick<Order, 'locationId' | 'tableId' | 'channel'>) =>
+    mutationFn: (data: Pick<Order, 'locationId' | 'tableId' | 'channel'> & Partial<Pick<Order, 'guestCount'>>) =>
       apiClient.orders.create(data),
     onSuccess: (o) => {
       qc.invalidateQueries({ queryKey: ['orders', o.locationId] })

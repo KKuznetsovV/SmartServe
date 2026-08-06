@@ -60,7 +60,7 @@ async def test_out_of_stock_blocks_order_add(
     # Create order and try to add out-of-stock item
     resp = await client.post(
         "/api/v1/orders",
-        json={"locationId": location.id, "channel": "dine_in"},
+        json={"locationId": location.id, "channel": "dine_in", "guestCount": 2},
         headers=headers,
     )
     order_id = resp.json()["id"]

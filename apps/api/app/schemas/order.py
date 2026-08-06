@@ -50,6 +50,7 @@ class OrderOut(BaseModel):
     discount_amount: float = 0.0
     channel: str
     status: str
+    guest_count: int | None = None
     subtotal: float
     tax_amount: float
     total: float
@@ -64,6 +65,7 @@ class OrderCreate(BaseModel):
     location_id: str
     table_id: str | None = None
     channel: str = "dine_in"
+    guest_count: int | None = None
     notes: str | None = None
 
 
