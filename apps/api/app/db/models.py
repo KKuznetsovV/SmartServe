@@ -224,7 +224,7 @@ class Order(Base):
     location: Mapped[Location] = relationship(back_populates="orders")
     table: Mapped[Table] = relationship(back_populates="orders")
     discount: Mapped[Discount | None] = relationship(back_populates="orders")
-    items: Mapped[list[OrderItem]] = relationship(back_populates="order")
+    items: Mapped[list[OrderItem]] = relationship(back_populates="order", order_by="OrderItem.sort_order")
     payments: Mapped[list[Payment]] = relationship(back_populates="order")
 
 
@@ -241,6 +241,7 @@ class OrderItem(Base):
     modifiers: Mapped[list] = mapped_column(JSON, default=list)
     notes: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(50), default="pending")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
 
     order: Mapped[Order] = relationship(back_populates="items")
 

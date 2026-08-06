@@ -68,6 +68,62 @@ async def test_order_lifecycle(
 
 
 @pytest.mark.asyncio
+async def test_reorder_order_items(
+    client: AsyncClient,
+    db: AsyncSession,
+    business: Business,
+    manager_user: tuple[User, str],
+):
+    _, token = manager_user
+    location = Location(business_id=business.id, name="Main")
+    db.add(location)
+    await db.flush()
+    category = MenuCategory(location_id=location.id, name="Food", sort_order=0)
+    db.add(category)
+    await db.flush()
+    burger = MenuItem(category_id=category.id, name="Burger", price=45.0, tax_rate=0.17, preparation_time_min=15)
+    fries = MenuItem(category_id=category.id, name="Fries", price=15.0, tax_rate=0.17, preparation_time_min=10)
+    db.add_all([burger, fries])
+    await db.flush()
+
+    headers = {"Authorization": f"Bearer {token}"}
+
+    order_resp = await client.post(
+        "/api/v1/orders",
+        json={"locationId": location.id, "channel": "dine_in"},
+        headers=headers,
+    )
+    order_id = order_resp.json()["id"]
+
+    first = await client.post(
+        f"/api/v1/orders/{order_id}/items",
+        json={"menuItemId": burger.id, "qty": 1},
+        headers=headers,
+    )
+    second = await client.post(
+        f"/api/v1/orders/{order_id}/items",
+        json={"menuItemId": fries.id, "qty": 1},
+        headers=headers,
+    )
+    first_id, second_id = first.json()["id"], second.json()["id"]
+
+    # Items come back in insertion order by default
+    order = (await client.get(f"/api/v1/orders/{order_id}", headers=headers)).json()
+    assert [i["id"] for i in order["items"]] == [first_id, second_id]
+
+    # Reorder: move fries to the front
+    resp = await client.post(
+        f"/api/v1/orders/{order_id}/items/reorder",
+        json={"ids": [second_id, first_id]},
+        headers=headers,
+    )
+    assert resp.status_code == 204
+
+    order = (await client.get(f"/api/v1/orders/{order_id}", headers=headers)).json()
+    assert [i["id"] for i in order["items"]] == [second_id, first_id]
+
+
+@pytest.mark.asyncio
 async def test_payment_completes_order(
     client: AsyncClient,
     db: AsyncSession,

@@ -120,7 +120,7 @@ export function MenuPanel({ locationId, onItemTap }: Props) {
 function DraggableItemCard({ item, onTap }: { item: MenuItem; onTap: () => void }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `menu-item-${item.id}`,
-    data: { item },
+    data: { type: 'menu-item' as const, item },
   })
 
   return (
@@ -140,5 +140,15 @@ function DraggableItemCard({ item, onTap }: { item: MenuItem; onTap: () => void 
         <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Customizable</p>
       )}
     </button>
+  )
+}
+
+/** Floating clone rendered inside DragOverlay while a menu item card is being dragged. */
+export function MenuItemCardPreview({ item }: { item: MenuItem }) {
+  return (
+    <div className="w-40 cursor-grabbing rounded-lg border bg-card p-3 text-left shadow-lg">
+      <p className="text-sm font-medium leading-tight">{item.name}</p>
+      <p className="mt-1 text-sm font-semibold text-primary">{formatPrice(item.price)}</p>
+    </div>
   )
 }

@@ -19,6 +19,7 @@ class OrderItemOut(BaseModel):
     modifiers: list[OrderItemModifier] = []
     notes: str | None = None
     status: str
+    sort_order: int = 0
 
     model_config = {"from_attributes": True}
 

@@ -8,10 +8,12 @@ export function createOrdersResource(http: Http) {
       http.get<Order[]>(`/locations/${locationId}/orders${status ? `?status=${status}` : ''}`),
     get: (id: string) => http.get<Order>(`/orders/${id}`),
     create: (data: Pick<Order, 'locationId' | 'tableId' | 'channel'>) => http.post<Order>('/orders', data),
-    addItem: (orderId: string, item: Omit<OrderItem, 'id' | 'orderId' | 'status'>) =>
+    addItem: (orderId: string, item: Omit<OrderItem, 'id' | 'orderId' | 'status' | 'sortOrder'>) =>
       http.post<OrderItem>(`/orders/${orderId}/items`, item),
     updateItemStatus: (orderId: string, itemId: string, status: string) =>
       http.patch<OrderItem>(`/orders/${orderId}/items/${itemId}/status`, { status }),
+    reorderItems: (orderId: string, ids: string[]) =>
+      http.post<void>(`/orders/${orderId}/items/reorder`, { ids }),
     submit: (orderId: string) => http.post<Order>(`/orders/${orderId}/submit`, {}),
     cancel: (orderId: string) => http.post<Order>(`/orders/${orderId}/cancel`, {}),
     applyDiscount: (orderId: string, code: string) => http.post<Order>(`/orders/${orderId}/discount`, { code }),

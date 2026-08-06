@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -111,6 +111,7 @@ class OrderService:
             modifiers=[m.model_dump() for m in data.modifiers],
             notes=data.notes,
             status="pending",
+            sort_order=len(order.items),
         )
         self.db.add(order_item)
 
@@ -134,6 +135,14 @@ class OrderService:
         item.status = data.status
         await self.db.flush()
         return item
+
+    async def reorder_items(self, order_id: str, ids: list[str]) -> None:
+        for order, item_id in enumerate(ids):
+            await self.db.execute(
+                update(OrderItem)
+                .where(OrderItem.id == item_id, OrderItem.order_id == order_id)
+                .values(sort_order=order)
+            )
 
     async def transition_order(self, order_id: str, new_status: str) -> Order:
         order = await self.get_order(order_id)

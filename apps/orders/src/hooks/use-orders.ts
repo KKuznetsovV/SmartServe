@@ -44,7 +44,7 @@ export function useAddOrderItem() {
     }: {
       orderId: string
       locationId: string
-      item: Omit<OrderItem, 'id' | 'orderId' | 'status'>
+      item: Omit<OrderItem, 'id' | 'orderId' | 'status' | 'sortOrder'>
     }) => apiClient.orders.addItem(orderId, item),
     onSuccess: (_, { orderId, locationId }) => {
       qc.invalidateQueries({ queryKey: ['order', orderId] })
@@ -77,6 +77,32 @@ export function useUpdateOrderItemStatus() {
       qc.invalidateQueries({ queryKey: ['order', item.orderId] })
     },
     onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useReorderOrderItems() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ orderId, ids }: { orderId: string; ids: string[] }) => apiClient.orders.reorderItems(orderId, ids),
+    onMutate: async ({ orderId, ids }) => {
+      await qc.cancelQueries({ queryKey: ['order', orderId] })
+      const previous = qc.getQueryData<Order>(['order', orderId])
+      if (previous) {
+        const byId = new Map(previous.items.map((i) => [i.id, i]))
+        qc.setQueryData<Order>(['order', orderId], {
+          ...previous,
+          items: ids.map((id, index) => ({ ...byId.get(id)!, sortOrder: index })),
+        })
+      }
+      return { previous }
+    },
+    onError: (e: Error, { orderId }, context) => {
+      if (context?.previous) qc.setQueryData(['order', orderId], context.previous)
+      toast.error(e.message)
+    },
+    onSettled: (_, __, { orderId }) => {
+      qc.invalidateQueries({ queryKey: ['order', orderId] })
+    },
   })
 }
 

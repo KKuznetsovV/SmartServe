@@ -2,20 +2,41 @@
 
 import { use, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { DndContext, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from '@dnd-kit/core'
-import { useOrder, useSubmitOrder, useCancelOrder, useAddOrderItem } from '@/hooks/use-orders'
+import {
+  DndContext,
+  DragOverlay,
+  useDroppable,
+  useSensor,
+  useSensors,
+  PointerSensor,
+  type DragStartEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
+import {
+  useOrder,
+  useSubmitOrder,
+  useCancelOrder,
+  useAddOrderItem,
+  useUpdateOrderItemStatus,
+  useReorderOrderItems,
+} from '@/hooks/use-orders'
 import { useOrderPayments } from '@/hooks/use-payments'
 import { useApplyDiscount } from '@/hooks/use-discounts'
 import { PaymentDialog } from './payment-dialog'
-import { MenuPanel } from './menu-panel'
+import { MenuPanel, MenuItemCardPreview } from './menu-panel'
 import { ItemConfigDialog, type ItemConfigResult } from './item-config-dialog'
+import { OrderItemRow, OrderItemRowPreview } from './order-item-row'
+import { CancelDropZone } from './cancel-drop-zone'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { cn } from '@/lib/utils'
-import type { OrderStatus, OrderItemStatus, PaymentMethod, MenuItem } from '@smartserve/types'
+import type { OrderStatus, PaymentMethod, MenuItem, OrderItem } from '@smartserve/types'
+
+type ActiveDrag = { type: 'menu-item'; item: MenuItem } | { type: 'order-item'; item: OrderItem }
 
 const ORDER_STATUS_VARIANT: Record<
   OrderStatus,
@@ -27,17 +48,6 @@ const ORDER_STATUS_VARIANT: Record<
   ready: 'default',
   served: 'default',
   paid: 'default',
-  cancelled: 'destructive',
-}
-
-const ITEM_STATUS_VARIANT: Record<
-  OrderItemStatus,
-  'default' | 'secondary' | 'destructive' | 'outline'
-> = {
-  pending: 'outline',
-  preparing: 'secondary',
-  ready: 'default',
-  served: 'default',
   cancelled: 'destructive',
 }
 
@@ -59,6 +69,7 @@ export default function OrderDetailPage({ params }: Props) {
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [configuringItem, setConfiguringItem] = useState<MenuItem | null>(null)
   const [discountCode, setDiscountCode] = useState('')
+  const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null)
 
   const { data: order, isLoading } = useOrder(orderId)
   const { data: payments } = useOrderPayments(orderId)
@@ -66,6 +77,8 @@ export default function OrderDetailPage({ params }: Props) {
   const cancelOrder = useCancelOrder()
   const applyDiscount = useApplyDiscount()
   const addItem = useAddOrderItem()
+  const updateItemStatus = useUpdateOrderItemStatus()
+  const reorderItems = useReorderOrderItems()
   const { setNodeRef: setDropRef, isOver } = useDroppable({ id: 'order-drop-zone' })
   // A distance threshold keeps a plain tap from being swallowed as a zero-distance drag
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
@@ -97,11 +110,37 @@ export default function OrderDetailPage({ params }: Props) {
     })
   }
 
+  function handleDragStart(event: DragStartEvent) {
+    const data = event.active.data.current as ActiveDrag | undefined
+    if (data) setActiveDrag(data)
+  }
+
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
-    if (over?.id !== 'order-drop-zone') return
-    const item = active.data.current?.item as MenuItem | undefined
-    if (item) handleItemChosen(item)
+    setActiveDrag(null)
+    const data = active.data.current as ActiveDrag | undefined
+    if (!data) return
+
+    if (data.type === 'menu-item') {
+      if (over?.id === 'order-drop-zone') handleItemChosen(data.item)
+      return
+    }
+
+    // Dragging an existing order item: drop on the trash zone to cancel it,
+    // or drop on another item to reorder the list.
+    if (!order) return
+    if (over?.id === 'cancel-zone') {
+      updateItemStatus.mutate({ orderId, itemId: data.item.id, status: 'cancelled' })
+      return
+    }
+    if (over && over.id !== active.id) {
+      const ids = order.items.map((i) => i.id)
+      const oldIndex = ids.indexOf(String(active.id))
+      const newIndex = ids.indexOf(String(over.id))
+      if (oldIndex !== -1 && newIndex !== -1) {
+        reorderItems.mutate({ orderId, ids: arrayMove(ids, oldIndex, newIndex) })
+      }
+    }
   }
 
   function handleConfigConfirm(result: ItemConfigResult) {
@@ -177,7 +216,7 @@ export default function OrderDetailPage({ params }: Props) {
         </Badge>
       </div>
 
-      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className={canAddItems ? 'grid gap-6 md:grid-cols-[1fr_380px] items-start' : 'max-w-2xl mx-auto space-y-6'}>
           {canAddItems && <MenuPanel locationId={order.locationId} onItemTap={handleItemChosen} />}
 
@@ -194,35 +233,11 @@ export default function OrderDetailPage({ params }: Props) {
               {canAddItems && ' Tap or drag an item from the menu to add it.'}
             </p>
           )}
-          {order.items.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-start justify-between py-2 border-b last:border-0"
-            >
-              <div className="space-y-0.5">
-                <p className="text-sm font-medium">
-                  {item.qty}× {item.menuItemName}
-                </p>
-                {item.modifiers.length > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    {item.modifiers.map((m) => m.name).join(', ')}
-                  </p>
-                )}
-                {item.notes && (
-                  <p className="text-xs text-muted-foreground italic">{item.notes}</p>
-                )}
-                <Badge
-                  variant={ITEM_STATUS_VARIANT[item.status as OrderItemStatus]}
-                  className="text-xs capitalize"
-                >
-                  {item.status}
-                </Badge>
-              </div>
-              <span className="text-sm font-medium whitespace-nowrap">
-                ₪{(item.unitPrice * item.qty).toFixed(2)}
-              </span>
-            </div>
-          ))}
+          <SortableContext items={order.items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+            {order.items.map((item) => (
+              <OrderItemRow key={item.id} item={item} draggable={canAddItems} />
+            ))}
+          </SortableContext>
         </CardContent>
       </Card>
 
@@ -339,6 +354,12 @@ export default function OrderDetailPage({ params }: Props) {
       </div>
           </div>
         </div>
+
+        <DragOverlay>
+          {activeDrag?.type === 'menu-item' && <MenuItemCardPreview item={activeDrag.item} />}
+          {activeDrag?.type === 'order-item' && <OrderItemRowPreview item={activeDrag.item} />}
+        </DragOverlay>
+        <CancelDropZone visible={activeDrag?.type === 'order-item'} />
       </DndContext>
 
       <PaymentDialog

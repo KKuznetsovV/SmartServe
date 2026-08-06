@@ -35,6 +35,7 @@ export const OrderItemSchema = z.object({
     .default([]),
   notes: z.string().optional(),
   status: OrderItemStatus.default('pending'),
+  sortOrder: z.number().int().default(0),
 })
 export type OrderItem = z.infer<typeof OrderItemSchema>
 

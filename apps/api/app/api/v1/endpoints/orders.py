@@ -70,6 +70,16 @@ async def update_item_status(
     return await OrderService(db).update_item_status(order_id, item_id, data)
 
 
+@router.post("/orders/{order_id}/items/reorder", status_code=204)
+async def reorder_order_items(
+    order_id: str,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_staff),
+):
+    await OrderService(db).reorder_items(order_id, body["ids"])
+
+
 @router.post("/orders/{order_id}/submit", response_model=OrderWithItemsOut)
 async def submit_order(
     order_id: str,
