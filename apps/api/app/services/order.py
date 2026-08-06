@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 from app.db.models import MenuItem, Order, OrderItem, Table
 from app.schemas.order import (
     OrderCreate,
+    OrderFireCourseRequest,
     OrderItemCreate,
     OrderItemStatusUpdate,
     OrderItemUpdate,
@@ -31,6 +32,7 @@ VALID_ORDER_TRANSITIONS: dict[str, set[str]] = {
 VALID_ITEM_TRANSITIONS: dict[str, set[str]] = {
     # "ready" is reachable directly from "pending" too, since the kitchen display's
     # "All Ready" bulk action marks every active item ready in one step.
+    "held": {"pending", "cancelled"},
     "pending": {"preparing", "ready", "cancelled"},
     "preparing": {"ready", "cancelled"},
     "ready": {"served"},
@@ -116,6 +118,7 @@ class OrderService:
 
         modifier_total = sum(m.price_delta for m in data.modifiers)
         unit_price = menu_item.price + modifier_total
+        fire_course = data.fire_course if data.fire_course is not None else menu_item.default_fire_course
 
         order_item = OrderItem(
             order_id=order_id,
@@ -125,8 +128,9 @@ class OrderService:
             unit_price=unit_price,
             modifiers=[m.model_dump() for m in data.modifiers],
             notes=data.notes,
-            status="pending",
+            status="held" if fire_course > 1 else "pending",
             sort_order=len(order.items),
+            fire_course=fire_course,
         )
         self.db.add(order_item)
 
@@ -163,6 +167,12 @@ class OrderService:
             item.qty = data.qty
         if data.notes is not None:
             item.notes = data.notes or None
+        if data.fire_course is not None:
+            if item.status == "held" and data.fire_course == 1:
+                item.status = "pending"
+            elif item.status == "pending" and data.fire_course > 1:
+                item.status = "held"
+            item.fire_course = data.fire_course
 
         new_total = item.unit_price * item.qty
         await self._recalculate_totals(order, tax_rate, new_total - old_total)
@@ -228,6 +238,30 @@ class OrderService:
         order.updated_at = datetime.now(UTC)
         await self.db.flush()
         return order
+
+    async def fire_course(self, order_id: str, data: OrderFireCourseRequest) -> Order:
+        """Release all 'held' items of the given fire course so the kitchen can start them."""
+        order = await self.get_order(order_id)
+        if order.status not in ("submitted", "preparing", "ready"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Can only fire a course on an order that has been submitted to the kitchen",
+            )
+        held_items = [i for i in order.items if i.status == "held" and i.fire_course == data.course]
+        if not held_items:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"No held items found for course {data.course}",
+            )
+
+        for item in held_items:
+            item.status = "pending"
+
+        if data.course not in order.fired_courses:
+            order.fired_courses = [*order.fired_courses, data.course]
+        order.updated_at = datetime.now(UTC)
+        await self.db.flush()
+        return await self.get_order(order_id)
 
     async def split_order(self, order_id: str, data: OrderSplitRequest) -> list[Order]:
         """Split an open order into separate child orders, one per guest number.

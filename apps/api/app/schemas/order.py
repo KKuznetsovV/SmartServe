@@ -20,6 +20,7 @@ class OrderItemOut(BaseModel):
     notes: str | None = None
     status: str
     sort_order: int = 0
+    fire_course: int = 1
 
     model_config = {"from_attributes": True}
 
@@ -29,6 +30,7 @@ class OrderItemCreate(BaseModel):
     qty: int = 1
     modifiers: list[OrderItemModifier] = []
     notes: str | None = None
+    fire_course: int | None = None
 
 
 class OrderItemStatusUpdate(BaseModel):
@@ -39,6 +41,7 @@ class OrderItemUpdate(BaseModel):
     qty: int | None = None
     notes: str | None = None
     modifiers: list[OrderItemModifier] | None = None
+    fire_course: int | None = None
 
 
 class OrderOut(BaseModel):
@@ -53,6 +56,7 @@ class OrderOut(BaseModel):
     guest_count: int | None = None
     guest_number: int | None = None
     split_from_order_id: str | None = None
+    fired_courses: list[int] = []
     subtotal: float
     tax_amount: float
     total: float
@@ -82,6 +86,10 @@ class OrderSplitItem(BaseModel):
 
 class OrderSplitRequest(BaseModel):
     assignments: list[OrderSplitItem]
+
+
+class OrderFireCourseRequest(BaseModel):
+    course: int
 
 
 class OrderWithItemsOut(OrderOut):

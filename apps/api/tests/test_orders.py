@@ -181,6 +181,80 @@ async def test_split_order_across_guests(
 
 
 @pytest.mark.asyncio
+async def test_fire_course(
+    client: AsyncClient,
+    db: AsyncSession,
+    business: Business,
+    manager_user: tuple[User, str],
+):
+    _, token = manager_user
+    headers = {"Authorization": f"Bearer {token}"}
+
+    location = Location(business_id=business.id, name="Main")
+    db.add(location)
+    await db.flush()
+    category = MenuCategory(location_id=location.id, name="Food", sort_order=0)
+    db.add(category)
+    await db.flush()
+    starter = MenuItem(category_id=category.id, name="Soup", price=20.0, tax_rate=0.17, preparation_time_min=5)
+    main_course = MenuItem(
+        category_id=category.id,
+        name="Steak",
+        price=80.0,
+        tax_rate=0.17,
+        preparation_time_min=20,
+        default_fire_course=2,
+    )
+    db.add_all([starter, main_course])
+    await db.flush()
+
+    order_resp = await client.post(
+        "/api/v1/orders",
+        json={"locationId": location.id, "channel": "dine_in", "guestCount": 2},
+        headers=headers,
+    )
+    order_id = order_resp.json()["id"]
+
+    starter_item = (
+        await client.post(
+            f"/api/v1/orders/{order_id}/items",
+            json={"menuItemId": starter.id, "qty": 1},
+            headers=headers,
+        )
+    ).json()
+    assert starter_item["fireCourse"] == 1
+    assert starter_item["status"] == "pending"
+
+    main_item = (
+        await client.post(
+            f"/api/v1/orders/{order_id}/items",
+            json={"menuItemId": main_course.id, "qty": 1},
+            headers=headers,
+        )
+    ).json()
+    assert main_item["fireCourse"] == 2
+    assert main_item["status"] == "held"
+
+    # Cannot fire a course before the order has been submitted to the kitchen
+    resp = await client.post(f"/api/v1/orders/{order_id}/fire-course", json={"course": 2}, headers=headers)
+    assert resp.status_code == 400
+
+    resp = await client.post(f"/api/v1/orders/{order_id}/submit", headers=headers)
+    assert resp.status_code == 200
+
+    # No held items for course 3
+    resp = await client.post(f"/api/v1/orders/{order_id}/fire-course", json={"course": 3}, headers=headers)
+    assert resp.status_code == 400
+
+    resp = await client.post(f"/api/v1/orders/{order_id}/fire-course", json={"course": 2}, headers=headers)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["firedCourses"] == [2]
+    fired_item = next(i for i in body["items"] if i["id"] == main_item["id"])
+    assert fired_item["status"] == "pending"
+
+
+@pytest.mark.asyncio
 async def test_reorder_order_items(
     client: AsyncClient,
     db: AsyncSession,

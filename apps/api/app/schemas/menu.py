@@ -98,6 +98,7 @@ class MenuItemOut(BaseModel):
     sort_order: int
     active: bool
     in_stock: bool
+    default_fire_course: int = 1
     modifier_groups: list[ModifierGroupOut] = []
 
     model_config = {"from_attributes": True}
@@ -114,6 +115,7 @@ class MenuItemCreate(BaseModel):
     image_url: str | None = None
     preparation_time_min: int = 10
     sort_order: int | None = None
+    default_fire_course: int = 1
 
 
 class MenuItemUpdate(BaseModel):
@@ -129,6 +131,7 @@ class MenuItemUpdate(BaseModel):
     active: bool | None = None
     in_stock: bool | None = None
     category_id: str | None = None
+    default_fire_course: int | None = None
 
 
 class BulkPriceUpdate(BaseModel):

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { formatPrice } from '@/lib/utils'
 import type { MenuItem, Modifier, ModifierGroup } from '@smartserve/types'
@@ -14,12 +15,14 @@ export interface ItemConfigResult {
   notes?: string
   modifiers: { modifierId: string; name: string; priceDelta: number }[]
   unitPrice: number
+  fireCourse?: number
 }
 
 export interface ItemConfigInitial {
   qty: number
   notes?: string
   modifierIds: string[]
+  fireCourse?: number
 }
 
 interface Props {
@@ -48,12 +51,14 @@ export function ItemConfigDialog({
   const [qty, setQty] = useState(1)
   const [notes, setNotes] = useState('')
   const [selectedModifiers, setSelectedModifiers] = useState<Record<string, string[]>>({})
+  const [fireCourse, setFireCourse] = useState(1)
 
   useEffect(() => {
     if (!item) return
     if (initial) {
       setQty(initial.qty)
       setNotes(initial.notes ?? '')
+      setFireCourse(initial.fireCourse ?? item.defaultFireCourse)
       const byGroup: Record<string, string[]> = {}
       for (const group of item.modifierGroups) {
         const ids = group.modifiers.filter((m) => initial.modifierIds.includes(m.id)).map((m) => m.id)
@@ -63,6 +68,7 @@ export function ItemConfigDialog({
     } else {
       setQty(1)
       setNotes('')
+      setFireCourse(item.defaultFireCourse)
       setSelectedModifiers({})
     }
   }, [item, initial])
@@ -94,7 +100,7 @@ export function ItemConfigDialog({
       }),
     )
     const unitPrice = item.price + modifiers.reduce((sum, m) => sum + m.priceDelta, 0)
-    onConfirm({ qty, notes: notes || undefined, modifiers, unitPrice })
+    onConfirm({ qty, notes: notes || undefined, modifiers, unitPrice, fireCourse })
   }
 
   return (
@@ -171,6 +177,17 @@ export function ItemConfigDialog({
                 <Label>Notes (optional)</Label>
                 <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. no ice" />
               </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label>Fire Course</Label>
+              <Select value={fireCourse} onChange={(e) => setFireCourse(Number(e.target.value))}>
+                {[1, 2, 3, 4, 5].map((course) => (
+                  <option key={course} value={course}>
+                    {course === 1 ? '1 (fires immediately)' : course}
+                  </option>
+                ))}
+              </Select>
             </div>
 
             <div className="flex justify-end gap-2">

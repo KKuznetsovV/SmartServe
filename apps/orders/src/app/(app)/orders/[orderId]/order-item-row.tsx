@@ -8,6 +8,7 @@ import { cn, formatPrice } from '@/lib/utils'
 import type { OrderItem } from '@smartserve/types'
 
 const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+  held: 'secondary',
   pending: 'outline',
   preparing: 'secondary',
   ready: 'default',
@@ -62,9 +63,16 @@ export function OrderItemRow({ item, draggable, onEdit }: Props) {
             <p className="text-xs text-muted-foreground">{item.modifiers.map((m) => m.name).join(', ')}</p>
           )}
           {item.notes && <p className="text-xs italic text-muted-foreground">{item.notes}</p>}
-          <Badge variant={STATUS_VARIANT[item.status] ?? 'outline'} className="text-xs capitalize">
-            {item.status}
-          </Badge>
+          <div className="flex items-center gap-1">
+            <Badge variant={STATUS_VARIANT[item.status] ?? 'outline'} className="text-xs capitalize">
+              {item.status}
+            </Badge>
+            {item.fireCourse > 1 && (
+              <Badge variant="outline" className="text-xs">
+                Course {item.fireCourse}
+              </Badge>
+            )}
+          </div>
         </div>
       </div>
       <div className="flex items-center gap-2">

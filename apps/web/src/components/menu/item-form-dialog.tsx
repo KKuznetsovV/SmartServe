@@ -20,6 +20,7 @@ const itemSchema = z.object({
   price: z.coerce.number().positive('Price must be positive'),
   taxRate: z.coerce.number().min(0).max(1).default(0.17),
   preparationTimeMin: z.coerce.number().int().min(0).default(10),
+  defaultFireCourse: z.coerce.number().int().min(1).max(5).default(1),
 })
 type ItemFormData = z.infer<typeof itemSchema>
 
@@ -54,9 +55,10 @@ export function ItemFormDialog({
         price: editing.price,
         taxRate: editing.taxRate,
         preparationTimeMin: editing.preparationTimeMin,
+        defaultFireCourse: editing.defaultFireCourse,
       })
     } else {
-      reset({ name: '', price: 0, taxRate: 0.17, preparationTimeMin: 10 })
+      reset({ name: '', price: 0, taxRate: 0.17, preparationTimeMin: 10, defaultFireCourse: 1 })
     }
   }, [open, editing, reset])
 
@@ -73,6 +75,7 @@ export function ItemFormDialog({
         price: data.price,
         taxRate: data.taxRate,
         preparationTimeMin: data.preparationTimeMin,
+        defaultFireCourse: data.defaultFireCourse,
         active: true,
         inStock: true,
         imageUrl: undefined,
@@ -118,6 +121,14 @@ export function ItemFormDialog({
               <Label>Prep Time (min)</Label>
               <Input type="number" {...register('preparationTimeMin')} />
             </div>
+          </div>
+          <div className="space-y-1">
+            <Label>Default Fire Course</Label>
+            <p className="text-xs text-muted-foreground">
+              Course 1 fires immediately when the order is submitted. Courses 2-5 are held back
+              until the server fires that course.
+            </p>
+            <Input type="number" min={1} max={5} {...register('defaultFireCourse')} />
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
