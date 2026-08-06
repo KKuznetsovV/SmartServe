@@ -68,7 +68,9 @@ async def test_apply_discount_to_order(
     )
 
     # Create order with one item
-    resp = await client.post("/api/v1/orders", json={"locationId": location.id, "channel": "dine_in"}, headers=headers)
+    resp = await client.post(
+        "/api/v1/orders", json={"locationId": location.id, "channel": "dine_in", "guestCount": 2}, headers=headers
+    )
     order_id = resp.json()["id"]
     await client.post(f"/api/v1/orders/{order_id}/items", json={"menuItemId": menu_item.id, "qty": 1}, headers=headers)
 

@@ -48,6 +48,7 @@ export const OrderSchema = z.object({
   discountAmount: z.number().min(0).default(0),
   channel: OrderChannel.default('dine_in'),
   status: OrderStatus.default('open'),
+  guestCount: z.number().int().min(1).optional(),
   items: z.array(OrderItemSchema).default([]),
   subtotal: z.number().min(0),
   taxAmount: z.number().min(0),

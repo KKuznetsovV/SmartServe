@@ -20,7 +20,7 @@ async def test_payment_marks_order_paid(
     # Create and submit order
     resp = await client.post(
         "/api/v1/orders",
-        json={"locationId": location.id, "channel": "dine_in"},
+        json={"locationId": location.id, "channel": "dine_in", "guestCount": 2},
         headers=headers,
     )
     order_id = resp.json()["id"]

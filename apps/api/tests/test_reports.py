@@ -42,7 +42,7 @@ async def test_report_summary_with_paid_order(
     # Create, submit, and pay an order
     resp = await client.post(
         "/api/v1/orders",
-        json={"locationId": location.id, "channel": "dine_in"},
+        json={"locationId": location.id, "channel": "dine_in", "guestCount": 2},
         headers=headers,
     )
     order_id = resp.json()["id"]

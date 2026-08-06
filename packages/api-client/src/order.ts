@@ -7,7 +7,8 @@ export function createOrdersResource(http: Http) {
     list: (locationId: string, status?: string) =>
       http.get<Order[]>(`/locations/${locationId}/orders${status ? `?status=${status}` : ''}`),
     get: (id: string) => http.get<Order>(`/orders/${id}`),
-    create: (data: Pick<Order, 'locationId' | 'tableId' | 'channel'>) => http.post<Order>('/orders', data),
+    create: (data: Pick<Order, 'locationId' | 'tableId' | 'channel'> & Partial<Pick<Order, 'guestCount'>>) =>
+      http.post<Order>('/orders', data),
     addItem: (orderId: string, item: Omit<OrderItem, 'id' | 'orderId' | 'status' | 'sortOrder'>) =>
       http.post<OrderItem>(`/orders/${orderId}/items`, item),
     updateItemStatus: (orderId: string, itemId: string, status: string) =>

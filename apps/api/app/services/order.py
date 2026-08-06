@@ -70,10 +70,17 @@ class OrderService:
             if not table_result.scalar_one_or_none():
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Table not found")
 
+        if data.channel == "dine_in" and (data.guest_count is None or data.guest_count < 1):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Number of guests is required for dine-in orders",
+            )
+
         order = Order(
             location_id=data.location_id,
             table_id=data.table_id,
             channel=data.channel,
+            guest_count=data.guest_count,
             notes=data.notes,
             status="open",
             subtotal=0.0,

@@ -213,6 +213,7 @@ class Order(Base):
     discount_id: Mapped[str | None] = mapped_column(ForeignKey("discounts.id"))
     channel: Mapped[str] = mapped_column(String(50), default="dine_in")
     status: Mapped[str] = mapped_column(String(50), default="open")
+    guest_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     subtotal: Mapped[float] = mapped_column(Float, default=0.0)
     tax_amount: Mapped[float] = mapped_column(Float, default=0.0)
     discount_amount: Mapped[float] = mapped_column(Float, default=0.0)
