@@ -62,6 +62,14 @@ export function useMenuItems(categoryId: string | null, enabled = true) {
   })
 }
 
+export function useMenuItem(itemId: string | null) {
+  return useQuery({
+    queryKey: ['item', itemId],
+    queryFn: () => apiClient.menuItems.get(itemId!),
+    enabled: !!itemId,
+  })
+}
+
 export function useCreateMenuItem() {
   const qc = useQueryClient()
   return useMutation({

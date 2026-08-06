@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.models import MenuItem, Order, OrderItem, Table
-from app.schemas.order import OrderCreate, OrderItemCreate, OrderItemStatusUpdate
+from app.schemas.order import OrderCreate, OrderItemCreate, OrderItemStatusUpdate, OrderItemUpdate
 
 VALID_ORDER_TRANSITIONS: dict[str, set[str]] = {
     "open": {"submitted", "cancelled"},
@@ -119,6 +119,40 @@ class OrderService:
         await self._recalculate_totals(order, menu_item.tax_rate, unit_price * data.qty)
         await self.db.flush()
         return order_item
+
+    async def update_item(self, order_id: str, item_id: str, data: OrderItemUpdate) -> OrderItem:
+        """Adjust quantity, notes, or modifiers/customization of an item already on the order."""
+        order = await self.get_order(order_id)
+        if order.status not in ("open", "submitted"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot edit items on an order that is already being prepared",
+            )
+        item = next((i for i in order.items if i.id == item_id), None)
+        if not item:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order item not found")
+        if item.status in ("served", "cancelled"):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Cannot edit a '{item.status}' item")
+
+        menu_item_result = await self.db.execute(select(MenuItem).where(MenuItem.id == item.menu_item_id))
+        menu_item = menu_item_result.scalar_one_or_none()
+        tax_rate = menu_item.tax_rate if menu_item else 0.0
+        base_price = menu_item.price if menu_item else item.unit_price - sum(m["price_delta"] for m in item.modifiers)
+
+        old_total = item.unit_price * item.qty
+
+        if data.modifiers is not None:
+            item.modifiers = [m.model_dump() for m in data.modifiers]
+            item.unit_price = base_price + sum(m.price_delta for m in data.modifiers)
+        if data.qty is not None:
+            item.qty = data.qty
+        if data.notes is not None:
+            item.notes = data.notes or None
+
+        new_total = item.unit_price * item.qty
+        await self._recalculate_totals(order, tax_rate, new_total - old_total)
+        await self.db.flush()
+        return item
 
     async def update_item_status(self, order_id: str, item_id: str, data: OrderItemStatusUpdate) -> OrderItem:
         result = await self.db.execute(select(OrderItem).where(OrderItem.id == item_id, OrderItem.order_id == order_id))

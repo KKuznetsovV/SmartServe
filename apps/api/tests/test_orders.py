@@ -182,6 +182,79 @@ async def test_remove_order_item(
 
 
 @pytest.mark.asyncio
+async def test_update_order_item(
+    client: AsyncClient,
+    db: AsyncSession,
+    business: Business,
+    manager_user: tuple[User, str],
+):
+    _, token = manager_user
+    location = Location(business_id=business.id, name="Main")
+    db.add(location)
+    await db.flush()
+    category = MenuCategory(location_id=location.id, name="Food", sort_order=0)
+    db.add(category)
+    await db.flush()
+    burger = MenuItem(category_id=category.id, name="Burger", price=45.0, tax_rate=0.17, preparation_time_min=15)
+    db.add(burger)
+    await db.flush()
+
+    headers = {"Authorization": f"Bearer {token}"}
+
+    order_id = (
+        await client.post(
+            "/api/v1/orders",
+            json={"locationId": location.id, "channel": "dine_in"},
+            headers=headers,
+        )
+    ).json()["id"]
+
+    item = (
+        await client.post(
+            f"/api/v1/orders/{order_id}/items",
+            json={"menuItemId": burger.id, "qty": 1},
+            headers=headers,
+        )
+    ).json()
+
+    # Bump quantity and add a note
+    resp = await client.patch(
+        f"/api/v1/orders/{order_id}/items/{item['id']}",
+        json={"qty": 3, "notes": "well done"},
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    assert resp.json()["qty"] == 3
+    assert resp.json()["notes"] == "well done"
+
+    order = (await client.get(f"/api/v1/orders/{order_id}", headers=headers)).json()
+    assert order["subtotal"] == 135.0
+
+    # Cannot edit a served item
+    await client.patch(
+        f"/api/v1/orders/{order_id}/items/{item['id']}/status",
+        json={"status": "preparing"},
+        headers=headers,
+    )
+    await client.patch(
+        f"/api/v1/orders/{order_id}/items/{item['id']}/status",
+        json={"status": "ready"},
+        headers=headers,
+    )
+    await client.patch(
+        f"/api/v1/orders/{order_id}/items/{item['id']}/status",
+        json={"status": "served"},
+        headers=headers,
+    )
+    resp = await client.patch(
+        f"/api/v1/orders/{order_id}/items/{item['id']}",
+        json={"qty": 5},
+        headers=headers,
+    )
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
 async def test_payment_completes_order(
     client: AsyncClient,
     db: AsyncSession,

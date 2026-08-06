@@ -11,6 +11,7 @@ from app.schemas.order import (
     OrderItemCreate,
     OrderItemOut,
     OrderItemStatusUpdate,
+    OrderItemUpdate,
     OrderWithItemsOut,
 )
 from app.services.discount import DiscountService
@@ -68,6 +69,17 @@ async def update_item_status(
     _: User = Depends(require_staff),
 ):
     return await OrderService(db).update_item_status(order_id, item_id, data)
+
+
+@router.patch("/orders/{order_id}/items/{item_id}", response_model=OrderItemOut)
+async def update_order_item(
+    order_id: str,
+    item_id: str,
+    data: OrderItemUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_staff),
+):
+    return await OrderService(db).update_item(order_id, item_id, data)
 
 
 @router.post("/orders/{order_id}/items/reorder", status_code=204)
