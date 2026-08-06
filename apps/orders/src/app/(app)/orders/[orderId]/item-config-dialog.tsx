@@ -1,8 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import { useCategories, useMenuItems } from '@/hooks/use-menu'
-import { useAddOrderItem } from '@/hooks/use-orders'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -11,43 +9,33 @@ import { Spinner } from '@/components/ui/spinner'
 import { formatPrice } from '@/lib/utils'
 import type { MenuItem, Modifier, ModifierGroup } from '@smartserve/types'
 
-interface Props {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  orderId: string
-  locationId: string
+export interface ItemConfigResult {
+  qty: number
+  notes?: string
+  modifiers: { modifierId: string; name: string; priceDelta: number }[]
+  unitPrice: number
 }
 
-export function AddItemDialog({ open, onOpenChange, orderId, locationId }: Props) {
-  const { data: categories } = useCategories(locationId)
-  const [categoryId, setCategoryId] = useState<string | null>(null)
-  const { data: items, isLoading: itemsLoading } = useMenuItems(categoryId, !!categoryId)
-  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null)
+interface Props {
+  item: MenuItem | null
+  onOpenChange: (open: boolean) => void
+  onConfirm: (result: ItemConfigResult) => void
+  pending?: boolean
+}
+
+/** Quantity/notes/modifier picker shown before adding an item that has modifier groups. */
+export function ItemConfigDialog({ item, onOpenChange, onConfirm, pending }: Props) {
   const [qty, setQty] = useState(1)
   const [notes, setNotes] = useState('')
-  // groupId -> selected modifier ids
   const [selectedModifiers, setSelectedModifiers] = useState<Record<string, string[]>>({})
-  const addItem = useAddOrderItem()
 
-  function reset() {
-    setCategoryId(null)
-    setSelectedItem(null)
-    setQty(1)
-    setNotes('')
-    setSelectedModifiers({})
-  }
-
-  function handleOpenChange(isOpen: boolean) {
-    if (!isOpen) reset()
-    onOpenChange(isOpen)
-  }
-
-  function selectItem(item: MenuItem) {
-    setSelectedItem(item)
-    setQty(1)
-    setNotes('')
-    setSelectedModifiers({})
-  }
+  useEffect(() => {
+    if (item) {
+      setQty(1)
+      setNotes('')
+      setSelectedModifiers({})
+    }
+  }, [item])
 
   function toggleModifier(group: ModifierGroup, modifier: Modifier) {
     setSelectedModifiers((prev) => {
@@ -61,98 +49,34 @@ export function AddItemDialog({ open, onOpenChange, orderId, locationId }: Props
     })
   }
 
-  const modifierGroups = selectedItem?.modifierGroups ?? []
+  const modifierGroups = item?.modifierGroups ?? []
   const canSubmit = modifierGroups.every((g) => {
     const count = (selectedModifiers[g.id] ?? []).length
     return !g.required || count >= Math.max(1, g.minSelect)
   })
 
-  async function handleAdd() {
-    if (!selectedItem || !canSubmit) return
+  function handleConfirm() {
+    if (!item || !canSubmit) return
     const modifiers = modifierGroups.flatMap((g) =>
       (selectedModifiers[g.id] ?? []).flatMap((modId) => {
         const mod = g.modifiers.find((m) => m.id === modId)
         return mod ? [{ modifierId: mod.id, name: mod.name, priceDelta: mod.priceDelta }] : []
       }),
     )
-    const unitPrice = selectedItem.price + modifiers.reduce((sum, m) => sum + m.priceDelta, 0)
-    await addItem.mutateAsync({
-      orderId,
-      locationId,
-      item: {
-        menuItemId: selectedItem.id,
-        menuItemName: selectedItem.name,
-        qty,
-        unitPrice,
-        modifiers,
-        notes: notes || undefined,
-      },
-    })
-    reset()
-    onOpenChange(false)
+    const unitPrice = item.price + modifiers.reduce((sum, m) => sum + m.priceDelta, 0)
+    onConfirm({ qty, notes: notes || undefined, modifiers, unitPrice })
   }
 
-  const availableItems = (items ?? []).filter((i) => i.active && i.inStock)
-
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-2xl">
+    <Dialog open={!!item} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add Item</DialogTitle>
+          <DialogTitle>{item?.name}</DialogTitle>
         </DialogHeader>
 
-        {!selectedItem ? (
-          <div className="grid grid-cols-[160px_1fr] gap-4">
-            <div className="max-h-[50vh] space-y-1 overflow-y-auto border-r pr-2">
-              {categories?.map((cat) => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setCategoryId(cat.id)}
-                  className={`w-full rounded-md px-2 py-1.5 text-left text-sm transition-colors ${
-                    categoryId === cat.id
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-muted'
-                  }`}
-                >
-                  {cat.name}
-                </button>
-              ))}
-            </div>
-
-            <div className="max-h-[50vh] space-y-1 overflow-y-auto pr-1">
-              {!categoryId && <p className="p-2 text-sm text-muted-foreground">Select a category</p>}
-              {itemsLoading && <Spinner />}
-              {availableItems.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => selectItem(item)}
-                  className="flex w-full items-center justify-between rounded-md border p-2 text-left text-sm hover:bg-muted"
-                >
-                  <span>{item.name}</span>
-                  <span className="font-medium">{formatPrice(item.price)}</span>
-                </button>
-              ))}
-              {categoryId && !itemsLoading && availableItems.length === 0 && (
-                <p className="p-2 text-sm text-muted-foreground">No available items</p>
-              )}
-            </div>
-          </div>
-        ) : (
+        {item && (
           <div className="space-y-4">
-            <button
-              type="button"
-              onClick={() => setSelectedItem(null)}
-              className="text-sm text-muted-foreground hover:underline"
-            >
-              ← Back to menu
-            </button>
-
-            <div>
-              <p className="font-medium">{selectedItem.name}</p>
-              <p className="text-sm text-muted-foreground">{formatPrice(selectedItem.price)}</p>
-            </div>
+            <p className="text-sm text-muted-foreground">{formatPrice(item.price)}</p>
 
             {modifierGroups.map((group) => (
               <div key={group.id} className="space-y-1">
@@ -214,11 +138,11 @@ export function AddItemDialog({ open, onOpenChange, orderId, locationId }: Props
             </div>
 
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setSelectedItem(null)}>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="button" onClick={handleAdd} disabled={!canSubmit || addItem.isPending}>
-                {addItem.isPending && <Spinner className="mr-2 h-4 w-4" />}
+              <Button type="button" onClick={handleConfirm} disabled={!canSubmit || pending}>
+                {pending && <Spinner className="mr-2 h-4 w-4" />}
                 Add to Order
               </Button>
             </div>

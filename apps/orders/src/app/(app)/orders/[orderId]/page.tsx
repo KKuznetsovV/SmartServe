@@ -2,17 +2,20 @@
 
 import { use, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useOrder, useSubmitOrder, useCancelOrder } from '@/hooks/use-orders'
+import { DndContext, useDroppable, useSensor, useSensors, PointerSensor, type DragEndEvent } from '@dnd-kit/core'
+import { useOrder, useSubmitOrder, useCancelOrder, useAddOrderItem } from '@/hooks/use-orders'
 import { useOrderPayments } from '@/hooks/use-payments'
 import { useApplyDiscount } from '@/hooks/use-discounts'
 import { PaymentDialog } from './payment-dialog'
-import { AddItemDialog } from './add-item-dialog'
+import { MenuPanel } from './menu-panel'
+import { ItemConfigDialog, type ItemConfigResult } from './item-config-dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
-import type { OrderStatus, OrderItemStatus, PaymentMethod } from '@smartserve/types'
+import { cn } from '@/lib/utils'
+import type { OrderStatus, OrderItemStatus, PaymentMethod, MenuItem } from '@smartserve/types'
 
 const ORDER_STATUS_VARIANT: Record<
   OrderStatus,
@@ -54,7 +57,7 @@ export default function OrderDetailPage({ params }: Props) {
   const { orderId } = use(params)
   const router = useRouter()
   const [paymentOpen, setPaymentOpen] = useState(false)
-  const [addItemOpen, setAddItemOpen] = useState(false)
+  const [configuringItem, setConfiguringItem] = useState<MenuItem | null>(null)
   const [discountCode, setDiscountCode] = useState('')
 
   const { data: order, isLoading } = useOrder(orderId)
@@ -62,6 +65,10 @@ export default function OrderDetailPage({ params }: Props) {
   const submitOrder = useSubmitOrder()
   const cancelOrder = useCancelOrder()
   const applyDiscount = useApplyDiscount()
+  const addItem = useAddOrderItem()
+  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: 'order-drop-zone' })
+  // A distance threshold keeps a plain tap from being swallowed as a zero-distance drag
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   async function handleSubmit() {
     if (!order) return
@@ -73,6 +80,47 @@ export default function OrderDetailPage({ params }: Props) {
     if (!confirm('Cancel this order?')) return
     await cancelOrder.mutateAsync({ orderId, locationId: order.locationId })
     router.push('/orders')
+  }
+
+  // Items without modifier groups add instantly (tap or drop); items with modifiers
+  // always need explicit configuration first, whether tapped or dropped onto the order.
+  function handleItemChosen(item: MenuItem) {
+    if (!order) return
+    if (item.modifierGroups.length > 0) {
+      setConfiguringItem(item)
+      return
+    }
+    addItem.mutate({
+      orderId,
+      locationId: order.locationId,
+      item: { menuItemId: item.id, menuItemName: item.name, qty: 1, unitPrice: item.price, modifiers: [] },
+    })
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (over?.id !== 'order-drop-zone') return
+    const item = active.data.current?.item as MenuItem | undefined
+    if (item) handleItemChosen(item)
+  }
+
+  function handleConfigConfirm(result: ItemConfigResult) {
+    if (!configuringItem || !order) return
+    addItem.mutate(
+      {
+        orderId,
+        locationId: order.locationId,
+        item: {
+          menuItemId: configuringItem.id,
+          menuItemName: configuringItem.name,
+          qty: result.qty,
+          unitPrice: result.unitPrice,
+          modifiers: result.modifiers,
+          notes: result.notes,
+        },
+      },
+      { onSuccess: () => setConfiguringItem(null) },
+    )
   }
 
   if (isLoading) {
@@ -103,7 +151,7 @@ export default function OrderDetailPage({ params }: Props) {
   const remaining = Math.max(0, order.total - paidAmount)
 
   return (
-    <div className="p-6 space-y-6 max-w-2xl mx-auto">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -129,21 +177,21 @@ export default function OrderDetailPage({ params }: Props) {
         </Badge>
       </div>
 
+      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+        <div className={canAddItems ? 'grid gap-6 md:grid-cols-[1fr_380px] items-start' : 'max-w-2xl mx-auto space-y-6'}>
+          {canAddItems && <MenuPanel locationId={order.locationId} onItemTap={handleItemChosen} />}
+
+          <div className="space-y-6 md:sticky md:top-6">
       {/* Items */}
-      <Card>
+      <Card ref={setDropRef} className={cn(canAddItems && isOver && 'ring-2 ring-primary')}>
         <CardHeader className="pb-2 flex-row items-center justify-between">
           <CardTitle className="text-base">Items ({order.items.length})</CardTitle>
-          {canAddItems && (
-            <Button size="sm" onClick={() => setAddItemOpen(true)}>
-              + Add Item
-            </Button>
-          )}
         </CardHeader>
         <CardContent className="space-y-2">
           {order.items.length === 0 && (
             <p className="text-sm text-muted-foreground">
               No items yet.
-              {canAddItems && ' Use "Add Item" above to start building this order.'}
+              {canAddItems && ' Tap or drag an item from the menu to add it.'}
             </p>
           )}
           {order.items.map((item) => (
@@ -289,6 +337,9 @@ export default function OrderDetailPage({ params }: Props) {
           </Button>
         )}
       </div>
+          </div>
+        </div>
+      </DndContext>
 
       <PaymentDialog
         open={paymentOpen}
@@ -296,11 +347,11 @@ export default function OrderDetailPage({ params }: Props) {
         orderId={orderId}
         remaining={remaining}
       />
-      <AddItemDialog
-        open={addItemOpen}
-        onOpenChange={setAddItemOpen}
-        orderId={orderId}
-        locationId={order.locationId}
+      <ItemConfigDialog
+        item={configuringItem}
+        onOpenChange={(open) => !open && setConfiguringItem(null)}
+        onConfirm={handleConfigConfirm}
+        pending={addItem.isPending}
       />
     </div>
   )
