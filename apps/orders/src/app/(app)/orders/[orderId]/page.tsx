@@ -22,6 +22,7 @@ import {
   useUpdateOrderItem,
   useReorderOrderItems,
   useRemoveOrderItem,
+  useFireCourse,
 } from '@/hooks/use-orders'
 import { useMenuItem } from '@/hooks/use-menu'
 import { useOrderPayments } from '@/hooks/use-payments'
@@ -89,6 +90,7 @@ export default function OrderDetailPage({ params }: Props) {
   const updateItem = useUpdateOrderItem()
   const reorderItems = useReorderOrderItems()
   const removeItem = useRemoveOrderItem()
+  const fireCourse = useFireCourse()
   const { setNodeRef: setDropRef, isOver } = useDroppable({ id: 'order-drop-zone' })
   // A distance threshold keeps a plain tap from being swallowed as a zero-distance drag
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
@@ -175,6 +177,7 @@ export default function OrderDetailPage({ params }: Props) {
           unitPrice: result.unitPrice,
           modifiers: result.modifiers,
           notes: result.notes,
+          fireCourse: result.fireCourse,
         },
       },
       { onSuccess: () => setConfiguringItem(null) },
@@ -187,7 +190,7 @@ export default function OrderDetailPage({ params }: Props) {
       {
         orderId,
         itemId: editingItem.id,
-        data: { qty: result.qty, notes: result.notes, modifiers: result.modifiers },
+        data: { qty: result.qty, notes: result.notes, modifiers: result.modifiers, fireCourse: result.fireCourse },
       },
       { onSuccess: () => setEditingItem(null) },
     )
@@ -217,6 +220,10 @@ export default function OrderDetailPage({ params }: Props) {
   const canPay = !['paid', 'cancelled', 'open'].includes(order.status)
   const canAddItems = ['open', 'submitted'].includes(order.status)
   const canSplit = order.status === 'open' && order.items.length > 1
+
+  const heldCourses = Array.from(
+    new Set(order.items.filter((i) => i.status === 'held').map((i) => i.fireCourse)),
+  ).sort((a, b) => a - b)
 
   const paidAmount = (payments ?? []).reduce((sum: number, p) => sum + p.amount, 0)
   const remaining = Math.max(0, order.total - paidAmount)
@@ -378,6 +385,17 @@ export default function OrderDetailPage({ params }: Props) {
             Split Order
           </Button>
         )}
+        {['submitted', 'preparing', 'ready'].includes(order.status) &&
+          heldCourses.map((course) => (
+            <Button
+              key={course}
+              variant="outline"
+              disabled={fireCourse.isPending}
+              onClick={() => fireCourse.mutate({ orderId, course })}
+            >
+              Fire Course {course}
+            </Button>
+          ))}
         {canCancel && (
           <Button
             variant="outline"
@@ -435,6 +453,7 @@ export default function OrderDetailPage({ params }: Props) {
                 qty: editingItem.qty,
                 notes: editingItem.notes,
                 modifierIds: editingItem.modifiers.map((m) => m.modifierId),
+                fireCourse: editingItem.fireCourse,
               }
             : undefined
         }

@@ -9,14 +9,16 @@ export function createOrdersResource(http: Http) {
     get: (id: string) => http.get<Order>(`/orders/${id}`),
     create: (data: Pick<Order, 'locationId' | 'tableId' | 'channel'> & Partial<Pick<Order, 'guestCount'>>) =>
       http.post<Order>('/orders', data),
-    addItem: (orderId: string, item: Omit<OrderItem, 'id' | 'orderId' | 'status' | 'sortOrder'>) =>
-      http.post<OrderItem>(`/orders/${orderId}/items`, item),
+    addItem: (
+      orderId: string,
+      item: Omit<OrderItem, 'id' | 'orderId' | 'status' | 'sortOrder' | 'fireCourse'> & Partial<Pick<OrderItem, 'fireCourse'>>,
+    ) => http.post<OrderItem>(`/orders/${orderId}/items`, item),
     updateItemStatus: (orderId: string, itemId: string, status: string) =>
       http.patch<OrderItem>(`/orders/${orderId}/items/${itemId}/status`, { status }),
     updateItem: (
       orderId: string,
       itemId: string,
-      data: Partial<Pick<OrderItem, 'qty' | 'notes' | 'modifiers'>>,
+      data: Partial<Pick<OrderItem, 'qty' | 'notes' | 'modifiers' | 'fireCourse'>>,
     ) => http.patch<OrderItem>(`/orders/${orderId}/items/${itemId}`, data),
     reorderItems: (orderId: string, ids: string[]) =>
       http.post<void>(`/orders/${orderId}/items/reorder`, { ids }),
@@ -26,6 +28,8 @@ export function createOrdersResource(http: Http) {
     applyDiscount: (orderId: string, code: string) => http.post<Order>(`/orders/${orderId}/discount`, { code }),
     split: (orderId: string, assignments: { itemId: string; guestNumber: number }[]) =>
       http.post<Order[]>(`/orders/${orderId}/split`, { assignments }),
+    fireCourse: (orderId: string, course: number) =>
+      http.post<Order>(`/orders/${orderId}/fire-course`, { course }),
     publicActive: (locationId: string) => http.get<Order[]>(`/public/locations/${locationId}/orders`),
   }
 }

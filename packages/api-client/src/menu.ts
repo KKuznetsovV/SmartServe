@@ -17,8 +17,12 @@ export function createMenuItemsResource(http: Http) {
   return {
     list: (categoryId: string) => http.get<MenuItem[]>(`/menu/categories/${categoryId}/items`),
     get: (id: string) => http.get<MenuItem>(`/menu/items/${id}`),
-    create: (data: Omit<MenuItem, 'id' | 'modifierGroups' | 'sortOrder'> & { sortOrder?: number }) =>
-      http.post<MenuItem>('/menu/items', data),
+    create: (
+      data: Omit<MenuItem, 'id' | 'modifierGroups' | 'sortOrder' | 'defaultFireCourse'> & {
+        sortOrder?: number
+        defaultFireCourse?: number
+      },
+    ) => http.post<MenuItem>('/menu/items', data),
     update: (id: string, data: Partial<MenuItem>) => http.patch<MenuItem>(`/menu/items/${id}`, data),
     delete: (id: string) => http.del<void>(`/menu/items/${id}`),
     setStock: (id: string, inStock: boolean) => http.patch<MenuItem>(`/menu/items/${id}/stock`, { inStock }),

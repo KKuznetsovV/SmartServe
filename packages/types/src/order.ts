@@ -15,7 +15,7 @@ export const OrderStatus = z.enum([
 ])
 export type OrderStatus = z.infer<typeof OrderStatus>
 
-export const OrderItemStatus = z.enum(['pending', 'preparing', 'ready', 'served', 'cancelled'])
+export const OrderItemStatus = z.enum(['held', 'pending', 'preparing', 'ready', 'served', 'cancelled'])
 export type OrderItemStatus = z.infer<typeof OrderItemStatus>
 
 export const OrderItemSchema = z.object({
@@ -37,6 +37,7 @@ export const OrderItemSchema = z.object({
   notes: z.string().optional(),
   status: OrderItemStatus.default('pending'),
   sortOrder: z.number().int().default(0),
+  fireCourse: z.number().int().min(1).max(5).default(1),
 })
 export type OrderItem = z.infer<typeof OrderItemSchema>
 
@@ -52,6 +53,7 @@ export const OrderSchema = z.object({
   guestCount: z.number().int().min(1).optional(),
   guestNumber: z.number().int().min(1).optional(),
   splitFromOrderId: z.string().uuid().optional(),
+  firedCourses: z.array(z.number().int()).default([]),
   items: z.array(OrderItemSchema).default([]),
   subtotal: z.number().min(0),
   taxAmount: z.number().min(0),

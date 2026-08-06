@@ -120,6 +120,7 @@ class MenuItem(Base):
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     in_stock: Mapped[bool] = mapped_column(Boolean, default=True)
+    default_fire_course: Mapped[int] = mapped_column(Integer, default=1)
 
     category: Mapped[MenuCategory] = relationship(back_populates="items")
     modifier_groups: Mapped[list[ModifierGroup]] = relationship(back_populates="item")
@@ -216,6 +217,7 @@ class Order(Base):
     guest_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     guest_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     split_from_order_id: Mapped[str | None] = mapped_column(ForeignKey("orders.id"), nullable=True)
+    fired_courses: Mapped[list] = mapped_column(JSON, default=list)
     subtotal: Mapped[float] = mapped_column(Float, default=0.0)
     tax_amount: Mapped[float] = mapped_column(Float, default=0.0)
     discount_amount: Mapped[float] = mapped_column(Float, default=0.0)
@@ -245,6 +247,7 @@ class OrderItem(Base):
     notes: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(50), default="pending")
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    fire_course: Mapped[int] = mapped_column(Integer, default=1)
 
     order: Mapped[Order] = relationship(back_populates="items")
 

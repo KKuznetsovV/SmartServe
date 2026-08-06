@@ -44,7 +44,7 @@ export function useAddOrderItem() {
     }: {
       orderId: string
       locationId: string
-      item: Omit<OrderItem, 'id' | 'orderId' | 'status' | 'sortOrder'>
+      item: Omit<OrderItem, 'id' | 'orderId' | 'status' | 'sortOrder' | 'fireCourse'> & Partial<Pick<OrderItem, 'fireCourse'>>
     }) => apiClient.orders.addItem(orderId, item),
     onSuccess: (_, { orderId, locationId }) => {
       qc.invalidateQueries({ queryKey: ['order', orderId] })
@@ -90,7 +90,7 @@ export function useUpdateOrderItem() {
     }: {
       orderId: string
       itemId: string
-      data: Partial<Pick<OrderItem, 'qty' | 'notes' | 'modifiers'>>
+      data: Partial<Pick<OrderItem, 'qty' | 'notes' | 'modifiers' | 'fireCourse'>>
     }) => apiClient.orders.updateItem(orderId, itemId, data),
     onSuccess: (item) => {
       qc.invalidateQueries({ queryKey: ['order', item.orderId] })
@@ -160,6 +160,20 @@ export function useCancelOrder() {
       qc.invalidateQueries({ queryKey: ['order', o.id] })
       qc.invalidateQueries({ queryKey: ['orders', o.locationId] })
       toast.success('Order cancelled')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useFireCourse() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ orderId, course }: { orderId: string; course: number }) =>
+      apiClient.orders.fireCourse(orderId, course),
+    onSuccess: (o) => {
+      qc.invalidateQueries({ queryKey: ['order', o.id] })
+      qc.invalidateQueries({ queryKey: ['orders', o.locationId] })
+      toast.success('Course fired to kitchen')
     },
     onError: (e: Error) => toast.error(e.message),
   })

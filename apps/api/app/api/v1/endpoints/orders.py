@@ -8,6 +8,7 @@ from app.db.session import get_db
 from app.schemas.discount import ApplyDiscountIn
 from app.schemas.order import (
     OrderCreate,
+    OrderFireCourseRequest,
     OrderItemCreate,
     OrderItemOut,
     OrderItemStatusUpdate,
@@ -139,6 +140,16 @@ async def split_order(
     _: User = Depends(require_staff),
 ):
     return await OrderService(db).split_order(order_id, data)
+
+
+@router.post("/orders/{order_id}/fire-course", response_model=OrderWithItemsOut)
+async def fire_course(
+    order_id: str,
+    data: OrderFireCourseRequest,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_staff),
+):
+    return await OrderService(db).fire_course(order_id, data)
 
 
 @router.get("/public/locations/{location_id}/orders", response_model=list[OrderWithItemsOut])

@@ -12,6 +12,7 @@ const ITEM_NEXT_STATUS: Partial<Record<OrderItemStatus, OrderItemStatus>> = {
 }
 
 const ITEM_STATUS_STYLE: Record<OrderItemStatus, string> = {
+  held: 'bg-zinc-900 border-zinc-700 text-zinc-500',
   pending: 'bg-zinc-800 border-zinc-600 text-zinc-100',
   preparing: 'bg-amber-900 border-amber-500 text-amber-100',
   ready: 'bg-green-900 border-green-500 text-green-100',
@@ -28,7 +29,7 @@ function OrderCard({ orderId }: { orderId: string }) {
   if (!order) return null
 
   const activeItems = order.items.filter(
-    (i) => !['served', 'cancelled'].includes(i.status),
+    (i) => !['served', 'cancelled', 'held'].includes(i.status),
   )
 
   if (activeItems.length === 0) return null
