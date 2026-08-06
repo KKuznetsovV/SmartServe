@@ -266,6 +266,8 @@ class Payment(Base):
     order_id: Mapped[str] = mapped_column(ForeignKey("orders.id"), nullable=False)
     method: Mapped[str] = mapped_column(String(50), nullable=False)
     amount: Mapped[float] = mapped_column(Float, nullable=False)
+    tip_amount: Mapped[float] = mapped_column(Float, default=0.0)
+    guest_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="pending")
     gateway_ref: Mapped[str | None] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

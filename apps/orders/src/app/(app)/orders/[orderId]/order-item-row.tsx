@@ -5,7 +5,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, Pencil } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { cn, formatPrice } from '@/lib/utils'
+import { cn, formatPrice, getItemLineTotal } from '@/lib/utils'
 import type { OrderItem } from '@smartserve/types'
 
 const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -38,7 +38,7 @@ export function OrderItemRow({ item, draggable, onEdit, selectable, selected, on
   })
 
   const canEdit = draggable && !selectable && !['served', 'cancelled'].includes(item.status)
-  const lineTotal = item.isComped ? 0 : item.unitPrice * item.qty - item.discountAmount
+  const lineTotal = getItemLineTotal(item)
 
   return (
     <div

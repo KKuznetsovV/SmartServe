@@ -1,13 +1,15 @@
 """Payment service — abstract provider pattern, ready for Cardcom/Tranzila integration."""
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Order, Payment
 from app.schemas.payment import PaymentCreate
 
 VALID_PAYMENT_METHODS = {"cash", "card", "tap", "mobile", "voucher"}
+# Tolerate float rounding when comparing cumulative payments against the order total
+PAID_IN_FULL_EPSILON = 0.01
 
 
 class PaymentService:
@@ -20,6 +22,10 @@ class PaymentService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid payment method. Allowed: {VALID_PAYMENT_METHODS}",
             )
+        if data.amount <= 0:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Amount must be positive")
+        if data.tip_amount < 0:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Tip amount cannot be negative")
 
         order_result = await self.db.execute(select(Order).where(Order.id == data.order_id))
         order = order_result.scalar_one_or_none()
@@ -35,13 +41,23 @@ class PaymentService:
             order_id=data.order_id,
             method=data.method,
             amount=data.amount,
+            tip_amount=data.tip_amount,
+            guest_number=data.guest_number,
             status="completed",  # Assume success for abstract layer
             gateway_ref=gateway_ref,
         )
         self.db.add(payment)
+        await self.db.flush()
 
-        # Mark order paid if fully covered
-        if data.amount >= order.total:
+        # Mark order paid once the sum of all completed payments (bill portion only,
+        # tips aren't part of the order total) covers it — supports split/partial payments.
+        paid_result = await self.db.execute(
+            select(func.coalesce(func.sum(Payment.amount), 0.0))
+            .where(Payment.order_id == data.order_id)
+            .where(Payment.status == "completed")
+        )
+        total_paid = paid_result.scalar_one()
+        if total_paid >= order.total - PAID_IN_FULL_EPSILON:
             order.status = "paid"
 
         await self.db.flush()
