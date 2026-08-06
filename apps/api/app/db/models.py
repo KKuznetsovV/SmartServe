@@ -215,8 +215,6 @@ class Order(Base):
     channel: Mapped[str] = mapped_column(String(50), default="dine_in")
     status: Mapped[str] = mapped_column(String(50), default="open")
     guest_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    guest_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    split_from_order_id: Mapped[str | None] = mapped_column(ForeignKey("orders.id"), nullable=True)
     fired_courses: Mapped[list] = mapped_column(JSON, default=list)
     subtotal: Mapped[float] = mapped_column(Float, default=0.0)
     tax_amount: Mapped[float] = mapped_column(Float, default=0.0)
@@ -248,6 +246,12 @@ class OrderItem(Base):
     status: Mapped[str] = mapped_column(String(50), default="pending")
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     fire_course: Mapped[int] = mapped_column(Integer, default=1)
+    guest_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    discount_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    discount_value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    discount_amount: Mapped[float] = mapped_column(Float, default=0.0)
+    is_comped: Mapped[bool] = mapped_column(Boolean, default=False)
+    comped_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
     order: Mapped[Order] = relationship(back_populates="items")
 

@@ -4,6 +4,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import hash_password
 from app.db.models import Business, Location, MenuCategory, MenuItem, User
 
 
@@ -98,16 +99,7 @@ async def test_dine_in_order_requires_guest_count(
     assert resp.status_code == 201
 
 
-@pytest.mark.asyncio
-async def test_split_order_across_guests(
-    client: AsyncClient,
-    db: AsyncSession,
-    business: Business,
-    manager_user: tuple[User, str],
-):
-    _, token = manager_user
-    headers = {"Authorization": f"Bearer {token}"}
-
+async def _make_order_with_two_items(client: AsyncClient, db: AsyncSession, business: Business, headers: dict):
     location = Location(business_id=business.id, name="Main")
     db.add(location)
     await db.flush()
@@ -140,22 +132,23 @@ async def test_split_order_across_guests(
             headers=headers,
         )
     ).json()
+    return location, order_id, burger_item, fries_item
 
-    # Splitting with only one guest assigned should fail
-    resp = await client.post(
-        f"/api/v1/orders/{order_id}/split",
-        json={
-            "assignments": [
-                {"itemId": burger_item["id"], "guestNumber": 1},
-                {"itemId": fries_item["id"], "guestNumber": 1},
-            ]
-        },
-        headers=headers,
-    )
-    assert resp.status_code == 400
 
+@pytest.mark.asyncio
+async def test_assign_guests_within_same_order(
+    client: AsyncClient,
+    db: AsyncSession,
+    business: Business,
+    manager_user: tuple[User, str],
+):
+    _, token = manager_user
+    headers = {"Authorization": f"Bearer {token}"}
+    _, order_id, burger_item, fries_item = await _make_order_with_two_items(client, db, business, headers)
+
+    # Tagging guests never creates a new order — it's an in-place update on the same order.
     resp = await client.post(
-        f"/api/v1/orders/{order_id}/split",
+        f"/api/v1/orders/{order_id}/items/assign-guests",
         json={
             "assignments": [
                 {"itemId": burger_item["id"], "guestNumber": 1},
@@ -165,18 +158,115 @@ async def test_split_order_across_guests(
         headers=headers,
     )
     assert resp.status_code == 200
-    children = resp.json()
-    assert len(children) == 2
-    guest_numbers = sorted(c["guestNumber"] for c in children)
-    assert guest_numbers == [1, 2]
-    for child in children:
-        assert child["splitFromOrderId"] == order_id
-        assert len(child["items"]) == 1
-        assert child["status"] == "open"
+    body = resp.json()
+    assert body["id"] == order_id
+    assert body["status"] == "open"
+    guest_by_item = {i["id"]: i["guestNumber"] for i in body["items"]}
+    assert guest_by_item[burger_item["id"]] == 1
+    assert guest_by_item[fries_item["id"]] == 2
 
-    # Original order is now marked split and has no items left
-    resp = await client.get(f"/api/v1/orders/{order_id}", headers=headers)
-    assert resp.json()["status"] == "split"
+    # Assignment is optional and can be cleared back to shared (None)
+    resp = await client.post(
+        f"/api/v1/orders/{order_id}/items/assign-guests",
+        json={"assignments": [{"itemId": burger_item["id"], "guestNumber": None}]},
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    guest_by_item = {i["id"]: i["guestNumber"] for i in resp.json()["items"]}
+    assert guest_by_item[burger_item["id"]] is None
+
+
+@pytest.mark.asyncio
+async def test_item_discount_and_comp(
+    client: AsyncClient,
+    db: AsyncSession,
+    business: Business,
+    manager_user: tuple[User, str],
+):
+    _, token = manager_user
+    headers = {"Authorization": f"Bearer {token}"}
+    _, order_id, burger_item, fries_item = await _make_order_with_two_items(client, db, business, headers)
+
+    # 10% discount on the burger (45.0 * 0.10 = 4.5)
+    resp = await client.post(
+        f"/api/v1/orders/{order_id}/items/discount",
+        json={"itemIds": [burger_item["id"]], "discountType": "percent", "discountValue": 10},
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    burger = next(i for i in body["items"] if i["id"] == burger_item["id"])
+    assert burger["discountAmount"] == pytest.approx(4.5)
+    # subtotal = (45 - 4.5) + 15 = 55.5
+    assert body["subtotal"] == pytest.approx(55.5)
+
+    # Mark the fries on the house — it should drop out of the subtotal entirely
+    resp = await client.post(
+        f"/api/v1/orders/{order_id}/items/comp",
+        json={"itemIds": [fries_item["id"]], "comped": True},
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    fries = next(i for i in body["items"] if i["id"] == fries_item["id"])
+    assert fries["isComped"] is True
+    assert fries["compedBy"] is not None
+    assert body["subtotal"] == pytest.approx(40.5)
+
+
+@pytest.mark.asyncio
+async def test_delete_submitted_item_requires_manager_override(
+    client: AsyncClient,
+    db: AsyncSession,
+    business: Business,
+    manager_user: tuple[User, str],
+):
+    manager, token = manager_user
+    manager.pin_hash = hash_password("1234")
+    await db.flush()
+    headers = {"Authorization": f"Bearer {token}"}
+    location, order_id, burger_item, fries_item = await _make_order_with_two_items(client, db, business, headers)
+
+    # Deleting while still open needs no override
+    resp = await client.post(
+        f"/api/v1/orders/{order_id}/items/delete",
+        json={"itemIds": [fries_item["id"]]},
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    assert len(resp.json()["items"]) == 1
+
+    await client.post(f"/api/v1/orders/{order_id}/submit", headers=headers)
+
+    # Once submitted, deleting without an override is rejected
+    resp = await client.post(
+        f"/api/v1/orders/{order_id}/items/delete",
+        json={"itemIds": [burger_item["id"]]},
+        headers=headers,
+    )
+    assert resp.status_code == 400
+
+    # An invalid PIN is rejected too
+    resp = await client.post(
+        f"/api/v1/orders/{order_id}/items/delete",
+        json={
+            "itemIds": [burger_item["id"]],
+            "override": {"managerUserId": manager.id, "pin": "0000", "reason": "wrong item"},
+        },
+        headers=headers,
+    )
+    assert resp.status_code == 401
+
+    # Correct manager PIN + reason succeeds
+    resp = await client.post(
+        f"/api/v1/orders/{order_id}/items/delete",
+        json={
+            "itemIds": [burger_item["id"]],
+            "override": {"managerUserId": manager.id, "pin": "1234", "reason": "wrong item"},
+        },
+        headers=headers,
+    )
+    assert resp.status_code == 200
     assert resp.json()["items"] == []
 
 

@@ -54,6 +54,29 @@ class AuthService:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid PIN")
         return self._issue_tokens(user)
 
+    async def verify_manager_pin(self, location_id: str, manager_user_id: str, pin: str) -> User:
+        """Confirm a manager/owner override (e.g. deleting a submitted order item) without
+        switching the current session — verifies the given user is a manager/owner at this
+        location and that the PIN matches, but issues no tokens."""
+        loc_result = await self.db.execute(select(Location).where(Location.id == location_id, Location.active))
+        location = loc_result.scalar_one_or_none()
+        if not location:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid manager PIN")
+
+        result = await self.db.execute(
+            select(User).where(
+                User.id == manager_user_id,
+                User.business_id == location.business_id,
+                User.role.in_(["owner", "manager"]),
+                User.active,
+                User.pin_hash.is_not(None),
+            )
+        )
+        user = result.scalar_one_or_none()
+        if not user or not user.pin_hash or not verify_password(pin, user.pin_hash):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid manager PIN")
+        return user
+
     async def refresh(self, refresh_token: str) -> TokenResponse:
         payload = decode_token(refresh_token, expected_type="refresh")
         # Reload the user so refreshed tokens keep claims and deactivated users are rejected

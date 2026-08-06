@@ -33,7 +33,6 @@ const STATUS_VARIANT: Record<OrderStatus, 'default' | 'secondary' | 'destructive
   served: 'default',
   paid: 'default',
   cancelled: 'destructive',
-  split: 'secondary',
 }
 
 const CHANNEL_LABELS: Record<OrderChannel, string> = {
