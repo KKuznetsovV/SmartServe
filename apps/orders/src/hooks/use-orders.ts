@@ -44,7 +44,11 @@ export function useAddOrderItem() {
     }: {
       orderId: string
       locationId: string
-      item: Omit<OrderItem, 'id' | 'orderId' | 'status' | 'sortOrder' | 'fireCourse'> & Partial<Pick<OrderItem, 'fireCourse'>>
+      item: Omit<
+        OrderItem,
+        'id' | 'orderId' | 'status' | 'sortOrder' | 'fireCourse' | 'discountAmount' | 'isComped'
+      > &
+        Partial<Pick<OrderItem, 'fireCourse'>>
     }) => apiClient.orders.addItem(orderId, item),
     onSuccess: (_, { orderId, locationId }) => {
       qc.invalidateQueries({ queryKey: ['order', orderId] })
@@ -179,7 +183,7 @@ export function useFireCourse() {
   })
 }
 
-export function useSplitOrder() {
+export function useAssignGuests() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({
@@ -187,12 +191,65 @@ export function useSplitOrder() {
       assignments,
     }: {
       orderId: string
-      assignments: { itemId: string; guestNumber: number }[]
-    }) => apiClient.orders.split(orderId, assignments),
-    onSuccess: (children, variables) => {
-      qc.invalidateQueries({ queryKey: ['order', variables.orderId] })
-      qc.invalidateQueries({ queryKey: ['orders', children[0]?.locationId] })
-      toast.success(`Order split into ${children.length} orders`)
+      assignments: { itemId: string; guestNumber: number | null }[]
+    }) => apiClient.orders.assignGuests(orderId, assignments),
+    onSuccess: (o) => {
+      qc.invalidateQueries({ queryKey: ['order', o.id] })
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useApplyItemDiscount() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      orderId,
+      itemIds,
+      discountType,
+      discountValue,
+    }: {
+      orderId: string
+      itemIds: string[]
+      discountType: 'percent' | 'fixed' | null
+      discountValue: number | null
+    }) => apiClient.orders.applyItemDiscount(orderId, itemIds, discountType, discountValue),
+    onSuccess: (o) => {
+      qc.invalidateQueries({ queryKey: ['order', o.id] })
+      toast.success('Discount applied')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useSetItemComp() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ orderId, itemIds, comped }: { orderId: string; itemIds: string[]; comped: boolean }) =>
+      apiClient.orders.setItemComp(orderId, itemIds, comped),
+    onSuccess: (o, { comped }) => {
+      qc.invalidateQueries({ queryKey: ['order', o.id] })
+      toast.success(comped ? 'Marked on the house' : 'Comp removed')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useDeleteOrderItems() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      orderId,
+      itemIds,
+      override,
+    }: {
+      orderId: string
+      itemIds: string[]
+      override?: { managerUserId: string; pin: string; reason: string }
+    }) => apiClient.orders.deleteItems(orderId, itemIds, override),
+    onSuccess: (o) => {
+      qc.invalidateQueries({ queryKey: ['order', o.id] })
+      toast.success('Item deleted')
     },
     onError: (e: Error) => toast.error(e.message),
   })

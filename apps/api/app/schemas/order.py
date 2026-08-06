@@ -21,6 +21,12 @@ class OrderItemOut(BaseModel):
     status: str
     sort_order: int = 0
     fire_course: int = 1
+    guest_number: int | None = None
+    discount_type: str | None = None
+    discount_value: float | None = None
+    discount_amount: float = 0.0
+    is_comped: bool = False
+    comped_by: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -54,8 +60,6 @@ class OrderOut(BaseModel):
     channel: str
     status: str
     guest_count: int | None = None
-    guest_number: int | None = None
-    split_from_order_id: str | None = None
     fired_courses: list[int] = []
     subtotal: float
     tax_amount: float
@@ -79,13 +83,35 @@ class OrderStatusUpdate(BaseModel):
     status: str  # pending | confirmed | preparing | ready | paid | cancelled
 
 
-class OrderSplitItem(BaseModel):
+class GuestAssignment(BaseModel):
     item_id: str
-    guest_number: int
+    guest_number: int | None = None  # None clears the tag (item goes back to "shared")
 
 
-class OrderSplitRequest(BaseModel):
-    assignments: list[OrderSplitItem]
+class AssignGuestsRequest(BaseModel):
+    assignments: list[GuestAssignment]
+
+
+class OrderItemDiscountRequest(BaseModel):
+    item_ids: list[str]
+    discount_type: str | None = None  # "percent" | "fixed"; both None clears the discount
+    discount_value: float | None = None
+
+
+class OrderItemCompRequest(BaseModel):
+    item_ids: list[str]
+    comped: bool
+
+
+class ManagerOverride(BaseModel):
+    manager_user_id: str
+    pin: str
+    reason: str
+
+
+class OrderItemDeleteRequest(BaseModel):
+    item_ids: list[str]
+    override: ManagerOverride | None = None
 
 
 class OrderFireCourseRequest(BaseModel):

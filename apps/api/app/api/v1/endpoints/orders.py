@@ -7,13 +7,16 @@ from app.db.models import User
 from app.db.session import get_db
 from app.schemas.discount import ApplyDiscountIn
 from app.schemas.order import (
+    AssignGuestsRequest,
     OrderCreate,
     OrderFireCourseRequest,
+    OrderItemCompRequest,
     OrderItemCreate,
+    OrderItemDeleteRequest,
+    OrderItemDiscountRequest,
     OrderItemOut,
     OrderItemStatusUpdate,
     OrderItemUpdate,
-    OrderSplitRequest,
     OrderWithItemsOut,
 )
 from app.services.discount import DiscountService
@@ -132,14 +135,44 @@ async def apply_discount(
     return await DiscountService(db).apply_to_order(order_id, data)
 
 
-@router.post("/orders/{order_id}/split", response_model=list[OrderWithItemsOut])
-async def split_order(
+@router.post("/orders/{order_id}/items/assign-guests", response_model=OrderWithItemsOut)
+async def assign_guests(
     order_id: str,
-    data: OrderSplitRequest,
+    data: AssignGuestsRequest,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_staff),
 ):
-    return await OrderService(db).split_order(order_id, data)
+    return await OrderService(db).assign_guests(order_id, data)
+
+
+@router.post("/orders/{order_id}/items/discount", response_model=OrderWithItemsOut)
+async def apply_item_discount(
+    order_id: str,
+    data: OrderItemDiscountRequest,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_staff),
+):
+    return await OrderService(db).apply_item_discount(order_id, data)
+
+
+@router.post("/orders/{order_id}/items/comp", response_model=OrderWithItemsOut)
+async def comp_items(
+    order_id: str,
+    data: OrderItemCompRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_staff),
+):
+    return await OrderService(db).set_item_comp(order_id, data, current_user.id)
+
+
+@router.post("/orders/{order_id}/items/delete", response_model=OrderWithItemsOut)
+async def bulk_delete_items(
+    order_id: str,
+    data: OrderItemDeleteRequest,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_staff),
+):
+    return await OrderService(db).delete_items(order_id, data)
 
 
 @router.post("/orders/{order_id}/fire-course", response_model=OrderWithItemsOut)

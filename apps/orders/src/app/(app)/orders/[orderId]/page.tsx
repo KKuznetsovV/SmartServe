@@ -23,6 +23,8 @@ import {
   useReorderOrderItems,
   useRemoveOrderItem,
   useFireCourse,
+  useSetItemComp,
+  useDeleteOrderItems,
 } from '@/hooks/use-orders'
 import { useMenuItem } from '@/hooks/use-menu'
 import { useOrderPayments } from '@/hooks/use-payments'
@@ -32,7 +34,9 @@ import { MenuPanel, MenuItemCardPreview } from './menu-panel'
 import { ItemConfigDialog, type ItemConfigResult } from './item-config-dialog'
 import { OrderItemRow, OrderItemRowPreview } from './order-item-row'
 import { CancelDropZone } from './cancel-drop-zone'
-import { SplitOrderDialog } from './split-order-dialog'
+import { GuestAssignDialog } from './guest-assign-dialog'
+import { ItemDiscountDialog } from './item-discount-dialog'
+import { ManagerOverrideDialog } from './manager-override-dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -54,7 +58,6 @@ const ORDER_STATUS_VARIANT: Record<
   served: 'default',
   paid: 'default',
   cancelled: 'destructive',
-  split: 'secondary',
 }
 
 const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
@@ -73,11 +76,15 @@ export default function OrderDetailPage({ params }: Props) {
   const { orderId } = use(params)
   const router = useRouter()
   const [paymentOpen, setPaymentOpen] = useState(false)
-  const [splitOpen, setSplitOpen] = useState(false)
   const [configuringItem, setConfiguringItem] = useState<MenuItem | null>(null)
   const [editingItem, setEditingItem] = useState<OrderItem | null>(null)
   const [discountCode, setDiscountCode] = useState('')
   const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null)
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [guestDialogOpen, setGuestDialogOpen] = useState(false)
+  const [discountDialogOpen, setDiscountDialogOpen] = useState(false)
+  const [overrideOpen, setOverrideOpen] = useState(false)
 
   const { data: order, isLoading } = useOrder(orderId)
   const { data: payments } = useOrderPayments(orderId)
@@ -91,6 +98,8 @@ export default function OrderDetailPage({ params }: Props) {
   const reorderItems = useReorderOrderItems()
   const removeItem = useRemoveOrderItem()
   const fireCourse = useFireCourse()
+  const setItemComp = useSetItemComp()
+  const deleteItems = useDeleteOrderItems()
   const { setNodeRef: setDropRef, isOver } = useDroppable({ id: 'order-drop-zone' })
   // A distance threshold keeps a plain tap from being swallowed as a zero-distance drag
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
@@ -196,6 +205,37 @@ export default function OrderDetailPage({ params }: Props) {
     )
   }
 
+  function toggleSelected(itemId: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(itemId)) next.delete(itemId)
+      else next.add(itemId)
+      return next
+    })
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false)
+    setSelectedIds(new Set())
+  }
+
+  async function handleMarkComp(comped: boolean) {
+    if (selectedIds.size === 0) return
+    await setItemComp.mutateAsync({ orderId, itemIds: Array.from(selectedIds), comped })
+    exitSelectMode()
+  }
+
+  async function handleDeleteSelected() {
+    if (selectedIds.size === 0 || !order) return
+    if (order.status === 'open') {
+      if (!confirm(`Delete ${selectedIds.size} item(s)?`)) return
+      await deleteItems.mutateAsync({ orderId, itemIds: Array.from(selectedIds) })
+      exitSelectMode()
+    } else {
+      setOverrideOpen(true)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="p-6">
@@ -219,7 +259,7 @@ export default function OrderDetailPage({ params }: Props) {
   const canCancel = !['paid', 'cancelled'].includes(order.status)
   const canPay = !['paid', 'cancelled', 'open'].includes(order.status)
   const canAddItems = ['open', 'submitted'].includes(order.status)
-  const canSplit = order.status === 'open' && order.items.length > 1
+  const canSelectItems = !['paid', 'cancelled'].includes(order.status) && order.items.length > 0
 
   const heldCourses = Array.from(
     new Set(order.items.filter((i) => i.status === 'held').map((i) => i.fireCourse)),
@@ -264,6 +304,15 @@ export default function OrderDetailPage({ params }: Props) {
       <Card ref={setDropRef} className={cn(canAddItems && isOver && 'ring-2 ring-primary')}>
         <CardHeader className="pb-2 flex-row items-center justify-between">
           <CardTitle className="text-base">Items ({order.items.length})</CardTitle>
+          {canSelectItems && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+            >
+              {selectMode ? 'Done' : 'Select'}
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="space-y-2">
           {order.items.length === 0 && (
@@ -274,11 +323,47 @@ export default function OrderDetailPage({ params }: Props) {
           )}
           <SortableContext items={order.items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
             {order.items.map((item) => (
-              <OrderItemRow key={item.id} item={item} draggable={canAddItems} onEdit={setEditingItem} />
+              <OrderItemRow
+                key={item.id}
+                item={item}
+                draggable={canAddItems}
+                onEdit={setEditingItem}
+                selectable={selectMode}
+                selected={selectedIds.has(item.id)}
+                onToggleSelect={toggleSelected}
+              />
             ))}
           </SortableContext>
         </CardContent>
       </Card>
+
+      {selectMode && selectedIds.size > 0 && (
+        <Card className="border-primary">
+          <CardContent className="p-3 flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium mr-1">{selectedIds.size} selected</span>
+            <Button variant="outline" size="sm" onClick={() => setGuestDialogOpen(true)}>
+              Assign to Guest
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setDiscountDialogOpen(true)}>
+              Discount
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => handleMarkComp(true)} disabled={setItemComp.isPending}>
+              On the House
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => handleMarkComp(false)} disabled={setItemComp.isPending}>
+              Remove Comp
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDeleteSelected}
+              disabled={deleteItems.isPending}
+            >
+              Delete
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Totals */}
       <Card>
@@ -380,11 +465,6 @@ export default function OrderDetailPage({ params }: Props) {
         {canPay && remaining > 0 && (
           <Button onClick={() => setPaymentOpen(true)}>Collect Payment</Button>
         )}
-        {canSplit && (
-          <Button variant="outline" onClick={() => setSplitOpen(true)}>
-            Split Order
-          </Button>
-        )}
         {['submitted', 'preparing', 'ready'].includes(order.status) &&
           heldCourses.map((course) => (
             <Button
@@ -426,11 +506,33 @@ export default function OrderDetailPage({ params }: Props) {
         orderId={orderId}
         remaining={remaining}
       />
-      <SplitOrderDialog
-        open={splitOpen}
-        onOpenChange={setSplitOpen}
-        order={order}
-        onSplit={() => router.push('/orders')}
+      <GuestAssignDialog
+        open={guestDialogOpen}
+        onOpenChange={setGuestDialogOpen}
+        orderId={orderId}
+        itemIds={Array.from(selectedIds)}
+        guestCount={order.guestCount ?? 2}
+        onDone={exitSelectMode}
+      />
+      <ItemDiscountDialog
+        open={discountDialogOpen}
+        onOpenChange={setDiscountDialogOpen}
+        orderId={orderId}
+        itemIds={Array.from(selectedIds)}
+        onDone={exitSelectMode}
+      />
+      <ManagerOverrideDialog
+        open={overrideOpen}
+        onOpenChange={setOverrideOpen}
+        locationId={order.locationId}
+        title="Delete Submitted Item(s)"
+        description="These items have already been sent to the kitchen. A manager must approve deleting them."
+        pending={deleteItems.isPending}
+        onConfirm={async (override) => {
+          await deleteItems.mutateAsync({ orderId, itemIds: Array.from(selectedIds), override })
+          setOverrideOpen(false)
+          exitSelectMode()
+        }}
       />
       <ItemConfigDialog
         open={!!configuringItem}

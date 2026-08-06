@@ -1,6 +1,5 @@
 """Order service — lifecycle management for orders and items."""
 
-from collections import defaultdict
 from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
@@ -10,13 +9,17 @@ from sqlalchemy.orm import selectinload
 
 from app.db.models import MenuItem, Order, OrderItem, Table
 from app.schemas.order import (
+    AssignGuestsRequest,
     OrderCreate,
     OrderFireCourseRequest,
+    OrderItemCompRequest,
     OrderItemCreate,
+    OrderItemDeleteRequest,
+    OrderItemDiscountRequest,
     OrderItemStatusUpdate,
     OrderItemUpdate,
-    OrderSplitRequest,
 )
+from app.services.auth import AuthService
 
 VALID_ORDER_TRANSITIONS: dict[str, set[str]] = {
     "open": {"submitted", "cancelled"},
@@ -26,7 +29,6 @@ VALID_ORDER_TRANSITIONS: dict[str, set[str]] = {
     "served": {"paid"},
     "paid": set(),
     "cancelled": set(),
-    "split": set(),
 }
 
 VALID_ITEM_TRANSITIONS: dict[str, set[str]] = {
@@ -263,77 +265,134 @@ class OrderService:
         await self.db.flush()
         return await self.get_order(order_id)
 
-    async def split_order(self, order_id: str, data: OrderSplitRequest) -> list[Order]:
-        """Split an open order into separate child orders, one per guest number.
-
-        Every item on the order must be assigned to a guest; each resulting child
-        order is a normal standalone order (own kitchen ticket, own payment) linked
-        back to the original via split_from_order_id.
-        """
+    async def assign_guests(self, order_id: str, data: AssignGuestsRequest) -> Order:
+        """Optionally tag items with a guest number so a table's single order/check can
+        still be organized or paid per-guest — this never creates a separate Order."""
         order = await self.get_order(order_id)
-        if order.status != "open":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Only open orders can be split",
-            )
-        if not order.items:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Order has no items to split")
+        if order.status in ("paid", "cancelled"):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot edit a closed order")
 
         item_map = {item.id: item for item in order.items}
-        assigned_ids = {a.item_id for a in data.assignments}
-        if assigned_ids != set(item_map.keys()):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Every item on the order must be assigned to a guest to split it",
-            )
-
-        by_guest: dict[int, list[OrderItem]] = defaultdict(list)
         for assignment in data.assignments:
-            by_guest[assignment.guest_number].append(item_map[assignment.item_id])
+            item = item_map.get(assignment.item_id)
+            if not item:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order item not found")
+            item.guest_number = assignment.guest_number
 
-        if len(by_guest) < 2:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Split requires items to be assigned to at least two different guests",
-            )
-
-        children: list[Order] = []
-        for guest_number, items in by_guest.items():
-            child = Order(
-                location_id=order.location_id,
-                table_id=order.table_id,
-                channel=order.channel,
-                guest_count=order.guest_count,
-                guest_number=guest_number,
-                split_from_order_id=order.id,
-                status="open",
-                subtotal=0.0,
-                tax_amount=0.0,
-                total=0.0,
-            )
-            self.db.add(child)
-            await self.db.flush()
-
-            for item in items:
-                item.order_id = child.id
-
-            menu_item_result = await self.db.execute(select(MenuItem).where(MenuItem.id == items[0].menu_item_id))
-            menu_item = menu_item_result.scalar_one_or_none()
-            tax_rate = menu_item.tax_rate if menu_item else 0.0
-            child.subtotal = round(sum(i.unit_price * i.qty for i in items), 2)
-            child.tax_amount = round(child.subtotal * tax_rate, 2)
-            child.total = round(child.subtotal + child.tax_amount, 2)
-            children.append(child)
-
-        order.status = "split"
-        order.subtotal = 0.0
-        order.tax_amount = 0.0
-        order.total = 0.0
         order.updated_at = datetime.now(UTC)
         await self.db.flush()
-        return [await self.get_order(child.id) for child in children]
+        return await self.get_order(order_id)
+
+    async def apply_item_discount(self, order_id: str, data: OrderItemDiscountRequest) -> Order:
+        """Apply (or clear, when both fields are None) a manual %/fixed discount to one or
+        more items on the order — distinct from the order-level discount-code feature."""
+        order = await self.get_order(order_id)
+        if order.status in ("paid", "cancelled"):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot edit a closed order")
+        if data.discount_type is not None and data.discount_type not in ("percent", "fixed"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="discount_type must be 'percent' or 'fixed'"
+            )
+
+        item_map = {item.id: item for item in order.items}
+        for item_id in data.item_ids:
+            item = item_map.get(item_id)
+            if not item:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order item not found")
+            item.discount_type = data.discount_type
+            item.discount_value = data.discount_value
+            line_total = item.unit_price * item.qty
+            if data.discount_type == "percent" and data.discount_value is not None:
+                item.discount_amount = round(line_total * data.discount_value / 100, 2)
+            elif data.discount_type == "fixed" and data.discount_value is not None:
+                item.discount_amount = min(data.discount_value, line_total)
+            else:
+                item.discount_amount = 0.0
+
+        await self._recompute_totals(order)
+        await self.db.flush()
+        return await self.get_order(order_id)
+
+    async def set_item_comp(self, order_id: str, data: OrderItemCompRequest, comped_by_user_id: str) -> Order:
+        """Mark (or unmark) items as 'on the house' — the item stays on the order and visible
+        to the kitchen, but contributes nothing to the bill."""
+        order = await self.get_order(order_id)
+        if order.status in ("paid", "cancelled"):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot edit a closed order")
+
+        item_map = {item.id: item for item in order.items}
+        for item_id in data.item_ids:
+            item = item_map.get(item_id)
+            if not item:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order item not found")
+            item.is_comped = data.comped
+            item.comped_by = comped_by_user_id if data.comped else None
+
+        await self._recompute_totals(order)
+        await self.db.flush()
+        return await self.get_order(order_id)
+
+    async def delete_items(self, order_id: str, data: OrderItemDeleteRequest) -> Order:
+        """Permanently remove one or more items. Items on an order still 'open' (not yet sent
+        to the kitchen) can be removed freely; once submitted, a manager PIN + reason is
+        required since the kitchen may already be preparing them."""
+        order = await self.get_order(order_id)
+        if order.status in ("paid", "cancelled"):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot edit a closed order")
+
+        if order.status != "open":
+            if not data.override:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Manager PIN and reason are required to delete an item once the order has been submitted",
+                )
+            if not data.override.reason.strip():
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A reason is required")
+            await AuthService(self.db).verify_manager_pin(
+                order.location_id, data.override.manager_user_id, data.override.pin
+            )
+
+        item_map = {item.id: item for item in order.items}
+        items_to_delete = []
+        for item_id in data.item_ids:
+            item = item_map.get(item_id)
+            if not item:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order item not found")
+            items_to_delete.append(item)
+
+        for item in items_to_delete:
+            order.items.remove(item)
+            await self.db.delete(item)
+        await self.db.flush()
+
+        await self._recompute_totals(order)
+        order.updated_at = datetime.now(UTC)
+        await self.db.flush()
+        return await self.get_order(order_id)
 
     async def _recalculate_totals(self, order: Order, tax_rate: float, item_total: float) -> None:
         order.subtotal = round(order.subtotal + item_total, 2)
         order.tax_amount = round(order.subtotal * tax_rate, 2)
-        order.total = round(order.subtotal + order.tax_amount, 2)
+        order.total = round(order.subtotal + order.tax_amount - order.discount_amount, 2)
+
+    async def _recompute_totals(self, order: Order) -> None:
+        """Full recompute from all non-cancelled items — used by bulk item actions
+        (discount/comp/delete) where several items with distinct tax rates change at once."""
+        menu_item_ids = {item.menu_item_id for item in order.items}
+        tax_rates: dict[str, float] = {}
+        if menu_item_ids:
+            result = await self.db.execute(select(MenuItem.id, MenuItem.tax_rate).where(MenuItem.id.in_(menu_item_ids)))
+            tax_rates = {row[0]: row[1] for row in result.all()}
+
+        subtotal = 0.0
+        tax_amount = 0.0
+        for item in order.items:
+            if item.status == "cancelled":
+                continue
+            net = 0.0 if item.is_comped else max(0.0, item.unit_price * item.qty - item.discount_amount)
+            subtotal += net
+            tax_amount += net * tax_rates.get(item.menu_item_id, 0.0)
+
+        order.subtotal = round(subtotal, 2)
+        order.tax_amount = round(tax_amount, 2)
+        order.total = round(order.subtotal + order.tax_amount - order.discount_amount, 2)

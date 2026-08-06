@@ -11,7 +11,11 @@ export function createOrdersResource(http: Http) {
       http.post<Order>('/orders', data),
     addItem: (
       orderId: string,
-      item: Omit<OrderItem, 'id' | 'orderId' | 'status' | 'sortOrder' | 'fireCourse'> & Partial<Pick<OrderItem, 'fireCourse'>>,
+      item: Omit<
+        OrderItem,
+        'id' | 'orderId' | 'status' | 'sortOrder' | 'fireCourse' | 'discountAmount' | 'isComped'
+      > &
+        Partial<Pick<OrderItem, 'fireCourse'>>,
     ) => http.post<OrderItem>(`/orders/${orderId}/items`, item),
     updateItemStatus: (orderId: string, itemId: string, status: string) =>
       http.patch<OrderItem>(`/orders/${orderId}/items/${itemId}/status`, { status }),
@@ -26,8 +30,26 @@ export function createOrdersResource(http: Http) {
     submit: (orderId: string) => http.post<Order>(`/orders/${orderId}/submit`, {}),
     cancel: (orderId: string) => http.post<Order>(`/orders/${orderId}/cancel`, {}),
     applyDiscount: (orderId: string, code: string) => http.post<Order>(`/orders/${orderId}/discount`, { code }),
-    split: (orderId: string, assignments: { itemId: string; guestNumber: number }[]) =>
-      http.post<Order[]>(`/orders/${orderId}/split`, { assignments }),
+    assignGuests: (orderId: string, assignments: { itemId: string; guestNumber: number | null }[]) =>
+      http.post<Order>(`/orders/${orderId}/items/assign-guests`, { assignments }),
+    applyItemDiscount: (
+      orderId: string,
+      itemIds: string[],
+      discountType: 'percent' | 'fixed' | null,
+      discountValue: number | null,
+    ) =>
+      http.post<Order>(`/orders/${orderId}/items/discount`, {
+        itemIds,
+        discountType,
+        discountValue,
+      }),
+    setItemComp: (orderId: string, itemIds: string[], comped: boolean) =>
+      http.post<Order>(`/orders/${orderId}/items/comp`, { itemIds, comped }),
+    deleteItems: (
+      orderId: string,
+      itemIds: string[],
+      override?: { managerUserId: string; pin: string; reason: string },
+    ) => http.post<Order>(`/orders/${orderId}/items/delete`, { itemIds, override: override ?? null }),
     fireCourse: (orderId: string, course: number) =>
       http.post<Order>(`/orders/${orderId}/fire-course`, { course }),
     publicActive: (locationId: string) => http.get<Order[]>(`/public/locations/${locationId}/orders`),

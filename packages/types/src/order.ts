@@ -11,7 +11,6 @@ export const OrderStatus = z.enum([
   'served',
   'paid',
   'cancelled',
-  'split',
 ])
 export type OrderStatus = z.infer<typeof OrderStatus>
 
@@ -38,6 +37,12 @@ export const OrderItemSchema = z.object({
   status: OrderItemStatus.default('pending'),
   sortOrder: z.number().int().default(0),
   fireCourse: z.number().int().min(1).max(5).default(1),
+  guestNumber: z.number().int().min(1).nullable().optional(),
+  discountType: z.enum(['percent', 'fixed']).nullable().optional(),
+  discountValue: z.number().nullable().optional(),
+  discountAmount: z.number().min(0).default(0),
+  isComped: z.boolean().default(false),
+  compedBy: z.string().uuid().nullable().optional(),
 })
 export type OrderItem = z.infer<typeof OrderItemSchema>
 
@@ -51,8 +56,6 @@ export const OrderSchema = z.object({
   channel: OrderChannel.default('dine_in'),
   status: OrderStatus.default('open'),
   guestCount: z.number().int().min(1).optional(),
-  guestNumber: z.number().int().min(1).optional(),
-  splitFromOrderId: z.string().uuid().optional(),
   firedCourses: z.array(z.number().int()).default([]),
   items: z.array(OrderItemSchema).default([]),
   subtotal: z.number().min(0),
