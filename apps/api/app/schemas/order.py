@@ -51,6 +51,8 @@ class OrderOut(BaseModel):
     channel: str
     status: str
     guest_count: int | None = None
+    guest_number: int | None = None
+    split_from_order_id: str | None = None
     subtotal: float
     tax_amount: float
     total: float
@@ -71,6 +73,15 @@ class OrderCreate(BaseModel):
 
 class OrderStatusUpdate(BaseModel):
     status: str  # pending | confirmed | preparing | ready | paid | cancelled
+
+
+class OrderSplitItem(BaseModel):
+    item_id: str
+    guest_number: int
+
+
+class OrderSplitRequest(BaseModel):
+    assignments: list[OrderSplitItem]
 
 
 class OrderWithItemsOut(OrderOut):

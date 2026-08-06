@@ -164,3 +164,22 @@ export function useCancelOrder() {
     onError: (e: Error) => toast.error(e.message),
   })
 }
+
+export function useSplitOrder() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      orderId,
+      assignments,
+    }: {
+      orderId: string
+      assignments: { itemId: string; guestNumber: number }[]
+    }) => apiClient.orders.split(orderId, assignments),
+    onSuccess: (children, variables) => {
+      qc.invalidateQueries({ queryKey: ['order', variables.orderId] })
+      qc.invalidateQueries({ queryKey: ['orders', children[0]?.locationId] })
+      toast.success(`Order split into ${children.length} orders`)
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}

@@ -24,6 +24,8 @@ export function createOrdersResource(http: Http) {
     submit: (orderId: string) => http.post<Order>(`/orders/${orderId}/submit`, {}),
     cancel: (orderId: string) => http.post<Order>(`/orders/${orderId}/cancel`, {}),
     applyDiscount: (orderId: string, code: string) => http.post<Order>(`/orders/${orderId}/discount`, { code }),
+    split: (orderId: string, assignments: { itemId: string; guestNumber: number }[]) =>
+      http.post<Order[]>(`/orders/${orderId}/split`, { assignments }),
     publicActive: (locationId: string) => http.get<Order[]>(`/public/locations/${locationId}/orders`),
   }
 }

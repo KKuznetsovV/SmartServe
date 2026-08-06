@@ -11,6 +11,7 @@ export const OrderStatus = z.enum([
   'served',
   'paid',
   'cancelled',
+  'split',
 ])
 export type OrderStatus = z.infer<typeof OrderStatus>
 
@@ -49,6 +50,8 @@ export const OrderSchema = z.object({
   channel: OrderChannel.default('dine_in'),
   status: OrderStatus.default('open'),
   guestCount: z.number().int().min(1).optional(),
+  guestNumber: z.number().int().min(1).optional(),
+  splitFromOrderId: z.string().uuid().optional(),
   items: z.array(OrderItemSchema).default([]),
   subtotal: z.number().min(0),
   taxAmount: z.number().min(0),
