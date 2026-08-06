@@ -13,6 +13,7 @@ import { createStaffResource } from './staff'
 import { createTablesResource } from './table'
 
 export type { ApiClientConfig } from './client'
+export type { ItemSelection } from './order'
 
 export function createApiClient(config: ApiClientConfig) {
   const http = createHttp(config)

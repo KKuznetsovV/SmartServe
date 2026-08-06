@@ -37,15 +37,18 @@ import { CancelDropZone } from './cancel-drop-zone'
 import { GuestAssignDialog } from './guest-assign-dialog'
 import { ItemDiscountDialog } from './item-discount-dialog'
 import { ManagerOverrideDialog } from './manager-override-dialog'
+import { QuantitySelectDialog } from './quantity-select-dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { cn } from '@/lib/utils'
+import type { ItemSelection } from '@smartserve/api-client'
 import type { OrderStatus, PaymentMethod, MenuItem, OrderItem } from '@smartserve/types'
 
 type ActiveDrag = { type: 'menu-item'; item: MenuItem } | { type: 'order-item'; item: OrderItem }
+type BulkAction = 'guest' | 'discount' | 'comp-on' | 'comp-off' | 'delete'
 
 const ORDER_STATUS_VARIANT: Record<
   OrderStatus,
@@ -85,6 +88,9 @@ export default function OrderDetailPage({ params }: Props) {
   const [guestDialogOpen, setGuestDialogOpen] = useState(false)
   const [discountDialogOpen, setDiscountDialogOpen] = useState(false)
   const [overrideOpen, setOverrideOpen] = useState(false)
+  const [qtyDialogOpen, setQtyDialogOpen] = useState(false)
+  const [pendingAction, setPendingAction] = useState<BulkAction | null>(null)
+  const [activeSelections, setActiveSelections] = useState<ItemSelection[]>([])
 
   const { data: order, isLoading } = useOrder(orderId)
   const { data: payments } = useOrderPayments(orderId)
@@ -219,19 +225,62 @@ export default function OrderDetailPage({ params }: Props) {
     setSelectedIds(new Set())
   }
 
-  async function handleMarkComp(comped: boolean) {
-    if (selectedIds.size === 0) return
-    await setItemComp.mutateAsync({ orderId, itemIds: Array.from(selectedIds), comped })
+  /** Entry point for every group-action button — if any selected item has more than
+   * one unit, ask how many units to apply the action to before running it. */
+  function startBulkAction(action: BulkAction) {
+    if (!order) return
+    const multiQtyItems = order.items.filter((i) => selectedIds.has(i.id) && i.qty > 1)
+    if (multiQtyItems.length > 0) {
+      setPendingAction(action)
+      setQtyDialogOpen(true)
+    } else {
+      runBulkAction(action, Array.from(selectedIds).map((itemId) => ({ itemId })))
+    }
+  }
+
+  function handleQuantityConfirm(quantities: Record<string, number>) {
+    setQtyDialogOpen(false)
+    const selections = Array.from(selectedIds).map((itemId) => ({ itemId, quantity: quantities[itemId] }))
+    if (pendingAction) runBulkAction(pendingAction, selections)
+    setPendingAction(null)
+  }
+
+  function runBulkAction(action: BulkAction, selections: ItemSelection[]) {
+    switch (action) {
+      case 'guest':
+        setActiveSelections(selections)
+        setGuestDialogOpen(true)
+        break
+      case 'discount':
+        setActiveSelections(selections)
+        setDiscountDialogOpen(true)
+        break
+      case 'comp-on':
+        handleMarkComp(true, selections)
+        break
+      case 'comp-off':
+        handleMarkComp(false, selections)
+        break
+      case 'delete':
+        handleDeleteSelected(selections)
+        break
+    }
+  }
+
+  async function handleMarkComp(comped: boolean, selections: ItemSelection[]) {
+    if (selections.length === 0) return
+    await setItemComp.mutateAsync({ orderId, items: selections, comped })
     exitSelectMode()
   }
 
-  async function handleDeleteSelected() {
-    if (selectedIds.size === 0 || !order) return
+  async function handleDeleteSelected(selections: ItemSelection[]) {
+    if (selections.length === 0 || !order) return
     if (order.status === 'open') {
-      if (!confirm(`Delete ${selectedIds.size} item(s)?`)) return
-      await deleteItems.mutateAsync({ orderId, itemIds: Array.from(selectedIds) })
+      if (!confirm(`Delete ${selections.length} item(s)?`)) return
+      await deleteItems.mutateAsync({ orderId, items: selections })
       exitSelectMode()
     } else {
+      setActiveSelections(selections)
       setOverrideOpen(true)
     }
   }
@@ -341,22 +390,32 @@ export default function OrderDetailPage({ params }: Props) {
         <Card className="border-primary">
           <CardContent className="p-3 flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium mr-1">{selectedIds.size} selected</span>
-            <Button variant="outline" size="sm" onClick={() => setGuestDialogOpen(true)}>
+            <Button variant="outline" size="sm" onClick={() => startBulkAction('guest')}>
               Assign to Guest
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setDiscountDialogOpen(true)}>
+            <Button variant="outline" size="sm" onClick={() => startBulkAction('discount')}>
               Discount
             </Button>
-            <Button variant="outline" size="sm" onClick={() => handleMarkComp(true)} disabled={setItemComp.isPending}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => startBulkAction('comp-on')}
+              disabled={setItemComp.isPending}
+            >
               On the House
             </Button>
-            <Button variant="outline" size="sm" onClick={() => handleMarkComp(false)} disabled={setItemComp.isPending}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => startBulkAction('comp-off')}
+              disabled={setItemComp.isPending}
+            >
               Remove Comp
             </Button>
             <Button
               variant="destructive"
               size="sm"
-              onClick={handleDeleteSelected}
+              onClick={() => startBulkAction('delete')}
               disabled={deleteItems.isPending}
             >
               Delete
@@ -510,7 +569,7 @@ export default function OrderDetailPage({ params }: Props) {
         open={guestDialogOpen}
         onOpenChange={setGuestDialogOpen}
         orderId={orderId}
-        itemIds={Array.from(selectedIds)}
+        items={activeSelections}
         guestCount={order.guestCount ?? 2}
         onDone={exitSelectMode}
       />
@@ -518,8 +577,14 @@ export default function OrderDetailPage({ params }: Props) {
         open={discountDialogOpen}
         onOpenChange={setDiscountDialogOpen}
         orderId={orderId}
-        itemIds={Array.from(selectedIds)}
+        items={activeSelections}
         onDone={exitSelectMode}
+      />
+      <QuantitySelectDialog
+        open={qtyDialogOpen}
+        onOpenChange={setQtyDialogOpen}
+        items={order.items.filter((i) => selectedIds.has(i.id) && i.qty > 1)}
+        onConfirm={handleQuantityConfirm}
       />
       <ManagerOverrideDialog
         open={overrideOpen}
@@ -529,7 +594,7 @@ export default function OrderDetailPage({ params }: Props) {
         description="These items have already been sent to the kitchen. A manager must approve deleting them."
         pending={deleteItems.isPending}
         onConfirm={async (override) => {
-          await deleteItems.mutateAsync({ orderId, itemIds: Array.from(selectedIds), override })
+          await deleteItems.mutateAsync({ orderId, items: activeSelections, override })
           setOverrideOpen(false)
           exitSelectMode()
         }}

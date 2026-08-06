@@ -86,20 +86,32 @@ class OrderStatusUpdate(BaseModel):
 class GuestAssignment(BaseModel):
     item_id: str
     guest_number: int | None = None  # None clears the tag (item goes back to "shared")
+    quantity: int | None = None  # None = whole item; otherwise split off this many units first
 
 
 class AssignGuestsRequest(BaseModel):
     assignments: list[GuestAssignment]
 
 
+class ItemSelection(BaseModel):
+    """One selected order item plus how many of its units the bulk action applies to.
+
+    A `quantity` less than the item's current qty splits off a new row for just
+    that many units first, leaving the remainder untouched on the original row.
+    """
+
+    item_id: str
+    quantity: int | None = None  # None = whole item
+
+
 class OrderItemDiscountRequest(BaseModel):
-    item_ids: list[str]
+    items: list[ItemSelection]
     discount_type: str | None = None  # "percent" | "fixed"; both None clears the discount
     discount_value: float | None = None
 
 
 class OrderItemCompRequest(BaseModel):
-    item_ids: list[str]
+    items: list[ItemSelection]
     comped: bool
 
 
@@ -110,7 +122,7 @@ class ManagerOverride(BaseModel):
 
 
 class OrderItemDeleteRequest(BaseModel):
-    item_ids: list[str]
+    items: list[ItemSelection]
     override: ManagerOverride | None = None
 
 

@@ -2,6 +2,12 @@ import type { Order, OrderItem } from '@smartserve/types'
 
 import type { Http } from './client'
 
+/** One selected item plus how many of its units a bulk action applies to (omit/undefined = whole item). */
+export interface ItemSelection {
+  itemId: string
+  quantity?: number
+}
+
 export function createOrdersResource(http: Http) {
   return {
     list: (locationId: string, status?: string) =>
@@ -30,28 +36,31 @@ export function createOrdersResource(http: Http) {
     submit: (orderId: string) => http.post<Order>(`/orders/${orderId}/submit`, {}),
     cancel: (orderId: string) => http.post<Order>(`/orders/${orderId}/cancel`, {}),
     applyDiscount: (orderId: string, code: string) => http.post<Order>(`/orders/${orderId}/discount`, { code }),
-    assignGuests: (orderId: string, assignments: { itemId: string; guestNumber: number | null }[]) =>
-      http.post<Order>(`/orders/${orderId}/items/assign-guests`, { assignments }),
+    assignGuests: (
+      orderId: string,
+      assignments: (ItemSelection & { guestNumber: number | null })[],
+    ) => http.post<Order>(`/orders/${orderId}/items/assign-guests`, { assignments }),
     applyItemDiscount: (
       orderId: string,
-      itemIds: string[],
+      items: ItemSelection[],
       discountType: 'percent' | 'fixed' | null,
       discountValue: number | null,
     ) =>
       http.post<Order>(`/orders/${orderId}/items/discount`, {
-        itemIds,
+        items,
         discountType,
         discountValue,
       }),
-    setItemComp: (orderId: string, itemIds: string[], comped: boolean) =>
-      http.post<Order>(`/orders/${orderId}/items/comp`, { itemIds, comped }),
+    setItemComp: (orderId: string, items: ItemSelection[], comped: boolean) =>
+      http.post<Order>(`/orders/${orderId}/items/comp`, { items, comped }),
     deleteItems: (
       orderId: string,
-      itemIds: string[],
+      items: ItemSelection[],
       override?: { managerUserId: string; pin: string; reason: string },
-    ) => http.post<Order>(`/orders/${orderId}/items/delete`, { itemIds, override: override ?? null }),
+    ) => http.post<Order>(`/orders/${orderId}/items/delete`, { items, override: override ?? null }),
     fireCourse: (orderId: string, course: number) =>
       http.post<Order>(`/orders/${orderId}/fire-course`, { course }),
     publicActive: (locationId: string) => http.get<Order[]>(`/public/locations/${locationId}/orders`),
   }
 }
+
