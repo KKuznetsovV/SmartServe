@@ -39,6 +39,18 @@ class LocationCreate(BaseModel):
     language: str = "he"
 
 
+class UserOut(BaseModel):
+    id: str
+    business_id: str
+    email: str | None = None
+    name: str
+    role: str
+    language: str
+    active: bool
+
+    model_config = {"from_attributes": True}
+
+
 class LocationUpdate(BaseModel):
     name: str | None = None
     address: str | None = None

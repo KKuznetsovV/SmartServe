@@ -1,14 +1,19 @@
 from fastapi import Depends
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.deps import get_current_user, require_manager, require_owner
 from app.api.v1.router_base import APIRouter
 from app.db.models import User
 from app.db.session import get_db
-from app.modules.auth.business_schemas import BusinessOut, BusinessUpdate, LocationCreate, LocationOut
+from app.modules.auth.business_schemas import (
+    BusinessOut,
+    BusinessUpdate,
+    LocationCreate,
+    LocationOut,
+    UserOut,
+)
 from app.modules.auth.business_service import BusinessService
-from app.modules.staff.schemas import UserOut
-from app.modules.staff.service import StaffService
 
 router = APIRouter()
 
@@ -57,5 +62,7 @@ async def list_staff(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_manager),
 ):
-    users = await StaffService(db).list_staff(business_id)
-    return [UserOut.model_validate(u) for u in users]
+    # Users belong to `auth` (this service) — the `staff` service's own shift-tracking
+    # data (services/staff, step 21) is a separate concern from this business/user lookup.
+    result = await db.execute(select(User).where(User.business_id == business_id))
+    return [UserOut.model_validate(u) for u in result.scalars().all()]

@@ -7,8 +7,8 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models import MenuItem, Order, OrderItem, Table
-from app.modules.auth.service import AuthService
+from app.core.security import verify_password
+from app.db.models import Location, MenuItem, Order, OrderItem, Table, User
 from app.modules.ordering.schemas import (
     AssignGuestsRequest,
     OrderCreate,
@@ -46,6 +46,32 @@ VALID_ITEM_TRANSITIONS: dict[str, set[str]] = {
 class OrderService:
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    async def _verify_manager_pin(self, location_id: str, manager_user_id: str, pin: str) -> User:
+        """Confirm a manager/owner override PIN without issuing a session token.
+
+        `auth` (services/auth) owns the `users`/`locations` tables and is the source of truth
+        for login/PIN issuance, but this is a same-database, read-only check — no need for a
+        network round trip to `auth` for every override (see docs/microservices-plan.md §4).
+        """
+        loc_result = await self.db.execute(select(Location).where(Location.id == location_id, Location.active))
+        location = loc_result.scalar_one_or_none()
+        if not location:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid manager PIN")
+
+        result = await self.db.execute(
+            select(User).where(
+                User.id == manager_user_id,
+                User.business_id == location.business_id,
+                User.role.in_(["owner", "manager"]),
+                User.active,
+                User.pin_hash.is_not(None),
+            )
+        )
+        user = result.scalar_one_or_none()
+        if not user or not user.pin_hash or not verify_password(pin, user.pin_hash):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid manager PIN")
+        return user
 
     async def list_orders(
         self, location_id: str, status_filter: str | None = None, limit: int = 100, offset: int = 0
@@ -351,9 +377,7 @@ class OrderService:
                 )
             if not data.override.reason.strip():
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A reason is required")
-            await AuthService(self.db).verify_manager_pin(
-                order.location_id, data.override.manager_user_id, data.override.pin
-            )
+            await self._verify_manager_pin(order.location_id, data.override.manager_user_id, data.override.pin)
 
         item_map = {item.id: item for item in order.items}
         items_to_delete = []
