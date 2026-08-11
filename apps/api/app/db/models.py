@@ -285,25 +285,3 @@ class PrinterRoute(Base):
 
     printer: Mapped[Printer] = relationship(back_populates="routes")
     item: Mapped[MenuItem] = relationship(back_populates="printer_routes")
-
-
-# ─── Shifts ───────────────────────────────────────────────────────────────────
-
-
-class Shift(Base):
-    __tablename__ = "shifts"
-
-    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
-    location_id: Mapped[str] = mapped_column(ForeignKey("locations.id"), nullable=False)
-    opened_by: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
-    closed_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
-    opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
-    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    opening_cash: Mapped[float] = mapped_column(Float, default=0.0)
-    closing_cash: Mapped[float | None] = mapped_column(Float)
-    status: Mapped[str] = mapped_column(String(20), default="open")
-    notes: Mapped[str | None] = mapped_column(Text)
-
-    location: Mapped[Location] = relationship()
-    opener: Mapped[User] = relationship(foreign_keys=[opened_by])
-    closer: Mapped[User | None] = relationship(foreign_keys=[closed_by])
