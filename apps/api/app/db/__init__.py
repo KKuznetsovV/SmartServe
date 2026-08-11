@@ -7,7 +7,6 @@ from app.db.models import (  # noqa: F401
     ModifierGroup,
     Order,
     OrderItem,
-    Payment,
     Printer,
     PrinterRoute,
     Table,
