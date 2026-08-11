@@ -137,3 +137,11 @@ gateway config and docker-compose gain a new route/entry per step.
 
 Each step: new branch → implement → validate → commit → `git checkout main && git merge --no-ff` →
 `git push origin main` → delete local feature branch, exactly as done for prior features in this repo.
+
+**Note on Step 15**: `db/models.py`'s 15 ORM models are deeply cross-referenced (e.g. `Order` touches
+`Location`, `Table`, `Discount`, `Payment`, `MenuItem`). Splitting that file per-module at this step would
+require SQLAlchemy forward-ref workarounds for a purely organizational win, since everything still runs as
+one monolith. Step 15 reorganizes the router/schema/service layers into `modules/*` and leaves `db/models.py`
+as a single cross-cutting file; each Tier-1 extraction step (17-24) does its own trimmed-down model split
+for just the tables that service owns, with cross-service references as plain UUID columns (per §4) — that's
+where the split actually pays off.
