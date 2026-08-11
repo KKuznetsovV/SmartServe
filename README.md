@@ -30,6 +30,7 @@ SmartServe/
 │   ├── catalog/                  # menu categories/items/modifiers, discounts
 │   ├── ordering/                  # tables, orders/order-items lifecycle, discount application
 │   ├── payments/                   # payment recording, split/partial payments, order paid-status transition
+│   ├── staff/                       # staff CRUD, cash-drawer shift open/close/current/list
 │   └── _shared/                   # small internal lib (JWT verify, HTTP client, event helpers) — scaffolded, not yet consumed
 ├── packages/                 # shared frontend code
 │   ├── types/                  # @smartserve/types — shared TS types + Zod schemas
@@ -70,8 +71,8 @@ cp apps/api/.env.example apps/api/.env
 docker compose up -d --wait
 ```
 
-This starts Postgres, Redis, the `api` monolith, the extracted `auth`, `catalog`, `ordering` and `payments`
-services, and the `gateway` (nginx) in front of them all. Frontends should point at the gateway:
+This starts Postgres, Redis, the `api` monolith, the extracted `auth`, `catalog`, `ordering`, `payments` and
+`staff` services, and the `gateway` (nginx) in front of them all. Frontends should point at the gateway:
 
 | Service | URL |
 |---|---|
@@ -81,6 +82,7 @@ services, and the `gateway` (nginx) in front of them all. Frontends should point
 | `services/catalog` (direct) | http://localhost:8002 |
 | `services/ordering` (direct) | http://localhost:8003 |
 | `services/payments` (direct) | http://localhost:8004 |
+| `services/staff` (direct) | http://localhost:8005 |
 | Postgres | localhost:5432 |
 | Redis | localhost:6379 |
 
@@ -96,7 +98,7 @@ pnpm test         # turbo run test
 pnpm format       # prettier --write
 ```
 
-### Backend service commands (from each service directory, e.g. `apps/api`, `services/auth`, `services/catalog`, `services/ordering`, `services/payments`)
+### Backend service commands (from each service directory, e.g. `apps/api`, `services/auth`, `services/catalog`, `services/ordering`, `services/payments`, `services/staff`)
 
 ```bash
 python -m venv .venv && source .venv/Scripts/activate   # or .venv/bin/activate on macOS/Linux
@@ -126,7 +128,7 @@ full rationale, service-boundary table, and step-by-step plan.
 | 18 | `services/catalog` extraction | ✅ done |
 | 19 | `services/ordering` extraction | ✅ done |
 | 20 | `services/payments` extraction | ✅ done |
-| 21 | `services/staff` extraction | ⬜ not started |
+| 21 | `services/staff` extraction | ✅ done |
 | 22 | `services/printing` extraction | ⬜ not started |
 | 23 | `services/reporting` extraction | ⬜ not started |
 | 24 | `services/ai` extraction | ⬜ not started |
