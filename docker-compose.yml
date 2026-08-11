@@ -172,6 +172,27 @@ services:
       - ./services/printing:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
+  reporting:
+    build:
+      context: ./services/reporting
+      dockerfile: Dockerfile
+    ports:
+      - "8007:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://smartserve:smartserve@db:5432/smartserve
+      REDIS_URL: redis://redis:6379/0
+      ENVIRONMENT: development
+    env_file:
+      - ./apps/api/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/reporting:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
   gateway:
     build:
       context: ./services/gateway
@@ -186,6 +207,7 @@ services:
       - payments
       - staff
       - printing
+      - reporting
     healthcheck:
       test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:80/api/v1/health"]
       interval: 5s

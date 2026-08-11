@@ -5,8 +5,6 @@ from app.db.models import (  # noqa: F401
     MenuItem,
     Modifier,
     ModifierGroup,
-    Order,
-    OrderItem,
     Printer,
     PrinterRoute,
     Table,
