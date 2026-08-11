@@ -9,7 +9,8 @@ from fastapi import HTTPException, status
 
 def parse_json_reply(message: anthropic.types.Message) -> dict:
     """Claude occasionally wraps JSON in ```json fences despite instructions — strip and retry."""
-    text = message.content[0].text
+    # content blocks are always text for our prompts (SDK's union type doesn't reflect that)
+    text = message.content[0].text  # type: ignore[union-attr]
     try:
         return json.loads(text)
     except json.JSONDecodeError:
@@ -33,7 +34,8 @@ def parse_menu_import_reply(message: anthropic.types.Message) -> dict:
 async def create_message(client: anthropic.Anthropic, **kwargs) -> anthropic.types.Message:
     """Call the Anthropic API off the event loop, turning SDK errors into clean HTTP responses."""
     try:
-        return await asyncio.to_thread(client.messages.create, **kwargs)
+        # SDK's overloaded create() signature doesn't line up with to_thread's expected callable type
+        return await asyncio.to_thread(client.messages.create, **kwargs)  # type: ignore[arg-type]
     except anthropic.RateLimitError as exc:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="AI service is busy, please try again shortly"

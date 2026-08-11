@@ -78,7 +78,8 @@ async def dispatch_intent(intent: str, params: dict, location_id: str, db: Async
         item = await _resolve_item(params, location_id, menu_service)
         fields: dict = {}
         if "price" in params or "new_price" in params:
-            fields["price"] = float(params.get("price", params.get("new_price")))
+            # guarded by the `in` check above, so the value is never actually None here
+            fields["price"] = float(params.get("price", params.get("new_price")))  # type: ignore[arg-type]
         if "description" in params:
             fields["description"] = params["description"]
         if "name" in params and params["name"] != item.name:
