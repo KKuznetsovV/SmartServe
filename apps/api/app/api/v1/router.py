@@ -1,40 +1,37 @@
-from app.api.v1.endpoints import (
-    ai,
-    auth,
-    businesses,
-    discounts,
-    health,
-    locations,
-    menu,
-    orders,
-    payments,
-    printers,
-    reports,
-    shifts,
-    staff,
-    tables,
-    ws,
-)
+from app.api.v1.endpoints import health, ws
 from app.api.v1.router_base import APIRouter
+from app.modules.ai.router import router as ai
+from app.modules.auth.business_router import router as businesses
+from app.modules.auth.location_router import router as locations
+from app.modules.auth.router import router as auth
+from app.modules.catalog.discount_router import router as discounts
+from app.modules.catalog.router import router as menu
+from app.modules.ordering.router import router as orders
+from app.modules.ordering.table_router import router as tables
+from app.modules.payments.router import router as payments
+from app.modules.printing.router import router as printers
+from app.modules.reports.router import router as reports
+from app.modules.staff.router import router as staff
+from app.modules.staff.shift_router import router as shifts
 
 api_router = APIRouter()
 
 api_router.include_router(health.router, tags=["health"])
-api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
-api_router.include_router(businesses.router, prefix="/businesses", tags=["businesses"])
-api_router.include_router(locations.router, prefix="/locations", tags=["locations"])
+api_router.include_router(auth, prefix="/auth", tags=["auth"])
+api_router.include_router(businesses, prefix="/businesses", tags=["businesses"])
+api_router.include_router(locations, prefix="/locations", tags=["locations"])
 # Menu routes span categories, items, modifiers — no prefix so internal paths are clean
-api_router.include_router(menu.router, prefix="/menu", tags=["menu"])
+api_router.include_router(menu, prefix="/menu", tags=["menu"])
 # Tables endpoint handles both /locations/{id}/tables and /tables routes
-api_router.include_router(tables.router, tags=["tables"])
+api_router.include_router(tables, tags=["tables"])
 # Orders endpoint handles /locations/{id}/orders and /orders/* routes
-api_router.include_router(orders.router, tags=["orders"])
+api_router.include_router(orders, tags=["orders"])
 # Payments and printer-routes have order-scoped and standalone paths
-api_router.include_router(payments.router, tags=["payments"])
-api_router.include_router(printers.router, tags=["printers"])
-api_router.include_router(staff.router, tags=["staff"])
-api_router.include_router(reports.router, tags=["reports"])
-api_router.include_router(discounts.router, tags=["discounts"])
-api_router.include_router(shifts.router, tags=["shifts"])
-api_router.include_router(ai.router, prefix="/ai", tags=["ai"])
+api_router.include_router(payments, tags=["payments"])
+api_router.include_router(printers, tags=["printers"])
+api_router.include_router(staff, tags=["staff"])
+api_router.include_router(reports, tags=["reports"])
+api_router.include_router(discounts, tags=["discounts"])
+api_router.include_router(shifts, tags=["shifts"])
+api_router.include_router(ai, prefix="/ai", tags=["ai"])
 api_router.include_router(ws.router, prefix="/ws", tags=["websocket"])
