@@ -1,0 +1,12 @@
+{
+  "name": "@smartserve/config",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./eslint": "./eslint.mjs"
+  },
+  "dependencies": {
+    "@eslint/eslintrc": "^3.3.6"
+  }
+}

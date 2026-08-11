@@ -5,7 +5,7 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  transpilePackages: ['@smartserve/types', '@smartserve/api-client'],
+  transpilePackages: ['@smartserve/types', '@smartserve/api-client', '@smartserve/ui'],
 }
 
 export default withNextIntl(nextConfig)
