@@ -28,6 +28,7 @@ SmartServe/
 │   ├── gateway/                # nginx reverse proxy — single stable base URL for all frontends
 │   ├── auth/                    # businesses, locations, users, JWT issuance/refresh, PIN login
 │   ├── catalog/                  # menu categories/items/modifiers, discounts
+│   ├── ordering/                  # tables, orders/order-items lifecycle, discount application
 │   └── _shared/                   # small internal lib (JWT verify, HTTP client, event helpers) — scaffolded, not yet consumed
 ├── packages/                 # shared frontend code
 │   ├── types/                  # @smartserve/types — shared TS types + Zod schemas
@@ -68,8 +69,8 @@ cp apps/api/.env.example apps/api/.env
 docker compose up -d --wait
 ```
 
-This starts Postgres, Redis, the `api` monolith, the extracted `auth` and `catalog` services, and the
-`gateway` (nginx) in front of them all. Frontends should point at the gateway:
+This starts Postgres, Redis, the `api` monolith, the extracted `auth`, `catalog` and `ordering` services,
+and the `gateway` (nginx) in front of them all. Frontends should point at the gateway:
 
 | Service | URL |
 |---|---|
@@ -77,6 +78,7 @@ This starts Postgres, Redis, the `api` monolith, the extracted `auth` and `catal
 | `apps/api` (monolith, direct) | http://localhost:8000 |
 | `services/auth` (direct) | http://localhost:8001 |
 | `services/catalog` (direct) | http://localhost:8002 |
+| `services/ordering` (direct) | http://localhost:8003 |
 | Postgres | localhost:5432 |
 | Redis | localhost:6379 |
 
@@ -92,7 +94,7 @@ pnpm test         # turbo run test
 pnpm format       # prettier --write
 ```
 
-### Backend service commands (from each service directory, e.g. `apps/api`, `services/auth`, `services/catalog`)
+### Backend service commands (from each service directory, e.g. `apps/api`, `services/auth`, `services/catalog`, `services/ordering`)
 
 ```bash
 python -m venv .venv && source .venv/Scripts/activate   # or .venv/bin/activate on macOS/Linux
@@ -120,8 +122,8 @@ full rationale, service-boundary table, and step-by-step plan.
 | 16 | `services/gateway` (nginx) + `services/_shared` scaffold | ✅ done |
 | 17 | `services/auth` extraction | ✅ done |
 | 18 | `services/catalog` extraction | ✅ done |
-| 19 | `services/ordering` extraction | 🔄 in progress |
-| 20 | `services/payments` extraction | ⬜ not started |
+| 19 | `services/ordering` extraction | ✅ done |
+| 20 | `services/payments` extraction | 🔄 in progress |
 | 21 | `services/staff` extraction | ⬜ not started |
 | 22 | `services/printing` extraction | ⬜ not started |
 | 23 | `services/reporting` extraction | ⬜ not started |
