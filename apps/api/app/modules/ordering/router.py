@@ -5,9 +5,8 @@ from app.api.v1.deps import require_staff
 from app.api.v1.router_base import APIRouter
 from app.db.models import User
 from app.db.session import get_db
-from app.modules.catalog.discount_schemas import ApplyDiscountIn
-from app.modules.catalog.discount_service import DiscountService
 from app.modules.ordering.schemas import (
+    ApplyDiscountIn,
     AssignGuestsRequest,
     OrderCreate,
     OrderFireCourseRequest,
@@ -132,7 +131,7 @@ async def apply_discount(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_staff),
 ):
-    return await DiscountService(db).apply_to_order(order_id, data)
+    return await OrderService(db).apply_discount(order_id, data)
 
 
 @router.post("/orders/{order_id}/items/assign-guests", response_model=OrderWithItemsOut)

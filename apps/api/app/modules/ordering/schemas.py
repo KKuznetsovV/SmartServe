@@ -3,6 +3,10 @@ from datetime import datetime
 from app.schemas.base import BaseSchema as BaseModel
 
 
+class ApplyDiscountIn(BaseModel):
+    code: str
+
+
 class OrderItemModifier(BaseModel):
     modifier_id: str
     name: str

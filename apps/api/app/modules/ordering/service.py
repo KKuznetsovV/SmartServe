@@ -8,8 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.security import verify_password
-from app.db.models import Location, MenuItem, Order, OrderItem, Table, User
+from app.db.models import Discount, Location, MenuItem, Order, OrderItem, Table, User
 from app.modules.ordering.schemas import (
+    ApplyDiscountIn,
     AssignGuestsRequest,
     OrderCreate,
     OrderFireCourseRequest,
@@ -72,6 +73,59 @@ class OrderService:
         if not user or not user.pin_hash or not verify_password(pin, user.pin_hash):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid manager PIN")
         return user
+
+    async def apply_discount(self, order_id: str, data: ApplyDiscountIn) -> Order:
+        """Apply a discount code to an order's total.
+
+        `Discount` is owned by `catalog` (services/catalog) but this mutates `Order`, which
+        `ordering` owns — so this logic lives here rather than in catalog's service, and reads
+        the shared `discounts`/`locations` tables directly (same DB, read-only lookups; see
+        docs/microservices-plan.md §4).
+        """
+        order_result = await self.db.execute(
+            select(Order).where(Order.id == order_id).options(selectinload(Order.items))
+        )
+        order = order_result.scalar_one_or_none()
+        if not order:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+        if order.status not in {"open", "submitted"}:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot apply discount to this order")
+
+        loc_result = await self.db.execute(select(Location).where(Location.id == order.location_id))
+        location = loc_result.scalar_one_or_none()
+        if not location:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order location not found")
+
+        discount_result = await self.db.execute(
+            select(Discount).where(
+                Discount.business_id == location.business_id,
+                Discount.code == data.code.upper(),
+                Discount.active.is_(True),
+            )
+        )
+        discount = discount_result.scalar_one_or_none()
+        if not discount:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Discount code not found or inactive")
+
+        now = datetime.now(UTC)
+        if discount.expires_at and discount.expires_at < now:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Discount code has expired")
+        if order.subtotal < discount.min_order_amount:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Order subtotal must be at least {discount.min_order_amount}",
+            )
+
+        if discount.type == "percent":
+            discount_amount = round(order.subtotal * discount.value / 100, 2)
+        else:
+            discount_amount = min(discount.value, order.subtotal)
+
+        order.discount_id = discount.id
+        order.discount_amount = discount_amount
+        order.total = round(order.subtotal + order.tax_amount - discount_amount, 2)
+        await self.db.flush()
+        return order
 
     async def list_orders(
         self, location_id: str, status_filter: str | None = None, limit: int = 100, offset: int = 0
