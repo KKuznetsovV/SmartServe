@@ -109,6 +109,27 @@ services:
       - ./services/ordering:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
+  payments:
+    build:
+      context: ./services/payments
+      dockerfile: Dockerfile
+    ports:
+      - "8004:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://smartserve:smartserve@db:5432/smartserve
+      REDIS_URL: redis://redis:6379/0
+      ENVIRONMENT: development
+    env_file:
+      - ./apps/api/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/payments:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
   gateway:
     build:
       context: ./services/gateway
@@ -120,6 +141,7 @@ services:
       - auth
       - catalog
       - ordering
+      - payments
     healthcheck:
       test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:80/api/v1/health"]
       interval: 5s

@@ -4,35 +4,29 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Location, MenuItem, User
-from tests.conftest import create_submitted_order
+from app.db.models import User
+from tests.conftest import create_order
 
 
 @pytest.mark.asyncio
 async def test_payment_marks_order_paid(
     client: AsyncClient,
     db: AsyncSession,
-    location: Location,
-    menu_item: MenuItem,
     manager_user: tuple[User, str],
 ):
     _, token = manager_user
     headers = {"Authorization": f"Bearer {token}"}
 
-    order = await create_submitted_order(db, location, [(menu_item, 1)])
-    total = order.total
-    assert total > 0
+    order = await create_order(db, total=100.0)
 
-    # Pay full amount
     resp = await client.post(
         "/api/v1/payments",
-        json={"orderId": order.id, "method": "cash", "amount": total},
+        json={"orderId": order.id, "method": "cash", "amount": order.total},
         headers=headers,
     )
     assert resp.status_code == 201
     assert resp.json()["status"] == "completed"
 
-    # Order should now be paid
     await db.refresh(order)
     assert order.status == "paid"
 
@@ -41,20 +35,17 @@ async def test_payment_marks_order_paid(
 async def test_list_order_payments(
     client: AsyncClient,
     db: AsyncSession,
-    location: Location,
-    menu_item: MenuItem,
     manager_user: tuple[User, str],
 ):
     _, token = manager_user
     headers = {"Authorization": f"Bearer {token}"}
 
-    order = await create_submitted_order(db, location, [(menu_item, 2)], channel="takeaway", guest_count=None)
-    total = order.total
+    order = await create_order(db, total=100.0)
 
     # Partial payment first
     await client.post(
         "/api/v1/payments",
-        json={"orderId": order.id, "method": "card", "amount": round(total / 2, 2)},
+        json={"orderId": order.id, "method": "card", "amount": 50.0},
         headers=headers,
     )
 
@@ -68,8 +59,6 @@ async def test_list_order_payments(
 async def test_split_payment_across_installments_marks_paid_once_fully_covered(
     client: AsyncClient,
     db: AsyncSession,
-    location: Location,
-    menu_item: MenuItem,
     manager_user: tuple[User, str],
 ):
     """Regression test: previously a single payment's amount was compared against the
@@ -78,9 +67,8 @@ async def test_split_payment_across_installments_marks_paid_once_fully_covered(
     _, token = manager_user
     headers = {"Authorization": f"Bearer {token}"}
 
-    order = await create_submitted_order(db, location, [(menu_item, 2)])
-    total = order.total
-    half = round(total / 2, 2)
+    order = await create_order(db, total=100.0)
+    half = 50.0
 
     resp = await client.post(
         "/api/v1/payments",
@@ -96,7 +84,7 @@ async def test_split_payment_across_installments_marks_paid_once_fully_covered(
         json={
             "orderId": order.id,
             "method": "card",
-            "amount": round(total - half, 2),
+            "amount": order.total - half,
             "guestNumber": 2,
             "tipAmount": 5,
         },
@@ -109,3 +97,61 @@ async def test_split_payment_across_installments_marks_paid_once_fully_covered(
 
     await db.refresh(order)
     assert order.status == "paid"
+
+
+@pytest.mark.asyncio
+async def test_get_payment(
+    client: AsyncClient,
+    db: AsyncSession,
+    manager_user: tuple[User, str],
+):
+    _, token = manager_user
+    headers = {"Authorization": f"Bearer {token}"}
+
+    order = await create_order(db, total=100.0)
+    create_resp = await client.post(
+        "/api/v1/payments",
+        json={"orderId": order.id, "method": "cash", "amount": 100.0},
+        headers=headers,
+    )
+    payment_id = create_resp.json()["id"]
+
+    resp = await client.get(f"/api/v1/payments/{payment_id}", headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()["id"] == payment_id
+
+
+@pytest.mark.asyncio
+async def test_create_payment_rejects_invalid_method(
+    client: AsyncClient,
+    db: AsyncSession,
+    manager_user: tuple[User, str],
+):
+    _, token = manager_user
+    headers = {"Authorization": f"Bearer {token}"}
+
+    order = await create_order(db, total=100.0)
+    resp = await client.post(
+        "/api/v1/payments",
+        json={"orderId": order.id, "method": "bitcoin", "amount": 100.0},
+        headers=headers,
+    )
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_create_payment_rejects_already_paid_order(
+    client: AsyncClient,
+    db: AsyncSession,
+    manager_user: tuple[User, str],
+):
+    _, token = manager_user
+    headers = {"Authorization": f"Bearer {token}"}
+
+    order = await create_order(db, total=100.0, status="paid")
+    resp = await client.post(
+        "/api/v1/payments",
+        json={"orderId": order.id, "method": "cash", "amount": 100.0},
+        headers=headers,
+    )
+    assert resp.status_code == 400

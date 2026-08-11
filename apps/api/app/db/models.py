@@ -228,7 +228,6 @@ class Order(Base):
     table: Mapped[Table] = relationship(back_populates="orders")
     discount: Mapped[Discount | None] = relationship(back_populates="orders")
     items: Mapped[list[OrderItem]] = relationship(back_populates="order", order_by="OrderItem.sort_order")
-    payments: Mapped[list[Payment]] = relationship(back_populates="order")
 
 
 class OrderItem(Base):
@@ -254,25 +253,6 @@ class OrderItem(Base):
     comped_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
     order: Mapped[Order] = relationship(back_populates="items")
-
-
-# ─── Payments ────────────────────────────────────────────────────────────────
-
-
-class Payment(Base):
-    __tablename__ = "payments"
-
-    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
-    order_id: Mapped[str] = mapped_column(ForeignKey("orders.id"), nullable=False)
-    method: Mapped[str] = mapped_column(String(50), nullable=False)
-    amount: Mapped[float] = mapped_column(Float, nullable=False)
-    tip_amount: Mapped[float] = mapped_column(Float, default=0.0)
-    guest_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    status: Mapped[str] = mapped_column(String(50), default="pending")
-    gateway_ref: Mapped[str | None] = mapped_column(String(255))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
-
-    order: Mapped[Order] = relationship(back_populates="payments")
 
 
 # ─── Printers ────────────────────────────────────────────────────────────────

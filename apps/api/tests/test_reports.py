@@ -41,14 +41,12 @@ async def test_report_summary_with_paid_order(
     _, token = manager_user
     headers = {"Authorization": f"Bearer {token}"}
 
-    # Create, submit, and pay an order
+    # Create and submit an order, then mark it paid directly — payments now lives in
+    # services/payments (Step 20), reports only cares about Order.status/.total here.
     order = await create_submitted_order(db, location, [(menu_item, 2)])
     total = order.total
-    await client.post(
-        "/api/v1/payments",
-        json={"orderId": order.id, "method": "cash", "amount": total},
-        headers=headers,
-    )
+    order.status = "paid"
+    await db.flush()
 
     resp = await client.get(
         f"/api/v1/locations/{location.id}/reports/summary?period=today",
