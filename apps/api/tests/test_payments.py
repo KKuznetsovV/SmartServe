@@ -5,6 +5,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Location, MenuItem, User
+from tests.conftest import create_submitted_order
 
 
 @pytest.mark.asyncio
@@ -18,38 +19,22 @@ async def test_payment_marks_order_paid(
     _, token = manager_user
     headers = {"Authorization": f"Bearer {token}"}
 
-    # Create and submit order
-    resp = await client.post(
-        "/api/v1/orders",
-        json={"locationId": location.id, "channel": "dine_in", "guestCount": 2},
-        headers=headers,
-    )
-    order_id = resp.json()["id"]
-
-    await client.post(
-        f"/api/v1/orders/{order_id}/items",
-        json={"menuItemId": menu_item.id, "qty": 1},
-        headers=headers,
-    )
-    await client.post(f"/api/v1/orders/{order_id}/submit", headers=headers)
-
-    # Get total
-    resp = await client.get(f"/api/v1/orders/{order_id}", headers=headers)
-    total = resp.json()["total"]
+    order = await create_submitted_order(db, location, [(menu_item, 1)])
+    total = order.total
     assert total > 0
 
     # Pay full amount
     resp = await client.post(
         "/api/v1/payments",
-        json={"orderId": order_id, "method": "cash", "amount": total},
+        json={"orderId": order.id, "method": "cash", "amount": total},
         headers=headers,
     )
     assert resp.status_code == 201
     assert resp.json()["status"] == "completed"
 
     # Order should now be paid
-    resp = await client.get(f"/api/v1/orders/{order_id}", headers=headers)
-    assert resp.json()["status"] == "paid"
+    await db.refresh(order)
+    assert order.status == "paid"
 
 
 @pytest.mark.asyncio
@@ -63,29 +48,17 @@ async def test_list_order_payments(
     _, token = manager_user
     headers = {"Authorization": f"Bearer {token}"}
 
-    resp = await client.post(
-        "/api/v1/orders",
-        json={"locationId": location.id, "channel": "takeaway"},
-        headers=headers,
-    )
-    order_id = resp.json()["id"]
-    await client.post(
-        f"/api/v1/orders/{order_id}/items",
-        json={"menuItemId": menu_item.id, "qty": 2},
-        headers=headers,
-    )
-    await client.post(f"/api/v1/orders/{order_id}/submit", headers=headers)
-
-    total = (await client.get(f"/api/v1/orders/{order_id}", headers=headers)).json()["total"]
+    order = await create_submitted_order(db, location, [(menu_item, 2)], channel="takeaway", guest_count=None)
+    total = order.total
 
     # Partial payment first
     await client.post(
         "/api/v1/payments",
-        json={"orderId": order_id, "method": "card", "amount": round(total / 2, 2)},
+        json={"orderId": order.id, "method": "card", "amount": round(total / 2, 2)},
         headers=headers,
     )
 
-    resp = await client.get(f"/api/v1/orders/{order_id}/payments", headers=headers)
+    resp = await client.get(f"/api/v1/orders/{order.id}/payments", headers=headers)
     assert resp.status_code == 200
     assert len(resp.json()) == 1
     assert resp.json()[0]["method"] == "card"
@@ -105,35 +78,23 @@ async def test_split_payment_across_installments_marks_paid_once_fully_covered(
     _, token = manager_user
     headers = {"Authorization": f"Bearer {token}"}
 
-    resp = await client.post(
-        "/api/v1/orders",
-        json={"locationId": location.id, "channel": "dine_in", "guestCount": 2},
-        headers=headers,
-    )
-    order_id = resp.json()["id"]
-    await client.post(
-        f"/api/v1/orders/{order_id}/items",
-        json={"menuItemId": menu_item.id, "qty": 2},
-        headers=headers,
-    )
-    await client.post(f"/api/v1/orders/{order_id}/submit", headers=headers)
-
-    total = (await client.get(f"/api/v1/orders/{order_id}", headers=headers)).json()["total"]
+    order = await create_submitted_order(db, location, [(menu_item, 2)])
+    total = order.total
     half = round(total / 2, 2)
 
     resp = await client.post(
         "/api/v1/payments",
-        json={"orderId": order_id, "method": "cash", "amount": half, "guestNumber": 1},
+        json={"orderId": order.id, "method": "cash", "amount": half, "guestNumber": 1},
         headers=headers,
     )
     assert resp.status_code == 201
-    resp = await client.get(f"/api/v1/orders/{order_id}", headers=headers)
-    assert resp.json()["status"] != "paid"
+    await db.refresh(order)
+    assert order.status != "paid"
 
     resp = await client.post(
         "/api/v1/payments",
         json={
-            "orderId": order_id,
+            "orderId": order.id,
             "method": "card",
             "amount": round(total - half, 2),
             "guestNumber": 2,
@@ -146,5 +107,5 @@ async def test_split_payment_across_installments_marks_paid_once_fully_covered(
     assert body["tipAmount"] == pytest.approx(5)
     assert body["guestNumber"] == 2
 
-    resp = await client.get(f"/api/v1/orders/{order_id}", headers=headers)
-    assert resp.json()["status"] == "paid"
+    await db.refresh(order)
+    assert order.status == "paid"
