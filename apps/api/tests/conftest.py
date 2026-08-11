@@ -5,7 +5,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.security import create_access_token, hash_password
-from app.db.models import Business, Location, MenuCategory, MenuItem, Order, OrderItem, User
+from app.db.models import Business, Location, MenuCategory, MenuItem, User
 from app.db.session import Base, get_db
 from app.main import app
 
@@ -94,47 +94,3 @@ async def menu_item(db: AsyncSession, location: Location) -> MenuItem:
     db.add(item)
     await db.flush()
     return item
-
-
-async def create_submitted_order(
-    db: AsyncSession,
-    location: Location,
-    items: list[tuple[MenuItem, int]],
-    channel: str = "dine_in",
-    guest_count: int | None = 2,
-) -> Order:
-    """Build a 'submitted' order directly against the shared DB.
-
-    apps/api no longer exposes /orders over HTTP (owned by services/ordering — see
-    docs/microservices-plan.md §4), so tests that only care about payments/reports
-    behavior build the fixture data directly instead of round-tripping through the
-    now-extracted ordering API.
-    """
-    order = Order(location_id=location.id, channel=channel, guest_count=guest_count, status="open")
-    db.add(order)
-    await db.flush()
-
-    subtotal = 0.0
-    tax_amount = 0.0
-    for menu_item_, qty in items:
-        line_total = menu_item_.price * qty
-        subtotal += line_total
-        tax_amount += line_total * menu_item_.tax_rate
-        db.add(
-            OrderItem(
-                order_id=order.id,
-                menu_item_id=menu_item_.id,
-                menu_item_name=menu_item_.name,
-                qty=qty,
-                unit_price=menu_item_.price,
-                status="pending",
-            )
-        )
-
-    order.subtotal = round(subtotal, 2)
-    order.tax_amount = round(tax_amount, 2)
-    order.total = round(order.subtotal + order.tax_amount, 2)
-    order.status = "submitted"
-    await db.flush()
-    await db.refresh(order)
-    return order

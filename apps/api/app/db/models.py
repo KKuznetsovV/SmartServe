@@ -4,12 +4,10 @@ import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import (
-    JSON,
     Boolean,
     DateTime,
     Float,
     ForeignKey,
-    Index,
     Integer,
     String,
     Text,
@@ -60,7 +58,6 @@ class Location(Base):
     business: Mapped[Business] = relationship(back_populates="locations")
     menu_categories: Mapped[list[MenuCategory]] = relationship(back_populates="location")
     tables: Mapped[list[Table]] = relationship(back_populates="location")
-    orders: Mapped[list[Order]] = relationship(back_populates="location")
     printers: Mapped[list[Printer]] = relationship(back_populates="location")
 
 
@@ -171,7 +168,6 @@ class Table(Base):
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     location: Mapped[Location] = relationship(back_populates="tables")
-    orders: Mapped[list[Order]] = relationship(back_populates="table")
 
 
 # ─── Discounts ────────────────────────────────────────────────────────────────
@@ -194,65 +190,6 @@ class Discount(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     business: Mapped[Business] = relationship(back_populates="discounts")
-    orders: Mapped[list[Order]] = relationship(back_populates="discount")
-
-
-# ─── Orders ───────────────────────────────────────────────────────────────────
-
-
-class Order(Base):
-    __tablename__ = "orders"
-    # KDS/display/orders-list poll by location+status; history sorts by created_at
-    __table_args__ = (
-        Index("ix_orders_location_status", "location_id", "status"),
-        Index("ix_orders_location_created", "location_id", "created_at"),
-    )
-
-    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
-    location_id: Mapped[str] = mapped_column(ForeignKey("locations.id"), nullable=False)
-    table_id: Mapped[str | None] = mapped_column(ForeignKey("tables.id"))
-    discount_id: Mapped[str | None] = mapped_column(ForeignKey("discounts.id"))
-    channel: Mapped[str] = mapped_column(String(50), default="dine_in")
-    status: Mapped[str] = mapped_column(String(50), default="open")
-    guest_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    fired_courses: Mapped[list] = mapped_column(JSON, default=list)
-    subtotal: Mapped[float] = mapped_column(Float, default=0.0)
-    tax_amount: Mapped[float] = mapped_column(Float, default=0.0)
-    discount_amount: Mapped[float] = mapped_column(Float, default=0.0)
-    total: Mapped[float] = mapped_column(Float, default=0.0)
-    notes: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
-
-    location: Mapped[Location] = relationship(back_populates="orders")
-    table: Mapped[Table] = relationship(back_populates="orders")
-    discount: Mapped[Discount | None] = relationship(back_populates="orders")
-    items: Mapped[list[OrderItem]] = relationship(back_populates="order", order_by="OrderItem.sort_order")
-
-
-class OrderItem(Base):
-    __tablename__ = "order_items"
-    __table_args__ = (Index("ix_order_items_order_id", "order_id"),)
-
-    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
-    order_id: Mapped[str] = mapped_column(ForeignKey("orders.id"), nullable=False)
-    menu_item_id: Mapped[str] = mapped_column(ForeignKey("menu_items.id"), nullable=False)
-    menu_item_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    qty: Mapped[int] = mapped_column(Integer, default=1)
-    unit_price: Mapped[float] = mapped_column(Float, nullable=False)
-    modifiers: Mapped[list] = mapped_column(JSON, default=list)
-    notes: Mapped[str | None] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(String(50), default="pending")
-    sort_order: Mapped[int] = mapped_column(Integer, default=0)
-    fire_course: Mapped[int] = mapped_column(Integer, default=1)
-    guest_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    discount_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    discount_value: Mapped[float | None] = mapped_column(Float, nullable=True)
-    discount_amount: Mapped[float] = mapped_column(Float, default=0.0)
-    is_comped: Mapped[bool] = mapped_column(Boolean, default=False)
-    comped_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-
-    order: Mapped[Order] = relationship(back_populates="items")
 
 
 # ─── Printers ────────────────────────────────────────────────────────────────
