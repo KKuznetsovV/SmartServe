@@ -1,9 +1,6 @@
 from app.api.v1.endpoints import health, ws
 from app.api.v1.router_base import APIRouter
 from app.modules.ai.router import router as ai
-from app.modules.auth.business_router import router as businesses
-from app.modules.auth.location_router import router as locations
-from app.modules.auth.router import router as auth
 from app.modules.catalog.discount_router import router as discounts
 from app.modules.catalog.router import router as menu
 from app.modules.ordering.router import router as orders
@@ -17,9 +14,8 @@ from app.modules.staff.shift_router import router as shifts
 api_router = APIRouter()
 
 api_router.include_router(health.router, tags=["health"])
-api_router.include_router(auth, prefix="/auth", tags=["auth"])
-api_router.include_router(businesses, prefix="/businesses", tags=["businesses"])
-api_router.include_router(locations, prefix="/locations", tags=["locations"])
+# auth, businesses, locations moved to services/auth (Step 17) — gateway routes those
+# path prefixes there directly; the gateway no longer forwards them to this monolith.
 # Menu routes span categories, items, modifiers — no prefix so internal paths are clean
 api_router.include_router(menu, prefix="/menu", tags=["menu"])
 # Tables endpoint handles both /locations/{id}/tables and /tables routes
