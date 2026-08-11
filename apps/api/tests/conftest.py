@@ -1,13 +1,13 @@
 """Shared test fixtures for the SmartServe API test suite."""
-import pytest
-import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
-from app.main import app
-from app.db.session import Base, get_db
+import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+from app.core.security import create_access_token, hash_password
 from app.db.models import Business, Location, MenuCategory, MenuItem, User
-from app.core.security import hash_password, create_access_token
+from app.db.session import Base, get_db
+from app.main import app
 
 # In-memory SQLite for tests — no Postgres needed
 TEST_DB_URL = "sqlite+aiosqlite:///:memory:"

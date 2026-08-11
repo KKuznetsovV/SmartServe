@@ -1,4 +1,10 @@
-"""Menu service — all business logic for categories, items, and modifiers."""
+"""Menu service — all business logic for categories, items, and modifiers.
+
+Duplicated read/write copy kept in apps/api (not re-exposed via HTTP here — see
+api/v1/router.py) because `app.modules.ai.services.dispatch` still runs in-process
+against the shared Postgres DB and needs direct access; `services/catalog` is the
+HTTP-facing owner for external clients (see docs/microservices-plan.md §4).
+"""
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select, update

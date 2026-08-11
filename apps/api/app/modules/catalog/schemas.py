@@ -1,3 +1,5 @@
+# Duplicated in apps/api (alongside services/catalog) because app.modules.ai.services.dispatch
+# still calls MenuService in-process against the shared DB — see docs/microservices-plan.md §4.
 from app.schemas.base import BaseSchema as BaseModel
 
 
