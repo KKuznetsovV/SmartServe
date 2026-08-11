@@ -6,15 +6,16 @@ Revises: e1f2a3b4c5d6
 Create Date: 2026-08-06 15:20:00.000000
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "f2a3b4c5d6e7"
-down_revision: Union[str, None] = "e1f2a3b4c5d6"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "e1f2a3b4c5d6"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -25,12 +26,8 @@ def upgrade() -> None:
     op.add_column("order_items", sa.Column("guest_number", sa.Integer(), nullable=True))
     op.add_column("order_items", sa.Column("discount_type", sa.String(length=20), nullable=True))
     op.add_column("order_items", sa.Column("discount_value", sa.Float(), nullable=True))
-    op.add_column(
-        "order_items", sa.Column("discount_amount", sa.Float(), nullable=False, server_default="0")
-    )
-    op.add_column(
-        "order_items", sa.Column("is_comped", sa.Boolean(), nullable=False, server_default="false")
-    )
+    op.add_column("order_items", sa.Column("discount_amount", sa.Float(), nullable=False, server_default="0"))
+    op.add_column("order_items", sa.Column("is_comped", sa.Boolean(), nullable=False, server_default="false"))
     op.add_column("order_items", sa.Column("comped_by", sa.String(), nullable=True))
     op.create_foreign_key("fk_order_items_comped_by", "order_items", "users", ["comped_by"], ["id"])
 
@@ -46,6 +43,4 @@ def downgrade() -> None:
 
     op.add_column("orders", sa.Column("guest_number", sa.Integer(), nullable=True))
     op.add_column("orders", sa.Column("split_from_order_id", sa.String(), nullable=True))
-    op.create_foreign_key(
-        "fk_orders_split_from_order_id", "orders", "orders", ["split_from_order_id"], ["id"]
-    )
+    op.create_foreign_key("fk_orders_split_from_order_id", "orders", "orders", ["split_from_order_id"], ["id"])

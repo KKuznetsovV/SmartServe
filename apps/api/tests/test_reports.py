@@ -5,6 +5,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Location, MenuItem, User
+from tests.conftest import create_submitted_order
 
 
 @pytest.mark.asyncio
@@ -41,22 +42,11 @@ async def test_report_summary_with_paid_order(
     headers = {"Authorization": f"Bearer {token}"}
 
     # Create, submit, and pay an order
-    resp = await client.post(
-        "/api/v1/orders",
-        json={"locationId": location.id, "channel": "dine_in", "guestCount": 2},
-        headers=headers,
-    )
-    order_id = resp.json()["id"]
-    await client.post(
-        f"/api/v1/orders/{order_id}/items",
-        json={"menuItemId": menu_item.id, "qty": 2},
-        headers=headers,
-    )
-    await client.post(f"/api/v1/orders/{order_id}/submit", headers=headers)
-    total = (await client.get(f"/api/v1/orders/{order_id}", headers=headers)).json()["total"]
+    order = await create_submitted_order(db, location, [(menu_item, 2)])
+    total = order.total
     await client.post(
         "/api/v1/payments",
-        json={"orderId": order_id, "method": "cash", "amount": total},
+        json={"orderId": order.id, "method": "cash", "amount": total},
         headers=headers,
     )
 
