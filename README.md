@@ -33,7 +33,8 @@ SmartServe/
 │   ├── staff/                       # staff CRUD, cash-drawer shift open/close/current/list
 │   ├── printing/                    # printer CRUD, menu-item-to-printer routing rules
 │   ├── reporting/                    # revenue/order summary analytics (top items, channel/status breakdowns)
-│   └── _shared/                   # small internal lib (JWT verify, HTTP client, event helpers) — scaffolded, not yet consumed
+│   ├── ai/                            # stateless AI orchestrator — intent classification, confirmed-action dispatch, menu import (no owned DB)
+│   └── _shared/                   # small internal lib (JWT verify, HTTP client, event helpers) — consumed by services/ai
 ├── packages/                 # shared frontend code
 │   ├── types/                  # @smartserve/types — shared TS types + Zod schemas
 │   ├── api-client/               # @smartserve/api-client — typed fetch client (points at the gateway)
@@ -74,8 +75,8 @@ docker compose up -d --wait
 ```
 
 This starts Postgres, Redis, the `api` monolith, the extracted `auth`, `catalog`, `ordering`, `payments`,
-`staff`, `printing` and `reporting` services, and the `gateway` (nginx) in front of them all. Frontends should
-point at the gateway:
+`staff`, `printing`, `reporting` and `ai` services, and the `gateway` (nginx) in front of them all. Frontends
+should point at the gateway:
 
 | Service | URL |
 |---|---|
@@ -88,6 +89,7 @@ point at the gateway:
 | `services/staff` (direct) | http://localhost:8005 |
 | `services/printing` (direct) | http://localhost:8006 |
 | `services/reporting` (direct) | http://localhost:8007 |
+| `services/ai` (direct) | http://localhost:8008 |
 | Postgres | localhost:5432 |
 | Redis | localhost:6379 |
 
@@ -103,12 +105,21 @@ pnpm test         # turbo run test
 pnpm format       # prettier --write
 ```
 
-### Backend service commands (from each service directory, e.g. `apps/api`, `services/auth`, `services/catalog`, `services/ordering`, `services/payments`, `services/staff`, `services/printing`, `services/reporting`)
+### Backend service commands (from each service directory, e.g. `apps/api`, `services/auth`, `services/catalog`, `services/ordering`, `services/payments`, `services/staff`, `services/printing`, `services/reporting`, `services/ai`)
 
 ```bash
 python -m venv .venv && source .venv/Scripts/activate   # or .venv/bin/activate on macOS/Linux
 pip install -r requirements.txt -r requirements-dev.txt
+```
 
+`services/ai` additionally depends on the local `services/_shared` package, which must be installed editable
+before its own requirements:
+
+```bash
+pip install -e ../_shared -r requirements.txt -r requirements-dev.txt
+```
+
+```bash
 ruff check --fix app/ tests/ && ruff format app/ tests/
 mypy app/ --ignore-missing-imports --explicit-package-bases
 pytest -q
@@ -136,7 +147,7 @@ full rationale, service-boundary table, and step-by-step plan.
 | 21 | `services/staff` extraction | ✅ done |
 | 22 | `services/printing` extraction | ✅ done |
 | 23 | `services/reporting` extraction | ✅ done |
-| 24 | `services/ai` extraction | ⬜ not started |
+| 24 | `services/ai` extraction | ✅ done |
 | 25 | Retire the `apps/api` monolith | ⬜ not started |
 
 Until a domain is extracted, it still lives in `apps/api/app/modules/<domain>` and is routed to directly by
