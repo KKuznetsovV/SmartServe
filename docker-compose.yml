@@ -193,6 +193,33 @@ services:
       - ./services/reporting:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
+  ai:
+    build:
+      # Build context is ./services (not ./services/ai) so the Dockerfile can also COPY
+      # the sibling _shared library that ai installs editable — a deliberate one-off
+      # deviation from every other service's context: ./services/<name> pattern.
+      context: ./services
+      dockerfile: ai/Dockerfile
+    ports:
+      - "8008:8000"
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production-use-a-256-bit-random-string}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AUTH_SERVICE_URL: http://auth:8000
+      CATALOG_SERVICE_URL: http://catalog:8000
+      PRINTING_SERVICE_URL: http://printing:8000
+      ENVIRONMENT: development
+    env_file:
+      - ./apps/api/.env
+    depends_on:
+      - auth
+      - catalog
+      - printing
+    volumes:
+      - ./services/ai:/app
+      - ./services/_shared:/shared
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
   gateway:
     build:
       context: ./services/gateway
@@ -208,6 +235,7 @@ services:
       - staff
       - printing
       - reporting
+      - ai
     healthcheck:
       test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:80/api/v1/health"]
       interval: 5s

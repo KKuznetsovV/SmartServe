@@ -58,7 +58,6 @@ class Location(Base):
     business: Mapped[Business] = relationship(back_populates="locations")
     menu_categories: Mapped[list[MenuCategory]] = relationship(back_populates="location")
     tables: Mapped[list[Table]] = relationship(back_populates="location")
-    printers: Mapped[list[Printer]] = relationship(back_populates="location")
 
 
 # ─── Users ───────────────────────────────────────────────────────────────────
@@ -121,7 +120,6 @@ class MenuItem(Base):
 
     category: Mapped[MenuCategory] = relationship(back_populates="items")
     modifier_groups: Mapped[list[ModifierGroup]] = relationship(back_populates="item")
-    printer_routes: Mapped[list[PrinterRoute]] = relationship(back_populates="item")
 
 
 class ModifierGroup(Base):
@@ -190,35 +188,3 @@ class Discount(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     business: Mapped[Business] = relationship(back_populates="discounts")
-
-
-# ─── Printers ────────────────────────────────────────────────────────────────
-
-
-class Printer(Base):
-    __tablename__ = "printers"
-
-    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
-    location_id: Mapped[str] = mapped_column(ForeignKey("locations.id"), nullable=False)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    type: Mapped[str] = mapped_column(String(50), default="receipt")
-    ip: Mapped[str | None] = mapped_column(String(45))
-    port: Mapped[int] = mapped_column(Integer, default=9100)
-    active: Mapped[bool] = mapped_column(Boolean, default=True)
-
-    location: Mapped[Location] = relationship(back_populates="printers")
-    routes: Mapped[list[PrinterRoute]] = relationship(back_populates="printer")
-
-
-class PrinterRoute(Base):
-    """Routes a menu item's orders to a specific printer — an item can route to several printers at once."""
-
-    __tablename__ = "printer_routes"
-    __table_args__ = (UniqueConstraint("printer_id", "item_id"),)
-
-    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
-    printer_id: Mapped[str] = mapped_column(ForeignKey("printers.id"), nullable=False)
-    item_id: Mapped[str] = mapped_column(ForeignKey("menu_items.id"), nullable=False)
-
-    printer: Mapped[Printer] = relationship(back_populates="routes")
-    item: Mapped[MenuItem] = relationship(back_populates="printer_routes")
