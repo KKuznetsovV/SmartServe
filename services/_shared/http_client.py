@@ -42,3 +42,9 @@ class ServiceClient:
 
     async def post(self, path: str, *, forward_token: str | None = None, **kwargs: Any) -> httpx.Response:
         return await self.request("POST", path, forward_token=forward_token, **kwargs)
+
+    async def patch(self, path: str, *, forward_token: str | None = None, **kwargs: Any) -> httpx.Response:
+        return await self.request("PATCH", path, forward_token=forward_token, **kwargs)
+
+    async def delete(self, path: str, *, forward_token: str | None = None, **kwargs: Any) -> httpx.Response:
+        return await self.request("DELETE", path, forward_token=forward_token, **kwargs)

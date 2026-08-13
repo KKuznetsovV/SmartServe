@@ -1,0 +1,33 @@
+import os
+
+os.environ.setdefault("SECRET_KEY", "test-secret-key-for-tests-only-32-bytes-min")
+
+import jwt
+import pytest
+from httpx import ASGITransport, AsyncClient
+
+from app.main import app
+
+SECRET_KEY = os.environ["SECRET_KEY"]
+
+
+def make_token(*, sub="user-1", business_id="biz-1", role="manager", location_id=None):
+    payload = {"sub": sub, "business_id": business_id, "role": role, "location_id": location_id}
+    return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+
+
+@pytest.fixture
+def manager_token():
+    return make_token(role="manager")
+
+
+@pytest.fixture
+def staff_token():
+    return make_token(role="staff", sub="user-2")
+
+
+@pytest.fixture
+async def client():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac

@@ -8,10 +8,8 @@ import zipfile
 from defusedxml import ElementTree
 from defusedxml import common as defused_common
 from fastapi import HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import MenuCategory, Printer
+from app.modules.ai.services.menu_client import MenuClient, PrintingClient
 
 SUPPORTED_IMAGE_TYPES = {"image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"}
 SUPPORTED_TEXT_TYPES = {"text/plain", "text/csv"}
@@ -20,11 +18,11 @@ MAX_UPLOAD_SIZE = 15 * 1024 * 1024  # 15 MB
 DOCX_WORD_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 
 
-async def fetch_menu_context(db: AsyncSession, location_id: str) -> tuple[str, str]:
-    cats = await db.execute(select(MenuCategory.name).where(MenuCategory.location_id == location_id))
-    printers = await db.execute(select(Printer.name, Printer.type).where(Printer.location_id == location_id))
-    cat_names = ", ".join(c for (c,) in cats.all()) or "(none yet)"
-    printer_list = ", ".join(f"{name} ({ptype})" for name, ptype in printers.all()) or "(none yet)"
+async def fetch_menu_context(menu: MenuClient, printing: PrintingClient, location_id: str) -> tuple[str, str]:
+    categories = await menu.list_categories(location_id)
+    printers = await printing.list_printers(location_id)
+    cat_names = ", ".join(c["name"] for c in categories) or "(none yet)"
+    printer_list = ", ".join(f"{p['name']} ({p['type']})" for p in printers) or "(none yet)"
     return cat_names, printer_list
 
 
