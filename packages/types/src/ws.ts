@@ -6,6 +6,7 @@ export const WsEventType = z.enum([
   'order.item_status_changed',
   'order.paid',
   'menu.item_toggled',
+  'menu.item_updated',
   'printer.status_changed',
 ])
 export type WsEventType = z.infer<typeof WsEventType>

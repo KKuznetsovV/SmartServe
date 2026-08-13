@@ -16,7 +16,7 @@ from app.core.config import settings
 from app.core.logging import setup_logging
 from app.db import models  # noqa: F401 — ensure models are registered
 from app.db.session import engine, get_db
-from app.modules.ordering.events import handle_payment_completed
+from app.modules.ordering.events import handle_catalog_item_updated, handle_payment_completed
 
 logger = structlog.get_logger()
 
@@ -35,10 +35,21 @@ async def lifespan(app: FastAPI):
             settings.RABBITMQ_URL, "ordering.payment_completed", ["payment.completed"], handle_payment_completed
         )
     )
+    realtime_relay_task = asyncio.create_task(
+        mq.consume_forever(
+            settings.RABBITMQ_URL,
+            "ordering.realtime_relay",
+            ["catalog.item_updated"],
+            handle_catalog_item_updated,
+        )
+    )
     yield
     consumer_task.cancel()
+    realtime_relay_task.cancel()
     with contextlib.suppress(asyncio.CancelledError):
         await consumer_task
+    with contextlib.suppress(asyncio.CancelledError):
+        await realtime_relay_task
     if app.state.mq_connection is not None:
         await app.state.mq_connection.close()
     await engine.dispose()

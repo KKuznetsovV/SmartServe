@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { useOrders } from '@/hooks/use-orders'
 import { useReportSummary } from '@/hooks/use-reports'
-import { useLocationWs } from '@/hooks/use-ws'
 import { useAuthStore } from '@/lib/auth-store'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -39,8 +38,6 @@ export default function DashboardPage() {
 
   const { data: allOrders, isLoading } = useOrders(locationId)
   const { data: report } = useReportSummary(locationId, 'today')
-
-  useLocationWs(locationId)
 
   // Count active orders by status
   const countByStatus = (allOrders ?? []).reduce<Partial<Record<OrderStatus, number>>>(

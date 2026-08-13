@@ -105,12 +105,14 @@ async def create_item(
     _: User = Depends(require_manager),
 ):
     item = await MenuService(db).create_item(data)
+    location_id = await MenuService(db).get_item_location_id(item)
     await mq.publish(
         request.app.state.mq_connection,
         "catalog.item_updated",
         {
             "itemId": item.id,
             "categoryId": item.category_id,
+            "locationId": location_id,
             "name": item.name,
             "price": item.price,
             "inStock": item.in_stock,
@@ -128,12 +130,14 @@ async def update_item(
     _: User = Depends(require_manager),
 ):
     item = await MenuService(db).update_item(item_id, data)
+    location_id = await MenuService(db).get_item_location_id(item)
     await mq.publish(
         request.app.state.mq_connection,
         "catalog.item_updated",
         {
             "itemId": item.id,
             "categoryId": item.category_id,
+            "locationId": location_id,
             "name": item.name,
             "price": item.price,
             "inStock": item.in_stock,
@@ -151,12 +155,14 @@ async def set_item_stock(
     _: User = Depends(get_current_user),
 ):
     item = await MenuService(db).set_stock(item_id, data.in_stock)
+    location_id = await MenuService(db).get_item_location_id(item)
     await mq.publish(
         request.app.state.mq_connection,
         "catalog.item_updated",
         {
             "itemId": item.id,
             "categoryId": item.category_id,
+            "locationId": location_id,
             "name": item.name,
             "price": item.price,
             "inStock": item.in_stock,

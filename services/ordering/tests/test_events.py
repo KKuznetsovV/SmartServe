@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.db.models import Business, Location, MenuItem, Order, User
 from app.db.session import Base
-from app.modules.ordering.events import handle_payment_completed
+from app.modules.ordering.events import handle_catalog_item_updated, handle_payment_completed
 
 
 @pytest.mark.asyncio
@@ -149,3 +149,28 @@ async def test_handle_payment_completed_missing_order_id_is_noop(events_engine):
     session_factory = async_sessionmaker(events_engine, class_=AsyncSession, expire_on_commit=False)
     with patch("app.modules.ordering.events.AsyncSessionLocal", session_factory):
         await handle_payment_completed("payment.completed", {})
+
+
+@pytest.mark.asyncio
+async def test_handle_catalog_item_updated_broadcasts_to_location():
+    with patch("app.modules.ordering.events.broadcast", new_callable=AsyncMock) as mock_broadcast:
+        await handle_catalog_item_updated(
+            "catalog.item_updated",
+            {"locationId": "loc-1", "itemId": "item-1", "price": 45.0},
+        )
+
+    mock_broadcast.assert_awaited_once()
+    location_id, event = mock_broadcast.await_args.args
+    assert location_id == "loc-1"
+    assert event["type"] == "menu.item_updated"
+    assert event["locationId"] == "loc-1"
+    assert event["payload"]["itemId"] == "item-1"
+    assert "timestamp" in event
+
+
+@pytest.mark.asyncio
+async def test_handle_catalog_item_updated_missing_location_id_is_noop():
+    with patch("app.modules.ordering.events.broadcast", new_callable=AsyncMock) as mock_broadcast:
+        await handle_catalog_item_updated("catalog.item_updated", {"itemId": "item-1"})
+
+    mock_broadcast.assert_not_awaited()

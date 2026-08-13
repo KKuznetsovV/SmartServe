@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import type { AiCommandResponse, MenuImportItem } from '@smartserve/types'
+import { AiConfirmationCard } from './confirmation-card'
 
 type EntryStatus = 'pending' | 'confirmed' | 'dismissed' | 'error'
 
@@ -22,31 +23,8 @@ interface HistoryEntry {
   isImport?: boolean
 }
 
-const INTENT_LABELS: Record<string, string> = {
-  'menu.create_item': 'Create menu item',
-  'menu.update_item': 'Update menu item',
-  'menu.bulk_price_change': 'Bulk price change',
-  'menu.toggle_availability': 'Toggle availability',
-  'menu.create_category': 'Create category',
-  'menu.create_modifier_group': 'Create modifier group',
-  'printer.route': 'Configure print routing',
-  'printer.troubleshoot': 'Printer troubleshoot',
-  'report.query': 'Report query',
-  'staff.add_user': 'Add staff member',
-  'staff.set_permissions': 'Set permissions',
-  'inventory.set_threshold': 'Inventory threshold',
-  'settings.business': 'Business settings',
-  'help.general': 'Help',
-}
-
 const ACCEPTED_FILE_TYPES =
   'image/png,image/jpeg,image/webp,image/gif,application/pdf,text/csv,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,.csv,.txt,.docx'
-
-function confidenceColor(c: number) {
-  if (c >= 0.85) return 'text-green-600'
-  if (c >= 0.6) return 'text-amber-600'
-  return 'text-red-500'
-}
 
 export default function AiPage() {
   const locationId = useAuthStore((s) => s.activeLocationId)
@@ -212,7 +190,10 @@ export default function AiPage() {
           <div key={entry.id} className="space-y-2">
             {/* User message */}
             <div className="flex justify-end">
-              <div className="bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-4 py-2 max-w-[80%] text-sm">
+              <div
+                className="bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-4 py-2 max-w-[80%] text-sm"
+                dir="auto"
+              >
                 {entry.message}
               </div>
             </div>
@@ -239,46 +220,14 @@ export default function AiPage() {
             )}
 
             {entry.response && entry.status !== 'dismissed' && (
-              <Card className={
-                entry.status === 'confirmed' ? 'border-green-200 bg-green-50' :
-                entry.status === 'error' ? 'border-red-200 bg-red-50' : ''
-              }>
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        {INTENT_LABELS[entry.response.intent] ?? entry.response.intent}
-                      </p>
-                      <p className="text-sm">{entry.response.preview}</p>
-                    </div>
-                    <span className={`text-xs font-mono whitespace-nowrap ${confidenceColor(entry.response.confidence)}`}>
-                      {Math.round(entry.response.confidence * 100)}%
-                    </span>
-                  </div>
-
-                  {entry.status === 'confirmed' && (
-                    <p className="text-xs text-green-700 font-medium">✓ {entry.resultMessage}</p>
-                  )}
-                  {entry.status === 'error' && (
-                    <p className="text-xs text-red-600">{entry.resultMessage}</p>
-                  )}
-
-                  {entry.status === 'pending' && entry.response.requiresConfirmation && (
-                    <div className="flex gap-2">
-                      <Button size="sm" onClick={() => handleConfirm(entry)} disabled={isLoading}>
-                        Confirm
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDismiss(entry.id)}
-                      >
-                        Dismiss
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <AiConfirmationCard
+                response={entry.response}
+                status={entry.status}
+                resultMessage={entry.resultMessage}
+                isLoading={isLoading}
+                onConfirm={() => handleConfirm(entry)}
+                onDismiss={() => handleDismiss(entry.id)}
+              />
             )}
 
             {entry.status === 'dismissed' && (

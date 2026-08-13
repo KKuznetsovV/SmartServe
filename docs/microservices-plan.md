@@ -10,6 +10,44 @@
 
 ---
 
+## Step 27 (post-migration): AI chat assistant hardening
+
+Step 26 wired `ai`'s `POST /ai/command` → `POST /ai/confirm` flow and the `ai.action_executed` event, but a
+few gaps remained between that first cut and the actual "manager types a request, the system carries it out"
+requirement. Step 27 closes them without introducing any new services.
+
+- **JWT-scoped location validation moved earlier**: `ai_confirm` already verified the target `locationId`
+  belongs to the caller's own (JWT-verified) `business_id` before executing. `ai_command` (classify step) now
+  runs the same `_get_owned_location` check *before* calling Anthropic, so a caller can't even get a preview
+  generated against another business's location, and a missing/foreign `locationId` fails fast with 400/404
+  instead of silently classifying against nothing.
+- **`printer.route` intent implemented**: `dispatch.py` gained `_dispatch_printer_route()`, resolving the
+  target printer by fuzzy name-then-type match (`services/printing`) and the target items either by
+  `category_hint` (bulk, e.g. "all bar tickets") or `item_hints`/`item_hint` (specific items) via
+  `services/catalog`. Defaults to replacing conflicting existing routes (`replace_existing`, matching
+  "route X to Y **instead**" phrasing); pass `add_only: true` in params to add without removing.
+- **Audit log enriched**: the `ai.action_executed` payload (consumed by `reporting`'s `EventLog`) now includes
+  `businessId`, `userId` (`ctx.claims.sub`), and `originalMessage`, not just `intent`/`params`/`locationId`, so
+  the audit trail actually answers "who asked for what, in their own words."
+- **Real-time propagation for AI-driven catalog changes**: `catalog` now includes `locationId` in every
+  `catalog.item_updated` payload (previously only its bulk-price-change endpoint did). `ordering` — the sole
+  service the gateway proxies WebSocket traffic to — gained a second RabbitMQ consumer
+  (`ordering.realtime_relay`, binding `catalog.item_updated`) that relays the event to connected clients via
+  its existing `ws_router.broadcast()`, as a new `menu.item_updated` WS message. This was chosen over adding a
+  WS runtime to `services/gateway` (pure nginx, no app process) or building new infrastructure, reusing the
+  one WS connection every dashboard screen already holds open. `apps/web`'s `useLocationWs` hook was lifted
+  from the Dashboard page into the shared `(dashboard)/layout.tsx` (so it's connected regardless of which
+  screen is open) and now invalidates `['items']`/`['categories', locationId]` on `menu.item_updated`.
+- **Frontend**: extracted the AI chat's proposed-action card into `AiConfirmationCard`
+  (`apps/web/src/app/(dashboard)/ai/confirmation-card.tsx`) built from the existing local `@/components/ui/*`
+  wrappers (`@smartserve/ui` re-exports); message/preview bubbles use `dir="auto"` so Hebrew and English text
+  render correctly regardless of the dashboard's overall locale direction.
+- **Scope note**: per-user location authorization (JWT carrying a `location_ids` array, rather than
+  business-wide access) was explicitly deferred to a future feature — this pass keeps the existing
+  business-wide (`business_id`-only) authorization model.
+
+---
+
 ## Step 26 (post-migration): RabbitMQ event bus
 
 The original plan (§1) called for cross-service fan-out via Redis pub/sub, but that was never actually
