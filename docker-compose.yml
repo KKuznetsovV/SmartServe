@@ -25,27 +25,6 @@ services:
       timeout: 3s
       retries: 10
 
-  api:
-    build:
-      context: ./apps/api
-      dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
-    environment:
-      DATABASE_URL: postgresql+asyncpg://smartserve:smartserve@db:5432/smartserve
-      REDIS_URL: redis://redis:6379/0
-      ENVIRONMENT: development
-    env_file:
-      - ./apps/api/.env
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - ./apps/api:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-
   auth:
     build:
       context: ./services/auth
@@ -57,7 +36,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       ENVIRONMENT: development
     env_file:
-      - ./apps/api/.env
+      - ./.env
     depends_on:
       db:
         condition: service_healthy
@@ -78,7 +57,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       ENVIRONMENT: development
     env_file:
-      - ./apps/api/.env
+      - ./.env
     depends_on:
       db:
         condition: service_healthy
@@ -99,7 +78,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       ENVIRONMENT: development
     env_file:
-      - ./apps/api/.env
+      - ./.env
     depends_on:
       db:
         condition: service_healthy
@@ -120,7 +99,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       ENVIRONMENT: development
     env_file:
-      - ./apps/api/.env
+      - ./.env
     depends_on:
       db:
         condition: service_healthy
@@ -141,7 +120,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       ENVIRONMENT: development
     env_file:
-      - ./apps/api/.env
+      - ./.env
     depends_on:
       db:
         condition: service_healthy
@@ -162,7 +141,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       ENVIRONMENT: development
     env_file:
-      - ./apps/api/.env
+      - ./.env
     depends_on:
       db:
         condition: service_healthy
@@ -183,7 +162,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       ENVIRONMENT: development
     env_file:
-      - ./apps/api/.env
+      - ./.env
     depends_on:
       db:
         condition: service_healthy
@@ -210,7 +189,7 @@ services:
       PRINTING_SERVICE_URL: http://printing:8000
       ENVIRONMENT: development
     env_file:
-      - ./apps/api/.env
+      - ./.env
     depends_on:
       - auth
       - catalog
@@ -227,7 +206,6 @@ services:
     ports:
       - "8080:80"
     depends_on:
-      - api
       - auth
       - catalog
       - ordering

@@ -22,8 +22,7 @@ SmartServe/
 ├── apps/                    # user-facing frontends
 │   ├── web/                  # Next.js 14 admin dashboard
 │   ├── orders/                # Next.js staff order UI
-│   ├── pos/                    # Expo (React Native) tablet POS
-│   └── api/                     # FastAPI monolith (being retired module-by-module, see below)
+│   └── pos/                    # Expo (React Native) tablet POS
 ├── services/                 # backend domain services (microservices migration target)
 │   ├── gateway/                # nginx reverse proxy — single stable base URL for all frontends
 │   ├── auth/                    # businesses, locations, users, JWT issuance/refresh, PIN login
@@ -69,19 +68,16 @@ expo-sqlite for offline order queueing.
 
 ```bash
 cp .env.example .env               # fill in SECRET_KEY, ANTHROPIC_API_KEY
-cp apps/api/.env.example apps/api/.env
 
 docker compose up -d --wait
 ```
 
-This starts Postgres, Redis, the `api` monolith, the extracted `auth`, `catalog`, `ordering`, `payments`,
-`staff`, `printing`, `reporting` and `ai` services, and the `gateway` (nginx) in front of them all. Frontends
-should point at the gateway:
+This starts Postgres, Redis, the `auth`, `catalog`, `ordering`, `payments`, `staff`, `printing`, `reporting`
+and `ai` services, and the `gateway` (nginx) in front of them all. Frontends should point at the gateway:
 
 | Service | URL |
 |---|---|
 | Gateway (single API base URL for all frontends) | http://localhost:8080 |
-| `apps/api` (monolith, direct) | http://localhost:8000 |
 | `services/auth` (direct) | http://localhost:8001 |
 | `services/catalog` (direct) | http://localhost:8002 |
 | `services/ordering` (direct) | http://localhost:8003 |
@@ -105,7 +101,7 @@ pnpm test         # turbo run test
 pnpm format       # prettier --write
 ```
 
-### Backend service commands (from each service directory, e.g. `apps/api`, `services/auth`, `services/catalog`, `services/ordering`, `services/payments`, `services/staff`, `services/printing`, `services/reporting`, `services/ai`)
+### Backend service commands (from each service directory, e.g. `services/auth`, `services/catalog`, `services/ordering`, `services/payments`, `services/staff`, `services/printing`, `services/reporting`, `services/ai`)
 
 ```bash
 python -m venv .venv && source .venv/Scripts/activate   # or .venv/bin/activate on macOS/Linux
@@ -130,10 +126,11 @@ Postgres required for tests.
 
 ## Backend architecture status
 
-`apps/api` started as a single FastAPI monolith and is being incrementally split into independently
-deployable services under `services/`, one domain at a time, always on the same physical Postgres instance
-(schema-per-service, no new infra) — see [docs/microservices-plan.md](docs/microservices-plan.md) for the
-full rationale, service-boundary table, and step-by-step plan.
+`apps/api` started as a single FastAPI monolith and was incrementally split into independently deployable
+services under `services/`, one domain at a time, always on the same physical Postgres instance
+(schema-per-service, no new infra), then retired entirely — see
+[docs/microservices-plan.md](docs/microservices-plan.md) for the full rationale, service-boundary table, and
+step-by-step plan.
 
 | Step | Service | Status |
 |---|---|---|
@@ -148,11 +145,13 @@ full rationale, service-boundary table, and step-by-step plan.
 | 22 | `services/printing` extraction | ✅ done |
 | 23 | `services/reporting` extraction | ✅ done |
 | 24 | `services/ai` extraction | ✅ done |
-| 25 | Retire the `apps/api` monolith | ⬜ not started |
+| 25 | Retire the `apps/api` monolith | ✅ done |
 
-Until a domain is extracted, it still lives in `apps/api/app/modules/<domain>` and is routed to directly by
-the gateway; once extracted it gets its own `services/<domain>` FastAPI app, Dockerfile, and trimmed model
-set, and the gateway's nginx config is updated to route that domain's path prefixes to the new service.
+All backend domains have been extracted into independently deployable `services/*` FastAPI apps; `apps/api`
+no longer exists in the repo. The `gateway` (nginx) routes every `/api/v1/*` path prefix directly to its
+owning service (see [services/gateway/nginx.conf](services/gateway/nginx.conf)), including a real-time
+order/KDS WebSocket endpoint (`/api/v1/ws/{location_id}`), which was migrated to `services/ordering` as the
+natural owner of order/KDS state changes.
 
 ## CI
 

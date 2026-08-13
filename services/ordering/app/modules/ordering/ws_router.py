@@ -1,4 +1,9 @@
-"""WebSocket endpoint for real-time order and KDS events."""
+"""WebSocket endpoint for real-time order and KDS events.
+
+Migrated from apps/api as part of Step 25 (monolith retirement) — `ordering` is the
+natural owner since it's the only service whose state changes (new orders, fired
+courses, status transitions) these events describe.
+"""
 
 from collections import defaultdict
 
@@ -10,7 +15,7 @@ from app.api.v1.router_base import APIRouter
 router = APIRouter()
 logger = structlog.get_logger()
 
-# Simple in-process connection manager (replace with Redis pub/sub in step/04)
+# Simple in-process connection manager (replace with Redis pub/sub in a future step)
 _connections: dict[str, list[WebSocket]] = defaultdict(list)
 
 
