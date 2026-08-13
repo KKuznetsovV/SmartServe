@@ -1,8 +1,9 @@
-from fastapi import Depends
+from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.deps import get_current_user, require_manager
 from app.api.v1.router_base import APIRouter
+from app.core import mq
 from app.db.models import User
 from app.db.session import get_db
 from app.modules.catalog.schemas import (
@@ -99,30 +100,69 @@ async def get_item(
 @router.post("/items", response_model=MenuItemOut, status_code=201)
 async def create_item(
     data: MenuItemCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_manager),
 ):
-    return await MenuService(db).create_item(data)
+    item = await MenuService(db).create_item(data)
+    await mq.publish(
+        request.app.state.mq_connection,
+        "catalog.item_updated",
+        {
+            "itemId": item.id,
+            "categoryId": item.category_id,
+            "name": item.name,
+            "price": item.price,
+            "inStock": item.in_stock,
+        },
+    )
+    return item
 
 
 @router.patch("/items/{item_id}", response_model=MenuItemOut)
 async def update_item(
     item_id: str,
     data: MenuItemUpdate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_manager),
 ):
-    return await MenuService(db).update_item(item_id, data)
+    item = await MenuService(db).update_item(item_id, data)
+    await mq.publish(
+        request.app.state.mq_connection,
+        "catalog.item_updated",
+        {
+            "itemId": item.id,
+            "categoryId": item.category_id,
+            "name": item.name,
+            "price": item.price,
+            "inStock": item.in_stock,
+        },
+    )
+    return item
 
 
 @router.patch("/items/{item_id}/stock", response_model=MenuItemOut)
 async def set_item_stock(
     item_id: str,
     data: StockUpdate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
-    return await MenuService(db).set_stock(item_id, data.in_stock)
+    item = await MenuService(db).set_stock(item_id, data.in_stock)
+    await mq.publish(
+        request.app.state.mq_connection,
+        "catalog.item_updated",
+        {
+            "itemId": item.id,
+            "categoryId": item.category_id,
+            "name": item.name,
+            "price": item.price,
+            "inStock": item.in_stock,
+        },
+    )
+    return item
 
 
 @router.get("/locations/{location_id}/stock", response_model=list[MenuItemOut])
@@ -156,10 +196,23 @@ async def delete_item(
 @router.post("/items/bulk-price", response_model=dict)
 async def bulk_price_update(
     data: BulkPriceUpdate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_manager),
 ):
     count = await MenuService(db).bulk_price_update(data)
+    await mq.publish(
+        request.app.state.mq_connection,
+        "catalog.item_updated",
+        {
+            "bulk": True,
+            "categoryId": data.category_id,
+            "locationId": data.location_id,
+            "changePct": data.change_pct,
+            "changeAbs": data.change_abs,
+            "updated": count,
+        },
+    )
     return {"updated": count}
 
 

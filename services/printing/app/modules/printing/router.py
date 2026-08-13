@@ -5,7 +5,14 @@ from app.api.v1.deps import require_manager
 from app.api.v1.router_base import APIRouter
 from app.db.models import User
 from app.db.session import get_db
-from app.modules.printing.schemas import PrinterCreate, PrinterOut, PrinterRouteCreate, PrinterRouteOut, PrinterUpdate
+from app.modules.printing.schemas import (
+    PrinterCreate,
+    PrinterOut,
+    PrinterRouteCreate,
+    PrinterRouteOut,
+    PrinterUpdate,
+    PrintJobOut,
+)
 from app.modules.printing.service import PrinterService
 
 router = APIRouter()
@@ -18,6 +25,15 @@ async def list_printers(
     _: User = Depends(require_manager),
 ):
     return await PrinterService(db).list_printers(location_id)
+
+
+@router.get("/locations/{location_id}/print-jobs", response_model=list[PrintJobOut])
+async def list_print_jobs(
+    location_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_manager),
+):
+    return await PrinterService(db).list_print_jobs(location_id)
 
 
 @router.post("/printers", response_model=PrinterOut, status_code=201)

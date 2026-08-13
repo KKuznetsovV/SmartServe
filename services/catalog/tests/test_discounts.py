@@ -4,7 +4,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Business, Location, MenuItem, User
+from app.db.models import Business, User
 
 
 @pytest.mark.asyncio

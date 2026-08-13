@@ -10,6 +10,36 @@
 
 ---
 
+## Step 26 (post-migration): RabbitMQ event bus
+
+The original plan (§1) called for cross-service fan-out via Redis pub/sub, but that was never actually
+implemented — `services/_shared/events.py` was a dead scaffold with no callers. Step 26 replaces that
+intention with a real durable event bus using **RabbitMQ** (topic exchange `smartserve.events`, dotted
+routing keys), scoped broadly as general audit/eventing infrastructure rather than just order/payment flows.
+
+- **Publishers**: `catalog` (`catalog.item_updated`), `ordering` (`order.created`, `order.updated`,
+  `order.item_fired`), `payments` (`payment.completed`, only on full payment), `staff` (`staff.created`,
+  `staff.updated`), `ai` (`ai.action_executed`, after a confirmed AI command executes).
+- **Consumers**: `ordering` consumes `payment.completed` to transition its local order to `paid` (idempotent);
+  `printing` consumes `order.item_fired` to create `PrintJob` audit rows for each matching `PrinterRoute`
+  (exposed via `GET /locations/{id}/print-jobs`); `reporting` consumes every event via a wildcard (`#`) binding
+  into a new `EventLog` table (generic audit trail, `GET /events`) and additionally projects `order.created`/
+  `order.updated`/`payment.completed` into its own `Order` mirror — this also fixes a real pre-existing bug
+  where reporting's Order/OrderItem mirror was never populated by anything, so `/reports/summary` always
+  returned zero rows.
+- **Implementation**: each of the 7 participating services gets its own `app/core/mq.py` (same duplication
+  convention as the rest of the codebase, not a `_shared` module) with `connect`/`publish`/`consume_forever`
+  helpers built on `aio-pika`. `publish` and `connect` never raise — a broker outage degrades to "no events
+  published" rather than breaking the request path. `app.state.mq_connection = None` is set in `create_app()`
+  before `lifespan` runs, since `httpx.ASGITransport` doesn't trigger `lifespan` during tests, keeping
+  `mq.publish(None, ...)` a safe no-op in the test suite.
+- **Incidental fix**: while wiring `ai`, a pre-existing Python 2-style `except json.JSONDecodeError, IndexError,
+  KeyError:` clause (invalid Python 3 syntax) was discovered and corrected in `services/ai/app/modules/ai/router.py`.
+- `docker-compose.yml` gained a `rabbitmq` service (management image + healthcheck), consumed via `RABBITMQ_URL`
+  by all 7 participating services.
+
+---
+
 ## 1. Current-state assessment
 
 - **Frontends**: `apps/web` (admin dashboard), `apps/orders` (staff order UI), `apps/pos` (Expo tablet app,

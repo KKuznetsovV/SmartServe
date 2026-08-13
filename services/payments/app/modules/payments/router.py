@@ -1,8 +1,9 @@
-from fastapi import Depends
+from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.deps import require_staff
 from app.api.v1.router_base import APIRouter
+from app.core import mq
 from app.db.models import User
 from app.db.session import get_db
 from app.modules.payments.schemas import PaymentCreate, PaymentOut
@@ -14,10 +15,23 @@ router = APIRouter()
 @router.post("/payments", response_model=PaymentOut, status_code=201)
 async def create_payment(
     data: PaymentCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_staff),
 ):
-    return await PaymentService(db).create_payment(data)
+    payment, order = await PaymentService(db).create_payment(data)
+    if order.status == "paid":
+        await mq.publish(
+            request.app.state.mq_connection,
+            "payment.completed",
+            {
+                "paymentId": payment.id,
+                "orderId": payment.order_id,
+                "amount": payment.amount,
+                "method": payment.method,
+            },
+        )
+    return payment
 
 
 @router.get("/payments/{payment_id}", response_model=PaymentOut)

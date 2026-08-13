@@ -31,9 +31,9 @@ SmartServe/
 │   ├── payments/                   # payment recording, split/partial payments, order paid-status transition
 │   ├── staff/                       # staff CRUD, cash-drawer shift open/close/current/list
 │   ├── printing/                    # printer CRUD, menu-item-to-printer routing rules
-│   ├── reporting/                    # revenue/order summary analytics (top items, channel/status breakdowns)
+│   ├── reporting/                  # revenue/order summary analytics (top items, channel/status breakdowns), audit event log
 │   ├── ai/                            # stateless AI orchestrator — intent classification, confirmed-action dispatch, menu import (no owned DB)
-│   └── _shared/                   # small internal lib (JWT verify, HTTP client, event helpers) — consumed by services/ai
+│   └── _shared/                   # small internal lib (JWT verify, HTTP client) — consumed by services/ai
 ├── packages/                 # shared frontend code
 │   ├── types/                  # @smartserve/types — shared TS types + Zod schemas
 │   ├── api-client/               # @smartserve/api-client — typed fetch client (points at the gateway)
@@ -46,8 +46,8 @@ SmartServe/
 
 ## Tech stack
 
-**Backend**: FastAPI (Python 3.14), SQLAlchemy 2.x (async), Alembic, PostgreSQL 16, Redis 7, JWT auth,
-Anthropic Claude API, Docker.
+**Backend**: FastAPI (Python 3.14), SQLAlchemy 2.x (async), Alembic, PostgreSQL 16, Redis 7, RabbitMQ
+(cross-service event bus), JWT auth, Anthropic Claude API, Docker.
 
 **Web admin (`apps/web`)**: Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn/ui, TanStack Query,
 Zustand, React Hook Form + Zod, next-intl (Hebrew/English RTL).
@@ -72,8 +72,16 @@ cp .env.example .env               # fill in SECRET_KEY, ANTHROPIC_API_KEY
 docker compose up -d --wait
 ```
 
-This starts Postgres, Redis, the `auth`, `catalog`, `ordering`, `payments`, `staff`, `printing`, `reporting`
-and `ai` services, and the `gateway` (nginx) in front of them all. Frontends should point at the gateway:
+This starts Postgres, Redis, RabbitMQ, the `auth`, `catalog`, `ordering`, `payments`, `staff`, `printing`,
+`reporting` and `ai` services, and the `gateway` (nginx) in front of them all. Frontends should point at the
+gateway:
+
+Catalog, ordering, payments, staff, printing, reporting and ai all publish/consume events on a shared durable
+topic exchange (`smartserve.events`) over RabbitMQ — e.g. `order.created`/`order.updated`/`order.item_fired`,
+`payment.completed`, `catalog.item_updated`, `staff.created`/`staff.updated`, `ai.action_executed`. `printing`
+consumes `order.item_fired` to create print jobs, `ordering` consumes `payment.completed` to mark orders paid,
+and `reporting` consumes every event (`#` wildcard) into an audit log (`EventLog`) and keeps its own Order
+mirror in sync for analytics.
 
 | Service | URL |
 |---|---|

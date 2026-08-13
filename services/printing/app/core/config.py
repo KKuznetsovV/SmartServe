@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # RabbitMQ
+    RABBITMQ_URL: str = "amqp://guest:guest@localhost:5672/"
+
     # Auth
     SECRET_KEY: str = "change-me-in-production-use-a-256-bit-random-string"
     ALGORITHM: str = "HS256"
