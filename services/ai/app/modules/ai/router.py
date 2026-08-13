@@ -264,7 +264,9 @@ async def menu_import_apply(
         key = category_name.lower()
         category = cat_by_name.get(key)
         if not category:
-            category = await menu.create_category(location_id=location_id, name=category_name, sort_order=next_sort_order)
+            category = await menu.create_category(
+                location_id=location_id, name=category_name, sort_order=next_sort_order
+            )
             next_sort_order += 1
             cat_by_name[key] = category
             categories_created += 1

@@ -26,7 +26,9 @@ class MenuClient:
         return resp.json()
 
     async def update_category(self, category_id: str, **fields: Any) -> dict[str, Any]:
-        resp = await catalog_client.patch(f"/api/v1/menu/categories/{category_id}", json=fields, forward_token=self._token)
+        resp = await catalog_client.patch(
+            f"/api/v1/menu/categories/{category_id}", json=fields, forward_token=self._token
+        )
         return resp.json()
 
     async def list_all_items(self, location_id: str) -> list[dict[str, Any]]:
