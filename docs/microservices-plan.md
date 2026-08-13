@@ -3,6 +3,10 @@
 > Proposed: 2026-08-11 · Approved scope: full domain decomposition (see §4)
 > Companion to [architecture.md](./architecture.md). This document is the working plan for (1) tidying the
 > monorepo layout and (2) splitting the `apps/api` monolith into independently deployable domain services.
+>
+> **Status: complete.** All 25 steps in §6 have been executed — every domain now lives in its own
+> `services/*` FastAPI app behind `services/gateway`, and `apps/api` has been removed from the repo. This
+> document is kept as a historical record of the plan and rationale.
 
 ---
 
