@@ -1,6 +1,9 @@
 import json
 from types import SimpleNamespace
 
+import httpx
+
+from app.clients import auth_client
 from app.core.config import settings
 
 
@@ -26,8 +29,40 @@ async def test_command_missing_api_key(client, manager_token, monkeypatch):
     assert resp.status_code == 503
 
 
+async def test_command_missing_location_context(client, manager_token, monkeypatch):
+    monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "test-key")
+
+    resp = await client.post(
+        "/api/v1/ai/command",
+        json={"message": "add a pizza", "context": {}},
+        headers={"Authorization": f"Bearer {manager_token}"},
+    )
+    assert resp.status_code == 400
+
+
+async def test_command_location_not_owned(client, manager_token, monkeypatch):
+    monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "test-key")
+
+    async def fake_auth_get(path, *, forward_token=None, **kwargs):
+        return httpx.Response(200, json={"id": "loc-999", "businessId": "some-other-biz"})
+
+    monkeypatch.setattr(auth_client, "get", fake_auth_get)
+
+    resp = await client.post(
+        "/api/v1/ai/command",
+        json={"message": "add a pizza", "context": {"locationId": "loc-999"}},
+        headers={"Authorization": f"Bearer {manager_token}"},
+    )
+    assert resp.status_code == 404
+
+
 async def test_command_returns_execution_id(client, manager_token, monkeypatch):
     monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "test-key")
+
+    async def fake_auth_get(path, *, forward_token=None, **kwargs):
+        return httpx.Response(200, json={"id": "loc-1", "businessId": "biz-1"})
+
+    monkeypatch.setattr(auth_client, "get", fake_auth_get)
 
     async def fake_create_message(client_obj, **kwargs):
         return FakeMessage(

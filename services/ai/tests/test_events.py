@@ -46,3 +46,6 @@ async def test_confirm_publishes_ai_action_executed(client, manager_token, monke
     assert routing_key == "ai.action_executed"
     assert payload["intent"] == "menu.create_item"
     assert payload["locationId"] == "loc-1"
+    assert payload["businessId"] == "biz-1"
+    assert payload["userId"]
+    assert "originalMessage" in payload

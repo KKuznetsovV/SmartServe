@@ -1,4 +1,9 @@
-from app.modules.ai.services.dispatch import fuzzy_match
+import httpx
+import pytest
+
+from app.clients import catalog_client, printing_client
+from app.modules.ai.services.dispatch import dispatch_intent, fuzzy_match
+from app.modules.ai.services.menu_client import MenuClient, PrintingClient
 
 
 def test_fuzzy_match_exact():
@@ -15,3 +20,88 @@ def test_fuzzy_match_none_hint():
 
 def test_fuzzy_match_no_match():
     assert fuzzy_match("Sushi", ["Burger", "Pizza"]) is None
+
+
+ITEMS = [
+    {"id": "item-bar-1", "name": "Beer", "categoryId": "cat-bar"},
+    {"id": "item-bar-2", "name": "Wine", "categoryId": "cat-bar"},
+    {"id": "item-food-1", "name": "Burger", "categoryId": "cat-food"},
+]
+CATEGORIES = [
+    {"id": "cat-bar", "name": "Bar"},
+    {"id": "cat-food", "name": "Food"},
+]
+PRINTERS = [
+    {"id": "printer-kitchen", "name": "Main Kitchen", "type": "kitchen"},
+    {"id": "printer-receipt", "name": "Front Receipt", "type": "receipt"},
+]
+
+
+@pytest.mark.asyncio
+async def test_dispatch_printer_route_by_category_replaces_existing(monkeypatch):
+    async def fake_catalog_get(path, *, forward_token=None, **kwargs):
+        if path.endswith("/categories"):
+            return httpx.Response(200, json=CATEGORIES)
+        return httpx.Response(200, json=ITEMS)
+
+    async def fake_printing_get(path, *, forward_token=None, **kwargs):
+        if path.endswith("/printers"):
+            return httpx.Response(200, json=PRINTERS)
+        return httpx.Response(
+            200,
+            json=[{"id": "route-1", "itemId": "item-bar-1", "printerId": "printer-receipt"}],
+        )
+
+    deleted_routes: list[str] = []
+    added_routes: list[tuple[str, str]] = []
+
+    async def fake_printing_delete(path, *, forward_token=None, **kwargs):
+        deleted_routes.append(path.rsplit("/", 1)[-1])
+        return httpx.Response(204)
+
+    async def fake_printing_post(path, *, forward_token=None, **kwargs):
+        body = kwargs["json"]
+        added_routes.append((body["printer_id"], body["item_id"]))
+        return httpx.Response(201, json={"id": "route-new", **body})
+
+    monkeypatch.setattr(catalog_client, "get", fake_catalog_get)
+    monkeypatch.setattr(printing_client, "get", fake_printing_get)
+    monkeypatch.setattr(printing_client, "delete", fake_printing_delete)
+    monkeypatch.setattr(printing_client, "post", fake_printing_post)
+
+    menu = MenuClient("tok")
+    printing = PrintingClient("tok")
+
+    result = await dispatch_intent(
+        "printer.route",
+        {"category_hint": "Bar", "printer_hint": "kitchen"},
+        "loc-1",
+        menu,
+        printing,
+    )
+
+    assert "Beer" in result and "Wine" in result and "Main Kitchen" in result
+    assert deleted_routes == ["route-1"]
+    assert ("printer-kitchen", "item-bar-1") in added_routes
+    assert ("printer-kitchen", "item-bar-2") in added_routes
+
+
+@pytest.mark.asyncio
+async def test_dispatch_printer_route_no_matching_printer(monkeypatch):
+    async def fake_printing_get(path, *, forward_token=None, **kwargs):
+        return httpx.Response(200, json=PRINTERS)
+
+    monkeypatch.setattr(printing_client, "get", fake_printing_get)
+
+    menu = MenuClient("tok")
+    printing = PrintingClient("tok")
+
+    with pytest.raises(Exception) as exc_info:
+        await dispatch_intent(
+            "printer.route",
+            {"category_hint": "Bar", "printer_hint": "label"},
+            "loc-1",
+            menu,
+            printing,
+        )
+    assert "404" in str(exc_info.value) or "No printer" in str(exc_info.value)

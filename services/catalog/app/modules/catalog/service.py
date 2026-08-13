@@ -176,6 +176,12 @@ class MenuService:
         await self.db.flush()
         return await self.get_item(item_id)
 
+    async def get_item_location_id(self, item: MenuItem) -> str:
+        """Resolve the location an item belongs to via its category — used to scope
+        real-time event broadcasts (MenuItem has no direct location_id column)."""
+        result = await self.db.execute(select(MenuCategory.location_id).where(MenuCategory.id == item.category_id))
+        return result.scalar_one()
+
     async def list_all_items(self, location_id: str) -> list[MenuItem]:
         result = await self.db.execute(
             select(MenuItem)

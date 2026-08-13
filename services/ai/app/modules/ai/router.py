@@ -29,13 +29,22 @@ _menu_import_sessions: dict[str, dict] = {}
 @router.post("/command")
 async def ai_command(
     body: CommandRequest,
-    _: AuthContext = Depends(get_auth_context),  # validates the JWT; any authenticated role may ask
+    ctx: AuthContext = Depends(get_auth_context),  # validates the JWT; any authenticated role may ask
 ):
     if not settings.ANTHROPIC_API_KEY:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="AI service not configured (set ANTHROPIC_API_KEY)",
         )
+
+    # location_id/business_id are never trusted bare from the body — the location is
+    # confirmed to belong to the caller's own (JWT-verified) business here, same check
+    # `ai_confirm` already does, so a classify call can't be used to probe/target another
+    # business's location before a confirm is ever attempted.
+    location_id = body.context.get("locationId") if isinstance(body.context, dict) else None
+    if not location_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing location context")
+    await _get_owned_location(location_id, ctx)
 
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
 
@@ -80,6 +89,7 @@ async def ai_command(
         "intent": result.get("intent"),
         "params": result.get("params", {}),
         "context": body.context,
+        "message": body.message,
     }
 
     return {
@@ -112,12 +122,24 @@ async def ai_confirm(
     await _get_owned_location(location_id, ctx)
 
     menu = MenuClient(ctx.token)
-    message = await dispatch_intent(intent, params, location_id, menu)
+    printing = PrintingClient(ctx.token)
+    original_message = pending.get("message", "")
+    message = await dispatch_intent(intent, params, location_id, menu, printing)
 
+    # Audit log: who ran the assistant, what it was asked, and what it actually did —
+    # consumed by `reporting`'s wildcard EventLog subscriber (GET /reports/events).
     await mq.publish(
         request.app.state.mq_connection,
         "ai.action_executed",
-        {"intent": intent, "params": params, "locationId": location_id, "message": message},
+        {
+            "intent": intent,
+            "params": params,
+            "locationId": location_id,
+            "businessId": ctx.claims.business_id,
+            "userId": ctx.claims.sub,
+            "originalMessage": original_message,
+            "message": message,
+        },
     )
 
     return {"success": True, "message": message}

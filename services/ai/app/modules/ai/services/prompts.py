@@ -37,6 +37,8 @@ Examples:
 - "Add margherita pizza for 58 NIS" → intent: menu.create_item, params: {{name: "Margherita Pizza", price: 58, currency: "ILS"}}
 - "הגדל את כל מחירי הפסטה ב-10%" → intent: menu.bulk_price_change, params: {{category_hint: "פסטה", change_pct: 10}}
 - "Send burgers to the kitchen printer" → intent: printer.route, params: {{item_hint: "burger", printer_hint: "kitchen"}}
+- "Route all bar tickets to the kitchen printer instead" → intent: printer.route,
+  params: {{category_hint: "Bar", printer_hint: "kitchen", replace_existing: true}}
 - "Reorganize my menu into Food and Drinks main sections" → intent: menu.reorganize_categories,
   params: {{new_top_categories: ["Food", "Drinks"]}}
 - "Move Cola and Lemonade into the Soft Drinks category" → intent: menu.move_items_to_category,

@@ -96,3 +96,10 @@ class PrintingClient:
             "/api/v1/printer-routes", json={"printer_id": printer_id, "item_id": item_id}, forward_token=self._token
         )
         return resp.json()
+
+    async def list_routes(self, location_id: str) -> list[dict[str, Any]]:
+        resp = await printing_client.get(f"/api/v1/locations/{location_id}/printer-routes", forward_token=self._token)
+        return resp.json()
+
+    async def delete_route(self, route_id: str) -> None:
+        await printing_client.delete(f"/api/v1/printer-routes/{route_id}", forward_token=self._token)

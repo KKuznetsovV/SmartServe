@@ -27,6 +27,12 @@ export function useLocationWs(locationId: string | null) {
           const id = msg.payload?.id as string | undefined
           if (id) qc.invalidateQueries({ queryKey: ['order', id] })
         }
+        if (msg.type === 'menu.item_updated') {
+          // Item mutations (incl. AI-driven price/stock changes) can come from any open
+          // screen — invalidate broadly rather than trying to track every category key.
+          qc.invalidateQueries({ queryKey: ['items'] })
+          qc.invalidateQueries({ queryKey: ['categories', locationId] })
+        }
       } catch {
         // ignore malformed messages
       }
