@@ -9,6 +9,7 @@ from slowapi.util import get_remote_address
 from sqlalchemy import text
 
 from app.api.v1.router import api_router
+from app.core import mq
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.db import models  # noqa: F401 — ensure models are registered
@@ -25,7 +26,10 @@ async def lifespan(app: FastAPI):
     if settings.ENVIRONMENT == "production" and settings.SECRET_KEY.startswith("change-me"):
         raise RuntimeError("SECRET_KEY must be changed in production!")
     logger.info("catalog service starting", env=settings.ENVIRONMENT)
+    app.state.mq_connection = await mq.connect(settings.RABBITMQ_URL)
     yield
+    if app.state.mq_connection is not None:
+        await app.state.mq_connection.close()
     await engine.dispose()
     logger.info("catalog service shutdown")
 
@@ -39,6 +43,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    app.state.mq_connection = None
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 

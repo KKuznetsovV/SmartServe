@@ -8,3 +8,4 @@ defusedxml>=0.7.1
 python-multipart>=0.0.20
 structlog>=25.4.0
 slowapi>=0.1.9
+aio-pika>=9.4.0

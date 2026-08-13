@@ -65,3 +65,18 @@ class OrderItem(Base):
     menu_item_name: Mapped[str] = mapped_column(String(255), nullable=False)
     qty: Mapped[int] = mapped_column(Integer, default=1)
     unit_price: Mapped[float] = mapped_column(Float, nullable=False)
+
+
+# ─── Event log (owned here) ────────────────────────────────────────────────────
+
+
+class EventLog(Base):
+    """Generic audit trail of every RabbitMQ event received on the `smartserve.events`
+    topic exchange (wildcard `#` subscription) — see docs/microservices-plan.md §4."""
+
+    __tablename__ = "event_log"
+
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
+    routing_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    payload: Mapped[str] = mapped_column(String(), nullable=False)
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

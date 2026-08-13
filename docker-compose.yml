@@ -25,6 +25,20 @@ services:
       timeout: 3s
       retries: 10
 
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: smartserve
+      RABBITMQ_DEFAULT_PASS: smartserve
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   auth:
     build:
       context: ./services/auth
@@ -55,6 +69,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://smartserve:smartserve@db:5432/smartserve
       REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://smartserve:smartserve@rabbitmq:5672/
       ENVIRONMENT: development
     env_file:
       - ./.env
@@ -62,6 +77,8 @@ services:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     volumes:
       - ./services/catalog:/app
@@ -76,6 +93,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://smartserve:smartserve@db:5432/smartserve
       REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://smartserve:smartserve@rabbitmq:5672/
       ENVIRONMENT: development
     env_file:
       - ./.env
@@ -83,6 +101,8 @@ services:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     volumes:
       - ./services/ordering:/app
@@ -97,6 +117,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://smartserve:smartserve@db:5432/smartserve
       REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://smartserve:smartserve@rabbitmq:5672/
       ENVIRONMENT: development
     env_file:
       - ./.env
@@ -104,6 +125,8 @@ services:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     volumes:
       - ./services/payments:/app
@@ -118,6 +141,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://smartserve:smartserve@db:5432/smartserve
       REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://smartserve:smartserve@rabbitmq:5672/
       ENVIRONMENT: development
     env_file:
       - ./.env
@@ -125,6 +149,8 @@ services:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     volumes:
       - ./services/staff:/app
@@ -139,6 +165,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://smartserve:smartserve@db:5432/smartserve
       REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://smartserve:smartserve@rabbitmq:5672/
       ENVIRONMENT: development
     env_file:
       - ./.env
@@ -146,6 +173,8 @@ services:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     volumes:
       - ./services/printing:/app
@@ -160,6 +189,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://smartserve:smartserve@db:5432/smartserve
       REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://smartserve:smartserve@rabbitmq:5672/
       ENVIRONMENT: development
     env_file:
       - ./.env
@@ -167,6 +197,8 @@ services:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     volumes:
       - ./services/reporting:/app
@@ -187,6 +219,7 @@ services:
       AUTH_SERVICE_URL: http://auth:8000
       CATALOG_SERVICE_URL: http://catalog:8000
       PRINTING_SERVICE_URL: http://printing:8000
+      RABBITMQ_URL: amqp://smartserve:smartserve@rabbitmq:5672/
       ENVIRONMENT: development
     env_file:
       - ./.env
@@ -194,6 +227,7 @@ services:
       - auth
       - catalog
       - printing
+      - rabbitmq
     volumes:
       - ./services/ai:/app
       - ./services/_shared:/shared

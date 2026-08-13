@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     # Auth — ai only ever verifies tokens issued by `auth`, it never issues its own
     SECRET_KEY: str = "change-me-in-production-use-a-256-bit-random-string"
 
+    # RabbitMQ — publishes ai.action_executed audit events, never consumes
+    RABBITMQ_URL: str = "amqp://guest:guest@localhost:5672/"
+
     # Downstream services this stateless orchestrator calls into to execute confirmed actions
     AUTH_SERVICE_URL: str = "http://auth:8000"
     CATALOG_SERVICE_URL: str = "http://catalog:8000"

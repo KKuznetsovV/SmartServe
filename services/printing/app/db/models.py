@@ -64,3 +64,19 @@ class PrinterRoute(Base):
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     printer_id: Mapped[str] = mapped_column(ForeignKey("printers.id"), nullable=False)
     item_id: Mapped[str] = mapped_column(String(), nullable=False)
+
+
+class PrintJob(Base):
+    """Audit trail of `order.item_fired` events fanned out to matching printer routes.
+
+    No real physical printer driver exists yet — this table just records that a fired item
+    was (or would be) routed to a printer, for visibility/debugging (see docs/microservices-plan.md §4).
+    """
+
+    __tablename__ = "print_jobs"
+
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
+    order_id: Mapped[str] = mapped_column(String(), nullable=False)
+    item_id: Mapped[str] = mapped_column(String(), nullable=False)
+    printer_id: Mapped[str] = mapped_column(ForeignKey("printers.id"), nullable=False)
+    fired_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

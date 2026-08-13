@@ -1,8 +1,9 @@
-from fastapi import Depends, Query
+from fastapi import Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.deps import require_staff
 from app.api.v1.router_base import APIRouter
+from app.core import mq
 from app.db.models import User
 from app.db.session import get_db
 from app.modules.ordering.schemas import (
@@ -48,10 +49,24 @@ async def get_order(
 @router.post("/orders", response_model=OrderWithItemsOut, status_code=201)
 async def create_order(
     data: OrderCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_staff),
 ):
-    return await OrderService(db).create_order(data)
+    order = await OrderService(db).create_order(data)
+    await mq.publish(
+        request.app.state.mq_connection,
+        "order.created",
+        {
+            "orderId": order.id,
+            "locationId": order.location_id,
+            "channel": order.channel,
+            "status": order.status,
+            "total": order.total,
+            "createdAt": order.created_at.isoformat(),
+        },
+    )
+    return order
 
 
 @router.post("/orders/{order_id}/items", response_model=OrderItemOut, status_code=201)
@@ -109,19 +124,33 @@ async def remove_order_item(
 @router.post("/orders/{order_id}/submit", response_model=OrderWithItemsOut)
 async def submit_order(
     order_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_staff),
 ):
-    return await OrderService(db).transition_order(order_id, "submitted")
+    order = await OrderService(db).transition_order(order_id, "submitted")
+    await mq.publish(
+        request.app.state.mq_connection,
+        "order.updated",
+        {"orderId": order.id, "locationId": order.location_id, "status": order.status, "total": order.total},
+    )
+    return order
 
 
 @router.post("/orders/{order_id}/cancel", response_model=OrderWithItemsOut)
 async def cancel_order(
     order_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_staff),
 ):
-    return await OrderService(db).transition_order(order_id, "cancelled")
+    order = await OrderService(db).transition_order(order_id, "cancelled")
+    await mq.publish(
+        request.app.state.mq_connection,
+        "order.updated",
+        {"orderId": order.id, "locationId": order.location_id, "status": order.status, "total": order.total},
+    )
+    return order
 
 
 @router.post("/orders/{order_id}/discount", response_model=OrderWithItemsOut)
@@ -178,10 +207,28 @@ async def bulk_delete_items(
 async def fire_course(
     order_id: str,
     data: OrderFireCourseRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_staff),
 ):
-    return await OrderService(db).fire_course(order_id, data)
+    service = OrderService(db)
+    order_before = await service.get_order(order_id)
+    newly_fired = [i for i in order_before.items if i.status == "held" and i.fire_course == data.course]
+    result = await service.fire_course(order_id, data)
+    for item in newly_fired:
+        await mq.publish(
+            request.app.state.mq_connection,
+            "order.item_fired",
+            {
+                "orderId": order_id,
+                "itemId": item.id,
+                "menuItemId": item.menu_item_id,
+                "menuItemName": item.menu_item_name,
+                "locationId": result.location_id,
+                "course": data.course,
+            },
+        )
+    return result
 
 
 @router.get("/public/locations/{location_id}/orders", response_model=list[OrderWithItemsOut])

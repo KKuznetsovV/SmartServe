@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Printer, PrinterRoute
+from app.db.models import Printer, PrinterRoute, PrintJob
 from app.modules.printing.schemas import PrinterCreate, PrinterRouteCreate, PrinterUpdate
 
 
@@ -62,5 +62,15 @@ class PrinterService:
             select(PrinterRoute)
             .join(Printer, PrinterRoute.printer_id == Printer.id)
             .where(Printer.location_id == location_id)
+        )
+        return list(result.scalars().all())
+
+    async def list_print_jobs(self, location_id: str, limit: int = 100) -> list[PrintJob]:
+        result = await self.db.execute(
+            select(PrintJob)
+            .join(Printer, PrintJob.printer_id == Printer.id)
+            .where(Printer.location_id == location_id)
+            .order_by(PrintJob.fired_at.desc())
+            .limit(limit)
         )
         return list(result.scalars().all())

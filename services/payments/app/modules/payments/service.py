@@ -16,7 +16,7 @@ class PaymentService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def create_payment(self, data: PaymentCreate) -> Payment:
+    async def create_payment(self, data: PaymentCreate) -> tuple[Payment, Order]:
         if data.method not in VALID_PAYMENT_METHODS:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -61,7 +61,7 @@ class PaymentService:
             order.status = "paid"
 
         await self.db.flush()
-        return payment
+        return payment, order
 
     async def get_payment(self, payment_id: str) -> Payment:
         result = await self.db.execute(select(Payment).where(Payment.id == payment_id))

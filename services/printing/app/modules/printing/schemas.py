@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from app.schemas.base import BaseSchema as BaseModel
 
 
@@ -38,5 +40,15 @@ class PrinterRouteOut(BaseModel):
     id: str
     printer_id: str
     item_id: str
+
+    model_config = {"from_attributes": True}
+
+
+class PrintJobOut(BaseModel):
+    id: str
+    order_id: str
+    item_id: str
+    printer_id: str
+    fired_at: datetime
 
     model_config = {"from_attributes": True}

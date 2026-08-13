@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Order, OrderItem
+from app.db.models import EventLog, Order, OrderItem
 from app.modules.reports.schemas import ReportSummaryOut, TopItemOut
 
 
@@ -80,3 +80,11 @@ class ReportService:
             top_items=top_items,
             orders_by_status=orders_by_status,
         )
+
+    async def list_events(self, routing_key: str | None = None, limit: int = 100) -> list[EventLog]:
+        q = select(EventLog)
+        if routing_key:
+            q = q.where(EventLog.routing_key == routing_key)
+        q = q.order_by(EventLog.received_at.desc()).limit(limit)
+        result = await self.db.execute(q)
+        return list(result.scalars().all())

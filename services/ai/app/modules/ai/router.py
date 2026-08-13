@@ -4,12 +4,13 @@ import json
 import uuid
 
 import anthropic
-from fastapi import Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import Depends, File, Form, HTTPException, Request, UploadFile, status
 from httpx import HTTPStatusError
 
 from app.api.v1.deps import AuthContext, get_auth_context, require_manager
 from app.api.v1.router_base import APIRouter
 from app.clients import auth_client
+from app.core import mq
 from app.core.config import settings
 from app.modules.ai.schemas import CommandRequest, ConfirmRequest, MenuImportApplyRequest, MenuImportMessageRequest
 from app.modules.ai.services.client import create_message, parse_json_reply, parse_menu_import_reply
@@ -94,6 +95,7 @@ async def ai_command(
 @router.post("/confirm")
 async def ai_confirm(
     body: ConfirmRequest,
+    request: Request,
     ctx: AuthContext = Depends(require_manager),
 ):
     pending = _pending.pop(body.execution_id, None)
@@ -111,6 +113,12 @@ async def ai_confirm(
 
     menu = MenuClient(ctx.token)
     message = await dispatch_intent(intent, params, location_id, menu)
+
+    await mq.publish(
+        request.app.state.mq_connection,
+        "ai.action_executed",
+        {"intent": intent, "params": params, "locationId": location_id, "message": message},
+    )
 
     return {"success": True, "message": message}
 
