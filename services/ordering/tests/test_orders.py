@@ -547,6 +547,5 @@ async def test_update_order_item(
     assert resp.status_code == 400
 
 
-# Note: payment-completes-order coverage lives in apps/api/tests/test_payments.py
-# (test_payment_marks_order_paid) — payments is still owned by apps/api and that test
-# builds the order fixture directly against the DB rather than via this service's HTTP API.
+# Note: payment-completes-order coverage lives in services/payments/tests, which builds
+# the order fixture directly against its own DB mirror rather than via this service's HTTP API.

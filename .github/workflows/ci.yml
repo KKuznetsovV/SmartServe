@@ -33,13 +33,21 @@ jobs:
       - name: Lint web
         run: pnpm turbo run lint --filter=@smartserve/web
 
-  # ─── Python API ───────────────────────────────────────────────────────────
+  # ─── Python services ──────────────────────────────────────────────────────
+  # apps/api was retired (step 25) — every backend domain now lives under
+  # services/<name> as its own independently deployable FastAPI app. Each
+  # service's test suite runs against an in-memory SQLite DB, so no Postgres/
+  # Redis containers are needed in CI.
   python-check:
-    name: Python lint & typecheck
+    name: Python lint & typecheck (${{ matrix.service }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [auth, catalog, ordering, payments, staff, printing, reporting, ai]
     defaults:
       run:
-        working-directory: apps/api
+        working-directory: services/${{ matrix.service }}
     steps:
       - uses: actions/checkout@v4
 
@@ -47,6 +55,10 @@ jobs:
         with:
           python-version: "3.14"
           cache: "pip"
+
+      - name: Install shared lib
+        if: matrix.service == 'ai'
+        run: pip install -e ../_shared
 
       - name: Install dependencies
         run: |
@@ -64,29 +76,15 @@ jobs:
 
   # ─── Python tests ─────────────────────────────────────────────────────────
   python-test:
-    name: Python tests
+    name: Python tests (${{ matrix.service }})
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: smartserve
-          POSTGRES_PASSWORD: smartserve
-          POSTGRES_DB: smartserve_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [auth, catalog, ordering, payments, staff, printing, reporting, ai]
     defaults:
       run:
-        working-directory: apps/api
+        working-directory: services/${{ matrix.service }}
     steps:
       - uses: actions/checkout@v4
 
@@ -95,15 +93,14 @@ jobs:
           python-version: "3.14"
           cache: "pip"
 
+      - name: Install shared lib
+        if: matrix.service == 'ai'
+        run: pip install -e ../_shared
+
       - name: Install dependencies
         run: pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Run tests
-        env:
-          DATABASE_URL: postgresql+asyncpg://smartserve:smartserve@localhost:5432/smartserve_test
-          REDIS_URL: redis://localhost:6379/0
-          SECRET_KEY: test-secret-key-not-for-production
-          ANTHROPIC_API_KEY: ""
         run: pytest -v --tb=short
 
   # ─── Frontend tests ───────────────────────────────────────────────────────
