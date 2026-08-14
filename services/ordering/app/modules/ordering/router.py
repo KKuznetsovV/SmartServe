@@ -51,9 +51,9 @@ async def create_order(
     data: OrderCreate,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_staff),
+    current_user: User = Depends(require_staff),
 ):
-    order = await OrderService(db).create_order(data)
+    order = await OrderService(db).create_order(data, created_by=current_user.id)
     await mq.publish(
         request.app.state.mq_connection,
         "order.created",
@@ -63,6 +63,7 @@ async def create_order(
             "channel": order.channel,
             "status": order.status,
             "total": order.total,
+            "createdBy": order.created_by,
             "createdAt": order.created_at.isoformat(),
         },
     )
