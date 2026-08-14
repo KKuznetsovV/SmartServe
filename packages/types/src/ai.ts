@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { ClosedOrdersReportSchema, SalesReportSchema, ServerSalesReportSchema } from './report'
+
 export const AiIntent = z.enum([
   'menu.create_item',
   'menu.update_item',
@@ -34,6 +36,9 @@ export const AiCommandResponseSchema = z.object({
   preview: z.string(),
   requiresConfirmation: z.boolean().default(true),
   executionId: z.string().uuid().optional(),
+  // Present only for the read-only 'report.query' intent, which returns its
+  // result inline instead of going through the pending-execution /confirm flow.
+  report: z.union([SalesReportSchema, ServerSalesReportSchema, ClosedOrdersReportSchema]).optional(),
 })
 export type AiCommandResponse = z.infer<typeof AiCommandResponseSchema>
 

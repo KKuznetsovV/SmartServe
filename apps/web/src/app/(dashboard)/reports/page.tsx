@@ -1,10 +1,21 @@
 'use client'
 
-import { useState } from 'react'
-import { useReportSummary, type ReportPeriod } from '@/hooks/use-reports'
+import { useMemo, useState } from 'react'
+import { useReportSummary, useSalesReport, useSalesByServerReport, useClosedOrdersReport } from '@/hooks/use-reports'
+import { useCategories, useMenuItems } from '@/hooks/use-menu'
 import { useAuthStore } from '@/lib/auth-store'
+import { dayRangeToIso } from '@/lib/report-utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Select } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
+import type { ReportPeriod } from '@/hooks/use-reports'
+import type { ClosedOrderStatusFilter, ReportGroupBy } from '@smartserve/types'
+import { AiReportQuery } from './components/ai-report-query'
+import { ClosedOrdersReportView } from './components/closed-orders-report-view'
+import { CsvExportButton } from './components/csv-export-button'
+import { DateRangeFields } from './components/date-range-fields'
+import { SalesReportView } from './components/sales-report-view'
+import { ServerSalesReportView } from './components/server-sales-report-view'
 
 const PERIODS: { value: ReportPeriod; label: string }[] = [
   { value: 'today', label: 'Today' },
@@ -29,7 +40,21 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: 'Cancelled',
 }
 
-export default function ReportsPage() {
+type ReportTab = 'sales' | 'sales-by-server' | 'closed-orders'
+
+const TABS: { value: ReportTab; label: string }[] = [
+  { value: 'sales', label: 'Sales' },
+  { value: 'sales-by-server', label: 'Sales by Server' },
+  { value: 'closed-orders', label: 'Closed Orders' },
+]
+
+function isoDate(daysAgo: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() - daysAgo)
+  return d.toISOString().slice(0, 10)
+}
+
+function OverviewSection() {
   const locationId = useAuthStore((s) => s.activeLocationId)
   const [period, setPeriod] = useState<ReportPeriod>('today')
   const { data, isLoading } = useReportSummary(locationId, period)
@@ -39,9 +64,9 @@ export default function ReportsPage() {
   const maxChannelRevenue = Math.max(...channelEntries.map(([, v]) => v), 1)
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Reports</h1>
+        <h2 className="text-lg font-semibold">Overview</h2>
 
         {/* Period selector */}
         <div className="flex gap-1 rounded-lg border p-1 bg-muted">
@@ -171,6 +196,202 @@ export default function ReportsPage() {
           )}
         </>
       )}
+    </div>
+  )
+}
+
+function SalesTab({ locationId, startDate, endDate }: { locationId: string; startDate: string; endDate: string }) {
+  const [groupBy, setGroupBy] = useState<ReportGroupBy>('item')
+  const { start, end } = useMemo(() => dayRangeToIso(startDate, endDate), [startDate, endDate])
+  const { data, isLoading } = useSalesReport(locationId, { groupBy, start, end })
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-muted-foreground">Group by</label>
+          <Select value={groupBy} onChange={(e) => setGroupBy(e.target.value as ReportGroupBy)} className="w-40">
+            <option value="item">Item</option>
+            <option value="category">Category</option>
+            <option value="menu">Whole menu</option>
+          </Select>
+        </div>
+        <CsvExportButton locationId={locationId} params={{ reportType: 'sales', groupBy, start, end }} />
+      </div>
+      {isLoading && <Spinner />}
+      {data && <SalesReportView report={data} />}
+    </div>
+  )
+}
+
+function SalesByServerTab({
+  locationId,
+  startDate,
+  endDate,
+}: {
+  locationId: string
+  startDate: string
+  endDate: string
+}) {
+  const [categoryId, setCategoryId] = useState('')
+  const [itemId, setItemId] = useState('')
+  const { data: categories } = useCategories(locationId)
+  const { data: items } = useMenuItems(categoryId || null, !!categoryId)
+  const { start, end } = useMemo(() => dayRangeToIso(startDate, endDate), [startDate, endDate])
+  const { data, isLoading } = useSalesByServerReport(locationId, {
+    start,
+    end,
+    itemId: itemId || undefined,
+    categoryId: itemId ? undefined : categoryId || undefined,
+  })
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex gap-3">
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-muted-foreground">Category</label>
+            <Select
+              value={categoryId}
+              onChange={(e) => {
+                setCategoryId(e.target.value)
+                setItemId('')
+              }}
+              className="w-44"
+            >
+              <option value="">All categories</option>
+              {categories?.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-muted-foreground">Item</label>
+            <Select value={itemId} onChange={(e) => setItemId(e.target.value)} disabled={!categoryId} className="w-44">
+              <option value="">All items</option>
+              {items?.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+        <CsvExportButton
+          locationId={locationId}
+          params={{
+            reportType: 'sales-by-server',
+            start,
+            end,
+            itemId: itemId || undefined,
+            categoryId: itemId ? undefined : categoryId || undefined,
+          }}
+        />
+      </div>
+      {isLoading && <Spinner />}
+      {data && <ServerSalesReportView report={data} />}
+    </div>
+  )
+}
+
+function ClosedOrdersTab({
+  locationId,
+  startDate,
+  endDate,
+}: {
+  locationId: string
+  startDate: string
+  endDate: string
+}) {
+  const [status, setStatus] = useState<ClosedOrderStatusFilter | ''>('')
+  const { start, end } = useMemo(() => dayRangeToIso(startDate, endDate), [startDate, endDate])
+  const { data, isLoading } = useClosedOrdersReport(locationId, { start, end, status: status || undefined })
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-muted-foreground">Status</label>
+          <Select
+            value={status}
+            onChange={(e) => setStatus(e.target.value as ClosedOrderStatusFilter | '')}
+            className="w-40"
+          >
+            <option value="">All</option>
+            <option value="paid">Paid</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="other">Other</option>
+          </Select>
+        </div>
+        <CsvExportButton
+          locationId={locationId}
+          params={{ reportType: 'closed-orders', start, end, status: status || undefined }}
+        />
+      </div>
+      {isLoading && <Spinner />}
+      {data && <ClosedOrdersReportView report={data} />}
+    </div>
+  )
+}
+
+function DetailedReportsSection({ locationId }: { locationId: string }) {
+  const [tab, setTab] = useState<ReportTab>('sales')
+  const [startDate, setStartDate] = useState(isoDate(6))
+  const [endDate, setEndDate] = useState(isoDate(0))
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h2 className="text-lg font-semibold">Detailed Reports</h2>
+        <DateRangeFields
+          startDate={startDate}
+          endDate={endDate}
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+        />
+      </div>
+
+      <div className="flex gap-1 rounded-lg border p-1 bg-muted w-fit">
+        {TABS.map((t) => (
+          <button
+            key={t.value}
+            onClick={() => setTab(t.value)}
+            className={`px-3 py-1 rounded-md text-sm transition-colors ${
+              tab === t.value ? 'bg-background shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <Card>
+        <CardContent className="p-4">
+          {tab === 'sales' && <SalesTab locationId={locationId} startDate={startDate} endDate={endDate} />}
+          {tab === 'sales-by-server' && (
+            <SalesByServerTab locationId={locationId} startDate={startDate} endDate={endDate} />
+          )}
+          {tab === 'closed-orders' && (
+            <ClosedOrdersTab locationId={locationId} startDate={startDate} endDate={endDate} />
+          )}
+        </CardContent>
+      </Card>
+
+      <AiReportQuery />
+    </div>
+  )
+}
+
+export default function ReportsPage() {
+  const locationId = useAuthStore((s) => s.activeLocationId)
+
+  return (
+    <div className="p-6 space-y-10">
+      <h1 className="text-2xl font-bold">Reports</h1>
+      <OverviewSection />
+      {locationId && <DetailedReportsSection locationId={locationId} />}
     </div>
   )
 }
