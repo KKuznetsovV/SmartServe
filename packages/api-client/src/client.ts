@@ -15,6 +15,9 @@ export interface Http {
   put: <T>(path: string, body: unknown) => Promise<T>
   patch: <T>(path: string, body: unknown) => Promise<T>
   del: <T>(path: string) => Promise<T>
+  /** For binary downloads (e.g. CSV export) — bypasses JSON parsing and
+   * surfaces the server-provided filename from Content-Disposition. */
+  getBlob: (path: string) => Promise<{ blob: Blob; filename: string | null }>
 }
 
 // Shared across concurrent requests so only one refresh happens at a time
@@ -47,12 +50,12 @@ async function tryRefresh(config: ApiClientConfig): Promise<boolean> {
   return refreshPromise
 }
 
-async function request<T>(
+async function fetchAuthed(
   config: ApiClientConfig,
   path: string,
   options: RequestInit = {},
   isRetry = false,
-): Promise<T> {
+): Promise<Response> {
   const token = config.getAccessToken()
   const isFormData = options.body instanceof FormData
   const headers: Record<string, string> = {
@@ -71,7 +74,7 @@ async function request<T>(
 
   if (response.status === 401) {
     if (!isRetry && !path.startsWith('/auth/') && (await tryRefresh(config))) {
-      return request<T>(config, path, options, true)
+      return fetchAuthed(config, path, options, true)
     }
     config.onUnauthorized?.()
     throw new Error('Unauthorized')
@@ -96,11 +99,36 @@ async function request<T>(
     throw new Error(message)
   }
 
+  return response
+}
+
+async function request<T>(
+  config: ApiClientConfig,
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const response = await fetchAuthed(config, path, options)
+
   // 204 No Content
   if (response.status === 204) return undefined as T
 
   const json = await response.json()
   return (json.data ?? json) as T
+}
+
+function parseFilename(contentDisposition: string | null): string | null {
+  if (!contentDisposition) return null
+  const match = /filename="?([^";]+)"?/.exec(contentDisposition)
+  return match ? match[1] : null
+}
+
+async function requestBlob(
+  config: ApiClientConfig,
+  path: string,
+): Promise<{ blob: Blob; filename: string | null }> {
+  const response = await fetchAuthed(config, path)
+  const blob = await response.blob()
+  return { blob, filename: parseFilename(response.headers.get('Content-Disposition')) }
 }
 
 export function createHttp(config: ApiClientConfig): Http {
@@ -111,5 +139,7 @@ export function createHttp(config: ApiClientConfig): Http {
     put: (path, body) => request(config, path, { method: 'PUT', body: JSON.stringify(body) }),
     patch: (path, body) => request(config, path, { method: 'PATCH', body: JSON.stringify(body) }),
     del: (path) => request(config, path, { method: 'DELETE' }),
+    getBlob: (path) => requestBlob(config, path),
   }
 }
+

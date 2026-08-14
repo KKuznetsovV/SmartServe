@@ -14,6 +14,13 @@ import { createTablesResource } from './table'
 
 export type { ApiClientConfig } from './client'
 export type { ItemSelection } from './order'
+export type {
+  ClosedOrdersReportParams,
+  ExportReportParams,
+  SalesReportParams,
+  ServerSalesReportParams,
+} from './report'
+export { createReportsResource } from './report'
 
 export function createApiClient(config: ApiClientConfig) {
   const http = createHttp(config)
