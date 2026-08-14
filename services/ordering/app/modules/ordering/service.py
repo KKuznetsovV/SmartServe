@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.security import verify_password
-from app.db.models import Discount, Location, MenuItem, Order, OrderItem, Table, User
+from app.db.models import Discount, Location, MenuCategory, MenuItem, Order, OrderItem, Table, User
 from app.modules.ordering.schemas import (
     ApplyDiscountIn,
     AssignGuestsRequest,
@@ -156,7 +156,7 @@ class OrderService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
         return order
 
-    async def create_order(self, data: OrderCreate) -> Order:
+    async def create_order(self, data: OrderCreate, created_by: str | None = None) -> Order:
         if data.table_id:
             table_result = await self.db.execute(select(Table).where(Table.id == data.table_id, Table.active))
             if not table_result.scalar_one_or_none():
@@ -174,6 +174,7 @@ class OrderService:
             channel=data.channel,
             guest_count=data.guest_count,
             notes=data.notes,
+            created_by=created_by,
             status="open",
             subtotal=0.0,
             tax_amount=0.0,
@@ -198,6 +199,9 @@ class OrderService:
         if not menu_item.in_stock:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Menu item is out of stock")
 
+        category_result = await self.db.execute(select(MenuCategory).where(MenuCategory.id == menu_item.category_id))
+        category = category_result.scalar_one_or_none()
+
         modifier_total = sum(m.price_delta for m in data.modifiers)
         unit_price = menu_item.price + modifier_total
         fire_course = data.fire_course if data.fire_course is not None else menu_item.default_fire_course
@@ -206,6 +210,8 @@ class OrderService:
             order_id=order_id,
             menu_item_id=data.menu_item_id,
             menu_item_name=menu_item.name,
+            category_id=menu_item.category_id,
+            category_name=category.name if category else None,
             qty=data.qty,
             unit_price=unit_price,
             modifiers=[m.model_dump() for m in data.modifiers],
