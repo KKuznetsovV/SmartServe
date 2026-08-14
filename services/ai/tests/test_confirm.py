@@ -1,7 +1,16 @@
+import json
+from types import SimpleNamespace
+
 import httpx
 
 from app.clients import auth_client, catalog_client
+from app.core.config import settings
 from app.modules.ai import router as router_module
+
+
+class FakeMessage:
+    def __init__(self, data):
+        self.content = [SimpleNamespace(text=json.dumps(data))]
 
 
 def _seed_pending(execution_id, intent, params, location_id="loc-1"):
@@ -105,3 +114,52 @@ async def test_confirm_toggle_availability(client, manager_token, monkeypatch):
     )
     assert resp.status_code == 200
     assert "out of stock" in resp.json()["message"]
+
+
+async def test_command_then_confirm_rename_item(client, manager_token, monkeypatch):
+    # Exercises the full classify -> resolve -> dispatch path for a rename, not just
+    # dispatch_intent() in isolation, since the bug this guards against (the identifying
+    # hint and the new name colliding on the same "name" key) only shows up once a real
+    # classification result flows into resolution.
+    monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "test-key")
+
+    async def fake_auth_get(path, *, forward_token=None, **kwargs):
+        return httpx.Response(200, json={"id": "loc-1", "businessId": "biz-1"})
+
+    async def fake_create_message(client_obj, **kwargs):
+        return FakeMessage(
+            {
+                "intent": "menu.update_item",
+                "confidence": 0.95,
+                "params": {"item_hint": "Coke", "new_name": "Coca-Cola"},
+                "preview": "Rename Coke to Coca-Cola",
+            }
+        )
+
+    async def fake_catalog_get(path, *, forward_token=None, **kwargs):
+        return httpx.Response(200, json=[{"id": "item-1", "name": "Coke", "inStock": True}])
+
+    async def fake_catalog_patch(path, *, forward_token=None, **kwargs):
+        body = kwargs["json"]
+        return httpx.Response(200, json={"id": "item-1", "name": body["name"]})
+
+    monkeypatch.setattr(auth_client, "get", fake_auth_get)
+    monkeypatch.setattr("app.modules.ai.router.create_message", fake_create_message)
+    monkeypatch.setattr(catalog_client, "get", fake_catalog_get)
+    monkeypatch.setattr(catalog_client, "patch", fake_catalog_patch)
+
+    command_resp = await client.post(
+        "/api/v1/ai/command",
+        json={"message": "Rename Coke to Coca-Cola", "context": {"locationId": "loc-1"}},
+        headers={"Authorization": f"Bearer {manager_token}"},
+    )
+    assert command_resp.status_code == 200
+    execution_id = command_resp.json()["executionId"]
+
+    confirm_resp = await client.post(
+        "/api/v1/ai/confirm",
+        json={"executionId": execution_id},
+        headers={"Authorization": f"Bearer {manager_token}"},
+    )
+    assert confirm_resp.status_code == 200
+    assert "Coca-Cola" in confirm_resp.json()["message"]

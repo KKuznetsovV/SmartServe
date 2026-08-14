@@ -39,6 +39,7 @@ Return ONLY valid JSON in this exact format:
 
 Examples:
 - "Add margherita pizza for 58 NIS" → intent: menu.create_item, params: {{name: "Margherita Pizza", price: 58, currency: "ILS"}}
+- "Rename the Coke to Coca-Cola" → intent: menu.update_item, params: {{item_hint: "Coke", new_name: "Coca-Cola"}}
 - "הגדל את כל מחירי הפסטה ב-10%" → intent: menu.bulk_price_change, params: {{category_hint: "פסטה", change_pct: 10}}
 - "Send burgers to the kitchen printer" → intent: printer.route, params: {{item_hint: "burger", printer_hint: "kitchen"}}
 - "Route all bar tickets to the kitchen printer instead" → intent: printer.route,
