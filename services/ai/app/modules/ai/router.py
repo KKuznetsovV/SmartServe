@@ -2,6 +2,7 @@
 
 import json
 import uuid
+from datetime import UTC, datetime
 
 import anthropic
 from fastapi import Depends, File, Form, HTTPException, Request, UploadFile, status
@@ -18,6 +19,7 @@ from app.modules.ai.services.dispatch import dispatch_intent
 from app.modules.ai.services.import_parsing import MAX_UPLOAD_SIZE, build_content_block, fetch_menu_context
 from app.modules.ai.services.menu_client import MenuClient, PrintingClient
 from app.modules.ai.services.prompts import INTENT_SYSTEM_PROMPT, MENU_IMPORT_SYSTEM_PROMPT, SUPPORTED_INTENTS
+from app.modules.ai.services.report_dispatch import generate_report
 
 router = APIRouter()
 
@@ -48,7 +50,9 @@ async def ai_command(
 
     client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
 
-    system = INTENT_SYSTEM_PROMPT.format(intents=", ".join(SUPPORTED_INTENTS))
+    system = INTENT_SYSTEM_PROMPT.format(
+        intents=", ".join(SUPPORTED_INTENTS), today=datetime.now(UTC).date().isoformat()
+    )
 
     message = await create_message(
         client,
@@ -84,18 +88,37 @@ async def ai_command(
         )
         result = parse_json_reply(message)
 
+    intent = result.get("intent")
+    params = result.get("params", {})
+
+    # report.query is read-only and never mutates data, so it skips the pending-execution/
+    # /confirm flow entirely and answers immediately — but reports are still sensitive
+    # business data, so it's gated to managers/owners just like reporting's own endpoints.
+    if intent == "report.query":
+        if ctx.claims.role not in ("owner", "manager"):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only managers can run reports")
+        report = await generate_report(params, location_id, ctx.token)
+        return {
+            "intent": intent,
+            "confidence": result.get("confidence"),
+            "params": params,
+            "preview": result.get("preview", ""),
+            "requiresConfirmation": False,
+            "report": report,
+        }
+
     execution_id = str(uuid.uuid4())
     _pending[execution_id] = {
-        "intent": result.get("intent"),
-        "params": result.get("params", {}),
+        "intent": intent,
+        "params": params,
         "context": body.context,
         "message": body.message,
     }
 
     return {
-        "intent": result.get("intent"),
+        "intent": intent,
         "confidence": result.get("confidence"),
-        "params": result.get("params", {}),
+        "params": params,
         "preview": result.get("preview", ""),
         "requiresConfirmation": True,
         "executionId": execution_id,

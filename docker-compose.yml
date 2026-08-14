@@ -219,6 +219,7 @@ services:
       AUTH_SERVICE_URL: http://auth:8000
       CATALOG_SERVICE_URL: http://catalog:8000
       PRINTING_SERVICE_URL: http://printing:8000
+      REPORTING_SERVICE_URL: http://reporting:8000
       RABBITMQ_URL: amqp://smartserve:smartserve@rabbitmq:5672/
       ENVIRONMENT: development
     env_file:
@@ -227,6 +228,7 @@ services:
       - auth
       - catalog
       - printing
+      - reporting
       - rabbitmq
     volumes:
       - ./services/ai:/app
