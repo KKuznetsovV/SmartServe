@@ -51,6 +51,7 @@ async def _upsert_order(db, payload: dict[str, Any]) -> None:
             channel=payload.get("channel", "dine_in"),
             status=payload.get("status", "open"),
             total=payload.get("total", 0.0),
+            created_by=payload.get("createdBy"),
             created_at=datetime.fromisoformat(created_at) if created_at else datetime.now(UTC),
         )
         db.add(order)
@@ -59,6 +60,7 @@ async def _upsert_order(db, payload: dict[str, Any]) -> None:
         order.channel = payload.get("channel", order.channel)
         order.status = payload.get("status", order.status)
         order.total = payload.get("total", order.total)
+        order.created_by = payload.get("createdBy", order.created_by)
 
 
 async def _update_order_status(db, payload: dict[str, Any]) -> None:

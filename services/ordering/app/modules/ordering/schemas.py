@@ -18,6 +18,8 @@ class OrderItemOut(BaseModel):
     order_id: str
     menu_item_id: str
     menu_item_name: str
+    category_id: str | None = None
+    category_name: str | None = None
     qty: int
     unit_price: float
     modifiers: list[OrderItemModifier] = []
@@ -61,6 +63,7 @@ class OrderOut(BaseModel):
     table_name: str | None = None
     discount_id: str | None = None
     discount_amount: float = 0.0
+    created_by: str | None = None
     channel: str
     status: str
     guest_count: int | None = None

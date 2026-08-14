@@ -67,6 +67,28 @@ async def test_order_created_upserts_order_mirror(events_engine):
 
 
 @pytest.mark.asyncio
+async def test_order_created_captures_created_by(events_engine):
+    session_factory = async_sessionmaker(events_engine, class_=AsyncSession, expire_on_commit=False)
+
+    with patch("app.modules.reports.events.AsyncSessionLocal", session_factory):
+        await handle_any_event(
+            "order.created",
+            {
+                "orderId": "order-2",
+                "locationId": "loc-1",
+                "channel": "dine_in",
+                "status": "open",
+                "total": 100.0,
+                "createdBy": "user-1",
+            },
+        )
+
+    async with session_factory() as session:
+        result = await session.execute(select(Order).where(Order.id == "order-2"))
+        assert result.scalar_one().created_by == "user-1"
+
+
+@pytest.mark.asyncio
 async def test_order_updated_and_payment_completed_transition_status(events_engine):
     session_factory = async_sessionmaker(events_engine, class_=AsyncSession, expire_on_commit=False)
 

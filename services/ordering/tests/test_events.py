@@ -38,6 +38,7 @@ async def test_create_order_publishes_order_created(
     assert routing_key == "order.created"
     assert payload["orderId"] == order_id
     assert payload["locationId"] == location.id
+    assert payload["createdBy"] == resp.json()["createdBy"]
 
 
 @pytest.mark.asyncio

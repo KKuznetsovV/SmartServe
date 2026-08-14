@@ -5,7 +5,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.security import create_access_token, hash_password
-from app.db.models import Order, OrderItem, User
+from app.db.models import Location, Order, OrderItem, User
 from app.db.session import Base, get_db
 from app.main import app
 
@@ -54,9 +54,13 @@ async def manager_user(db: AsyncSession) -> tuple[User, str]:
 
 
 @pytest_asyncio.fixture
-async def location_id() -> str:
-    """Order.location_id is an opaque string here (Location isn't mirrored — see db/models.py)."""
-    return "loc-fixture"
+async def location_id(db: AsyncSession) -> str:
+    """Real Location row matching `manager_user`'s business_id ("biz-fixture") — needed
+    since reports endpoints now enforce a location-ownership check against this table."""
+    location = Location(id="loc-fixture", business_id="biz-fixture", name="Fixture Location")
+    db.add(location)
+    await db.flush()
+    return location.id
 
 
 async def create_paid_order(
@@ -65,19 +69,35 @@ async def create_paid_order(
     items: list[tuple[str, int, float]],
     channel: str = "dine_in",
     status: str = "paid",
+    created_by: str | None = None,
+    item_meta: list[tuple[str | None, str | None, str | None]] | None = None,
 ) -> Order:
     """Build an order + its line items directly against the shared DB.
 
     items is a list of (menu_item_name, qty, unit_price) — reporting only ever reads the
     denormalized name/qty/price snapshot columns, never joins to a MenuItem row.
+
+    item_meta, if given, is a parallel list of (menu_item_id, category_id, category_name)
+    tuples for tests that need item/category grouping — defaults to all-None per item.
     """
     total = sum(qty * price for _, qty, price in items)
-    order = Order(location_id=location_id, channel=channel, status=status, total=total)
+    order = Order(location_id=location_id, channel=channel, status=status, total=total, created_by=created_by)
     db.add(order)
     await db.flush()
 
-    for name, qty, price in items:
-        db.add(OrderItem(order_id=order.id, menu_item_name=name, qty=qty, unit_price=price))
+    for i, (name, qty, price) in enumerate(items):
+        menu_item_id, category_id, category_name = item_meta[i] if item_meta else (None, None, None)
+        db.add(
+            OrderItem(
+                order_id=order.id,
+                menu_item_name=name,
+                qty=qty,
+                unit_price=price,
+                menu_item_id=menu_item_id,
+                category_id=category_id,
+                category_name=category_name,
+            )
+        )
     await db.flush()
 
     return order

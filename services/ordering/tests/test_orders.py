@@ -5,7 +5,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
-from app.db.models import Business, Location, MenuItem, User
+from app.db.models import Business, Location, MenuCategory, MenuItem, User
 
 
 @pytest.mark.asyncio
@@ -167,6 +167,115 @@ async def test_assign_guests_within_same_order(
     assert resp.status_code == 200
     guest_by_item = {i["id"]: i["guestNumber"] for i in resp.json()["items"]}
     assert guest_by_item[burger_item["id"]] is None
+
+
+@pytest.mark.asyncio
+async def test_order_records_created_by_from_authenticated_user(
+    client: AsyncClient,
+    db: AsyncSession,
+    business: Business,
+    manager_user: tuple[User, str],
+):
+    manager, token = manager_user
+    location = Location(business_id=business.id, name="Main")
+    db.add(location)
+    await db.flush()
+
+    headers = {"Authorization": f"Bearer {token}"}
+    resp = await client.post(
+        "/api/v1/orders",
+        json={"locationId": location.id, "channel": "dine_in", "guestCount": 2},
+        headers=headers,
+    )
+    assert resp.status_code == 201
+    assert resp.json()["createdBy"] == manager.id
+
+    # A client-supplied createdBy in the request body must be ignored — it's always
+    # server-derived from the authenticated JWT, never trusted from the client.
+    resp = await client.post(
+        "/api/v1/orders",
+        json={"locationId": location.id, "channel": "dine_in", "guestCount": 1, "createdBy": "someone-else"},
+        headers=headers,
+    )
+    assert resp.status_code == 201
+    assert resp.json()["createdBy"] == manager.id
+
+
+@pytest.mark.asyncio
+async def test_order_item_captures_category_snapshot(
+    client: AsyncClient,
+    db: AsyncSession,
+    business: Business,
+    manager_user: tuple[User, str],
+):
+    _, token = manager_user
+    location = Location(business_id=business.id, name="Main")
+    db.add(location)
+    await db.flush()
+
+    category = MenuCategory(name="Burgers")
+    db.add(category)
+    await db.flush()
+
+    item = MenuItem(category_id=category.id, name="Cheeseburger", price=52.0, tax_rate=0.17)
+    db.add(item)
+    await db.flush()
+
+    headers = {"Authorization": f"Bearer {token}"}
+    order_resp = await client.post(
+        "/api/v1/orders",
+        json={"locationId": location.id, "channel": "dine_in", "guestCount": 1},
+        headers=headers,
+    )
+    order_id = order_resp.json()["id"]
+
+    resp = await client.post(
+        f"/api/v1/orders/{order_id}/items",
+        json={"menuItemId": item.id, "qty": 1},
+        headers=headers,
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["categoryId"] == category.id
+    assert body["categoryName"] == "Burgers"
+
+
+@pytest.mark.asyncio
+async def test_order_item_category_snapshot_is_none_when_category_missing(
+    client: AsyncClient,
+    db: AsyncSession,
+    business: Business,
+    manager_user: tuple[User, str],
+):
+    """A menu item whose category_id doesn't resolve to a real MenuCategory row (e.g. the
+    catalog category was deleted, or test data left dangling) shouldn't error — the snapshot
+    just stays unset."""
+    _, token = manager_user
+    location = Location(business_id=business.id, name="Main")
+    db.add(location)
+    await db.flush()
+
+    item = MenuItem(category_id="cat-does-not-exist", name="Fries", price=15.0, tax_rate=0.17)
+    db.add(item)
+    await db.flush()
+
+    headers = {"Authorization": f"Bearer {token}"}
+    order_resp = await client.post(
+        "/api/v1/orders",
+        json={"locationId": location.id, "channel": "dine_in", "guestCount": 1},
+        headers=headers,
+    )
+    order_id = order_resp.json()["id"]
+
+    resp = await client.post(
+        f"/api/v1/orders/{order_id}/items",
+        json={"menuItemId": item.id, "qty": 1},
+        headers=headers,
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["categoryId"] == "cat-does-not-exist"
+    assert body["categoryName"] is None
 
 
 @pytest.mark.asyncio

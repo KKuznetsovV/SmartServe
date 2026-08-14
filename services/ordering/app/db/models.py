@@ -1,8 +1,11 @@
 """SQLAlchemy ORM models — ordering service owns Table/Order/OrderItem.
 
-Business/Location/User/MenuItem/Discount are trimmed, read-only mirrors of tables owned by
-`auth` and `catalog` respectively — same physical Postgres instance, schema-per-service
-mapping only (see docs/microservices-plan.md §4).
+Business/Location/User/MenuItem/MenuCategory/Discount are trimmed, read-only mirrors of
+tables owned by `auth` and `catalog` respectively — same physical Postgres instance, no
+schema separation (see docs/microservices-plan.md §4). Alembic migrations for THIS service
+only manage tables ordering owns (`tables`/`orders`/`order_items`); the mirror tables above
+must never be created/altered by ordering's migration chain — they already exist as owned
+by the other services.
 """
 
 import uuid
@@ -81,6 +84,13 @@ class User(Base):
 # ─── Catalog (owned by catalog, trimmed mirror) ───────────────────────────────
 
 
+class MenuCategory(Base):
+    __tablename__ = "menu_categories"
+
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+
+
 class MenuItem(Base):
     __tablename__ = "menu_items"
 
@@ -142,6 +152,7 @@ class Order(Base):
     location_id: Mapped[str] = mapped_column(ForeignKey("locations.id"), nullable=False)
     table_id: Mapped[str | None] = mapped_column(ForeignKey("tables.id"))
     discount_id: Mapped[str | None] = mapped_column(ForeignKey("discounts.id"))
+    created_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     channel: Mapped[str] = mapped_column(String(50), default="dine_in")
     status: Mapped[str] = mapped_column(String(50), default="open")
     guest_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -168,6 +179,8 @@ class OrderItem(Base):
     order_id: Mapped[str] = mapped_column(ForeignKey("orders.id"), nullable=False)
     menu_item_id: Mapped[str] = mapped_column(ForeignKey("menu_items.id"), nullable=False)
     menu_item_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    category_id: Mapped[str | None] = mapped_column(String(), nullable=True)
+    category_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     qty: Mapped[int] = mapped_column(Integer, default=1)
     unit_price: Mapped[float] = mapped_column(Float, nullable=False)
     modifiers: Mapped[list] = mapped_column(JSON, default=list)
