@@ -11,3 +11,4 @@ from app.core.config import settings
 auth_client = ServiceClient(settings.AUTH_SERVICE_URL)
 catalog_client = ServiceClient(settings.CATALOG_SERVICE_URL)
 printing_client = ServiceClient(settings.PRINTING_SERVICE_URL)
+reporting_client = ServiceClient(settings.REPORTING_SERVICE_URL)

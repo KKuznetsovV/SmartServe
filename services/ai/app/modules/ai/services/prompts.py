@@ -25,6 +25,10 @@ Classify the user's request into exactly one of these intents and extract parame
 
 Intents: {intents}
 
+Today's date is {today} (UTC). When a request implies a date range (e.g. "last week", "yesterday",
+"this month") compute concrete "start"/"end" dates (YYYY-MM-DD, inclusive) relative to today's date
+yourself — never return a relative phrase like "last week" as a param value.
+
 Return ONLY valid JSON in this exact format:
 {{
   "intent": "<intent_name>",
@@ -43,6 +47,18 @@ Examples:
   params: {{new_top_categories: ["Food", "Drinks"]}}
 - "Move Cola and Lemonade into the Soft Drinks category" → intent: menu.move_items_to_category,
   params: {{item_hints: ["Cola", "Lemonade"], category_hint: "Soft Drinks"}}
+- "What were my best-selling items last week?" → intent: report.query,
+  params: {{report_type: "sales", group_by: "item", start: "<computed date 7 days before today>", end: "<today>"}}
+- "Show sales by category for March 1 to March 15" → intent: report.query,
+  params: {{report_type: "sales", group_by: "category", start: "2026-03-01", end: "2026-03-15"}}
+- "Who sold the most burgers this month?" → intent: report.query,
+  params: {{report_type: "sales_by_server", item_hint: "burger", start: "<first of this month>", end: "<today>"}}
+- "List all cancelled orders from yesterday" → intent: report.query,
+  params: {{report_type: "closed_orders", status: "cancelled", start: "<yesterday>", end: "<yesterday>"}}
+
+For report.query, "report_type" is one of "sales" (params: group_by = "item"|"category"|"menu", default
+"item"), "sales_by_server" (optional item_hint/category_hint to narrow to one item/category), or
+"closed_orders" (optional status = "paid"|"cancelled"|"other"). "start"/"end" are always required.
 """
 
 MENU_REORG_SYSTEM_PROMPT = """You help reorganize a restaurant's menu categories into new top-level sections.
