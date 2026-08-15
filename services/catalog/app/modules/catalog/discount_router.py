@@ -1,4 +1,4 @@
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.deps import require_manager
@@ -15,8 +15,11 @@ router = APIRouter()
 async def create_discount(
     data: DiscountCreate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_manager),
+    current_user: User = Depends(require_manager),
 ):
+    # business_id is always server-derived from the caller's own JWT, never trusted from the
+    # request body — otherwise a manager could create a discount code for another business.
+    data.business_id = current_user.business_id
     return await DiscountService(db).create(data)
 
 
@@ -24,8 +27,10 @@ async def create_discount(
 async def list_discounts(
     business_id: str,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_manager),
+    current_user: User = Depends(require_manager),
 ):
+    if business_id != current_user.business_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Business not found")
     return await DiscountService(db).list_by_business(business_id)
 
 
@@ -34,15 +39,15 @@ async def update_discount(
     discount_id: str,
     data: DiscountUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_manager),
+    current_user: User = Depends(require_manager),
 ):
-    return await DiscountService(db).update(discount_id, data)
+    return await DiscountService(db).update(discount_id, data, current_user.business_id)
 
 
 @router.delete("/discounts/{discount_id}", status_code=204)
 async def delete_discount(
     discount_id: str,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_manager),
+    current_user: User = Depends(require_manager),
 ):
-    await DiscountService(db).delete(discount_id)
+    await DiscountService(db).delete(discount_id, current_user.business_id)

@@ -51,19 +51,20 @@ class DiscountService:
         )
         return list(result.scalars().all())
 
-    async def update(self, discount_id: str, data: DiscountUpdate) -> Discount:
+    async def update(self, discount_id: str, data: DiscountUpdate, business_id: str | None = None) -> Discount:
         result = await self.db.execute(select(Discount).where(Discount.id == discount_id))
         discount = result.scalar_one_or_none()
-        if not discount:
+        # A manager must only ever reach discounts within their OWN business.
+        if not discount or (business_id is not None and discount.business_id != business_id):
             raise HTTPException(status_code=404, detail="Discount not found")
         for field, val in data.model_dump(exclude_none=True).items():
             setattr(discount, field, val)
         await self.db.flush()
         return discount
 
-    async def delete(self, discount_id: str) -> None:
+    async def delete(self, discount_id: str, business_id: str | None = None) -> None:
         result = await self.db.execute(select(Discount).where(Discount.id == discount_id))
         discount = result.scalar_one_or_none()
-        if not discount:
+        if not discount or (business_id is not None and discount.business_id != business_id):
             raise HTTPException(status_code=404, detail="Discount not found")
         await self.db.delete(discount)

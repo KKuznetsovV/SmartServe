@@ -15,18 +15,18 @@ router = APIRouter()
 async def list_tables(
     location_id: str,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    return await TableService(db).list_tables(location_id)
+    return await TableService(db).list_tables(location_id, current_user.business_id)
 
 
 @router.post("/tables", response_model=TableOut, status_code=201)
 async def create_table(
     data: TableCreate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_manager),
+    current_user: User = Depends(require_manager),
 ):
-    return await TableService(db).create_table(data)
+    return await TableService(db).create_table(data, current_user.business_id)
 
 
 @router.patch("/tables/{table_id}", response_model=TableOut)
@@ -34,15 +34,15 @@ async def update_table(
     table_id: str,
     data: TableUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_manager),
+    current_user: User = Depends(require_manager),
 ):
-    return await TableService(db).update_table(table_id, data)
+    return await TableService(db).update_table(table_id, data, current_user.business_id)
 
 
 @router.delete("/tables/{table_id}", status_code=204)
 async def delete_table(
     table_id: str,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_manager),
+    current_user: User = Depends(require_manager),
 ):
-    await TableService(db).delete_table(table_id)
+    await TableService(db).delete_table(table_id, current_user.business_id)
