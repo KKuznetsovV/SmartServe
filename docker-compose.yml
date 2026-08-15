@@ -220,6 +220,7 @@ services:
       CATALOG_SERVICE_URL: http://catalog:8000
       PRINTING_SERVICE_URL: http://printing:8000
       REPORTING_SERVICE_URL: http://reporting:8000
+      STAFF_SERVICE_URL: http://staff:8000
       RABBITMQ_URL: amqp://smartserve:smartserve@rabbitmq:5672/
       ENVIRONMENT: development
     env_file:
@@ -229,6 +230,7 @@ services:
       - catalog
       - printing
       - reporting
+      - staff
       - rabbitmq
     volumes:
       - ./services/ai:/app

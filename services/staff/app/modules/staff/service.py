@@ -15,10 +15,12 @@ class StaffService:
         result = await self.db.execute(select(User).where(User.business_id == business_id))
         return list(result.scalars().all())
 
-    async def get_user(self, user_id: str) -> User:
+    async def get_user(self, user_id: str, business_id: str | None = None) -> User:
         result = await self.db.execute(select(User).where(User.id == user_id))
         user = result.scalar_one_or_none()
-        if not user:
+        # A manager must only ever reach staff within their OWN business — never trust the
+        # path param alone (a cleverly-guessed user_id from another business must 404, not leak).
+        if not user or (business_id is not None and user.business_id != business_id):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         return user
 
@@ -41,8 +43,8 @@ class StaffService:
         await self.db.flush()
         return user
 
-    async def update_staff(self, user_id: str, data: StaffUpdate) -> User:
-        user = await self.get_user(user_id)
+    async def update_staff(self, user_id: str, data: StaffUpdate, business_id: str | None = None) -> User:
+        user = await self.get_user(user_id, business_id)
         updates = data.model_dump(exclude_none=True)
         if "pin" in updates:
             user.pin_hash = hash_password(updates.pop("pin"))

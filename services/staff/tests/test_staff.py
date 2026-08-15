@@ -92,3 +92,34 @@ async def test_get_staff_not_found(
 
     resp = await client.get("/api/v1/staff/does-not-exist", headers=headers)
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_get_and_update_staff_scoped_to_own_business(
+    client: AsyncClient,
+    db: AsyncSession,
+    manager_user: tuple[User, str],
+):
+    # A manager from another business must never be able to view or mutate this
+    # business's staff by guessing/knowing a user_id — same scoping rule as location
+    # ownership checks elsewhere in the system.
+    _, token = manager_user
+    headers = {"Authorization": f"Bearer {token}"}
+
+    other_business_user = User(business_id="other-biz", name="Other Waiter", role="waiter")
+    db.add(other_business_user)
+    await db.flush()
+
+    get_resp = await client.get(f"/api/v1/staff/{other_business_user.id}", headers=headers)
+    assert get_resp.status_code == 404
+
+    patch_resp = await client.patch(
+        f"/api/v1/staff/{other_business_user.id}",
+        json={"active": False},
+        headers=headers,
+    )
+    assert patch_resp.status_code == 404
+
+    # The other business's user must remain untouched
+    await db.refresh(other_business_user)
+    assert other_business_user.active is True

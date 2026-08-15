@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     CATALOG_SERVICE_URL: str = "http://catalog:8000"
     PRINTING_SERVICE_URL: str = "http://printing:8000"
     REPORTING_SERVICE_URL: str = "http://reporting:8000"
+    STAFF_SERVICE_URL: str = "http://staff:8000"
 
     # AI
     ANTHROPIC_API_KEY: str = ""

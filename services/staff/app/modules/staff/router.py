@@ -32,9 +32,9 @@ async def create_staff(
 async def get_staff(
     user_id: str,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_manager),
+    current_user: User = Depends(require_manager),
 ):
-    return await StaffService(db).get_user(user_id)
+    return await StaffService(db).get_user(user_id, current_user.business_id)
 
 
 @router.patch("/staff/{user_id}", response_model=UserOut)
@@ -43,9 +43,9 @@ async def update_staff(
     data: StaffUpdate,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_manager),
+    current_user: User = Depends(require_manager),
 ):
-    staff = await StaffService(db).update_staff(user_id, data)
+    staff = await StaffService(db).update_staff(user_id, data, current_user.business_id)
     await mq.publish(
         request.app.state.mq_connection,
         "staff.updated",

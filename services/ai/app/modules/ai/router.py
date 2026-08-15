@@ -20,6 +20,7 @@ from app.modules.ai.services.import_parsing import MAX_UPLOAD_SIZE, build_conten
 from app.modules.ai.services.menu_client import MenuClient, PrintingClient
 from app.modules.ai.services.prompts import INTENT_SYSTEM_PROMPT, MENU_IMPORT_SYSTEM_PROMPT, SUPPORTED_INTENTS
 from app.modules.ai.services.report_dispatch import generate_report
+from app.modules.ai.services.staff_client import StaffClient
 
 router = APIRouter()
 
@@ -146,8 +147,11 @@ async def ai_confirm(
 
     menu = MenuClient(ctx.token)
     printing = PrintingClient(ctx.token)
+    staff = StaffClient(ctx.token)
     original_message = pending.get("message", "")
-    message = await dispatch_intent(intent, params, location_id, menu, printing)
+    message = await dispatch_intent(
+        intent, params, location_id, menu, printing, staff=staff, business_id=ctx.claims.business_id
+    )
 
     # Audit log: who ran the assistant, what it was asked, and what it actually did —
     # consumed by `reporting`'s wildcard EventLog subscriber (GET /reports/events).

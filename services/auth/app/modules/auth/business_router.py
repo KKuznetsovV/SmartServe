@@ -1,4 +1,4 @@
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -60,9 +60,13 @@ async def create_location(
 async def list_staff(
     business_id: str,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_manager),
+    current_user: User = Depends(require_manager),
 ):
     # Users belong to `auth` (this service) — the `staff` service's own shift-tracking
     # data (services/staff, step 21) is a separate concern from this business/user lookup.
+    # A manager may only ever list their OWN business's staff — never trust the path param
+    # alone (same scoping rule as every other business_id-scoped route in this file).
+    if business_id != current_user.business_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Business not found")
     result = await db.execute(select(User).where(User.business_id == business_id))
     return [UserOut.model_validate(u) for u in result.scalars().all()]

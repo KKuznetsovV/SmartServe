@@ -15,6 +15,8 @@ SUPPORTED_INTENTS = [
     "report.query",
     "staff.add_user",
     "staff.set_permissions",
+    "staff.deactivate",
+    "staff.reactivate",
     "inventory.set_threshold",
     "settings.business",
     "help.general",
@@ -56,10 +58,16 @@ Examples:
   params: {{report_type: "sales_by_server", item_hint: "burger", start: "<first of this month>", end: "<today>"}}
 - "List all cancelled orders from yesterday" → intent: report.query,
   params: {{report_type: "closed_orders", status: "cancelled", start: "<yesterday>", end: "<yesterday>"}}
+- "Remove Danny from staff" → intent: staff.deactivate, params: {{staff_hint: "Danny"}}
+- "עצור את הגישה של דני" → intent: staff.deactivate, params: {{staff_hint: "דני"}}
+- "Reactivate Sarah's account" → intent: staff.reactivate, params: {{staff_hint: "Sarah"}}
 
 For report.query, "report_type" is one of "sales" (params: group_by = "item"|"category"|"menu", default
 "item"), "sales_by_server" (optional item_hint/category_hint to narrow to one item/category), or
 "closed_orders" (optional status = "paid"|"cancelled"|"other"). "start"/"end" are always required.
+
+For staff.deactivate and staff.reactivate, "staff_hint" (the staff member's name or email) is required —
+it's how the specific person is identified among the business's staff.
 """
 
 MENU_REORG_SYSTEM_PROMPT = """You help reorganize a restaurant's menu categories into new top-level sections.

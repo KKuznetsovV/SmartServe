@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.modules.ai.services.client import create_message, parse_json_reply
 from app.modules.ai.services.menu_client import MenuClient, PrintingClient
 from app.modules.ai.services.prompts import MENU_REORG_SYSTEM_PROMPT
+from app.modules.ai.services.staff_client import StaffClient
 
 
 def fuzzy_match(hint: str | None, names: list[str]) -> int | None:
@@ -25,7 +26,13 @@ def fuzzy_match(hint: str | None, names: list[str]) -> int | None:
 
 
 async def dispatch_intent(
-    intent: str, params: dict, location_id: str, menu: MenuClient, printing: PrintingClient
+    intent: str,
+    params: dict,
+    location_id: str,
+    menu: MenuClient,
+    printing: PrintingClient,
+    staff: StaffClient | None = None,
+    business_id: str | None = None,
 ) -> str:
     """Execute a confirmed AI command. Raises HTTPException for anything that can't be resolved or automated —
     a confirmed action must either really happen or clearly fail, never silently report fake success."""
@@ -114,6 +121,22 @@ async def dispatch_intent(
             in_stock = bool(available) if available is not None else not item["inStock"]
         updated = await menu.set_stock(item["id"], bool(in_stock))
         return f"Marked '{updated['name']}' as {'in stock' if updated['inStock'] else 'out of stock'}"
+
+    if intent in ("staff.deactivate", "staff.reactivate"):
+        # This affects a real person's system access, so it's dispatched with the same
+        # rigor as any other confirmed write — it never bypasses /confirm the way
+        # report.query does, and never trusts the resolved staff member without an
+        # explicit business-ownership check (see _resolve_staff below).
+        if staff is None or business_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Staff intent dispatched without a staff client/business scope",
+            )
+        member = await _resolve_staff(params, business_id, staff)
+        active = intent == "staff.reactivate"
+        updated = await staff.set_active(member["id"], active)
+        verb = "Reactivated" if active else "Deactivated"
+        return f"{verb} {updated['name']}"
 
     raise HTTPException(
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
@@ -205,6 +228,32 @@ async def _resolve_item(params: dict, location_id: str, menu: MenuClient):
     if idx is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"No item matching '{hint}' was found")
     return items[idx]
+
+
+async def _resolve_staff(params: dict, business_id: str, staff: StaffClient) -> dict:
+    hint = params.get("staff_hint") or params.get("name_hint") or params.get("email_hint")
+    if not hint:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Could not determine which staff member to update"
+        )
+    members = await staff.list_staff(business_id)
+    idx = fuzzy_match(hint, [m.get("name", "") for m in members])
+    if idx is None:
+        # A hint can also be an email address rather than a display name.
+        idx = fuzzy_match(hint, [m.get("email") or "" for m in members])
+    if idx is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"No staff member matching '{hint}' was found"
+        )
+    member = members[idx]
+    # Defense in depth: list_staff() is already scoped server-side to `business_id`, but
+    # revoking someone's system access is sensitive enough to never trust a single layer of
+    # scoping alone — re-check the resolved member's own business before acting on it.
+    if member.get("businessId") != business_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"No staff member matching '{hint}' was found"
+        )
+    return member
 
 
 async def _dispatch_move_items_to_category(params: dict, location_id: str, menu: MenuClient) -> str:
