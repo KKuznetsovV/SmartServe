@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from app.schemas.base import BaseSchema as BaseModel
 
 
@@ -99,6 +101,7 @@ class MenuItemOut(BaseModel):
     active: bool
     in_stock: bool
     default_fire_course: int = 1
+    deleted_at: datetime | None = None
     modifier_groups: list[ModifierGroupOut] = []
 
     model_config = {"from_attributes": True}

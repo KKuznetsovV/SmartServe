@@ -102,6 +102,14 @@ class MenuItem(Base):
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     in_stock: Mapped[bool] = mapped_column(Boolean, default=True)
     default_fire_course: Mapped[int] = mapped_column(Integer, default=1)
+    # Mirrors catalog's `menu_items.deleted_at` (trash state) — Python-side column only, no
+    # migration needed here since catalog owns the physical ALTER TABLE for this shared
+    # table; ordering only ever reads this column to keep a trashed item from being added to
+    # a NEW order (see `add_item`). Never filtered on when looking up an item ALREADY on an
+    # existing order (recalculating totals, removing an item, etc.) — those must keep
+    # working regardless of the item's current trash state, since historical order data is
+    # never retroactively affected by trashing/deleting a menu item.
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Discount(Base):

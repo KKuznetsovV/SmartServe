@@ -193,10 +193,65 @@ async def reorder_items(
 @router.delete("/items/{item_id}", status_code=204)
 async def delete_item(
     item_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_manager),
 ):
+    """Moves the item to trash (soft-delete) — see `MenuService.delete_item`."""
     await MenuService(db).delete_item(item_id, current_user.business_id)
+    await mq.publish(
+        request.app.state.mq_connection,
+        "catalog.item_updated",
+        {"itemId": item_id, "trashed": True},
+    )
+
+
+@router.get("/locations/{location_id}/trash", response_model=list[MenuItemOut])
+async def list_trashed_items(
+    location_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_manager),
+):
+    return await MenuService(db).list_trashed_items(location_id, current_user.business_id)
+
+
+@router.post("/items/{item_id}/restore", response_model=MenuItemOut)
+async def restore_item(
+    item_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_manager),
+):
+    item = await MenuService(db).restore_item(item_id, current_user.business_id)
+    location_id = await MenuService(db).get_item_location_id(item)
+    await mq.publish(
+        request.app.state.mq_connection,
+        "catalog.item_updated",
+        {
+            "itemId": item.id,
+            "categoryId": item.category_id,
+            "locationId": location_id,
+            "name": item.name,
+            "price": item.price,
+            "inStock": item.in_stock,
+        },
+    )
+    return item
+
+
+@router.delete("/items/{item_id}/permanent", status_code=204)
+async def permanently_delete_item(
+    item_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_manager),
+):
+    await MenuService(db).permanently_delete_item(item_id, current_user.business_id)
+    await mq.publish(
+        request.app.state.mq_connection,
+        "catalog.item_updated",
+        {"itemId": item_id, "permanentlyDeleted": True},
+    )
 
 
 @router.post("/items/bulk-price", response_model=dict)

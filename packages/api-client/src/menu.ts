@@ -29,6 +29,9 @@ export function createMenuItemsResource(http: Http) {
     listStock: (locationId: string) => http.get<MenuItem[]>(`/menu/locations/${locationId}/stock`),
     reorder: (categoryId: string, ids: string[]) =>
       http.post<void>(`/menu/categories/${categoryId}/items/reorder`, { ids }),
+    listTrash: (locationId: string) => http.get<MenuItem[]>(`/menu/locations/${locationId}/trash`),
+    restore: (id: string) => http.post<MenuItem>(`/menu/items/${id}/restore`, {}),
+    permanentDelete: (id: string) => http.del<void>(`/menu/items/${id}/permanent`),
   }
 }
 

@@ -48,6 +48,7 @@ export const MenuItemSchema = z.object({
   active: z.boolean().default(true),
   inStock: z.boolean().default(true),
   defaultFireCourse: z.number().int().min(1).max(5).default(1),
+  deletedAt: z.string().datetime().nullable().optional(),
   modifierGroups: z.array(ModifierGroupSchema).default([]),
 })
 export type MenuItem = z.infer<typeof MenuItemSchema>

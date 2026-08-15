@@ -81,6 +81,20 @@ class MenuClient:
         )
         return resp.json()
 
+    async def list_trashed_items(self, location_id: str) -> list[dict[str, Any]]:
+        resp = await catalog_client.get(f"/api/v1/menu/locations/{location_id}/trash", forward_token=self._token)
+        return resp.json()
+
+    async def move_to_trash(self, item_id: str) -> None:
+        await catalog_client.delete(f"/api/v1/menu/items/{item_id}", forward_token=self._token)
+
+    async def restore_item(self, item_id: str) -> dict[str, Any]:
+        resp = await catalog_client.post(f"/api/v1/menu/items/{item_id}/restore", forward_token=self._token)
+        return resp.json()
+
+    async def permanently_delete_item(self, item_id: str) -> None:
+        await catalog_client.delete(f"/api/v1/menu/items/{item_id}/permanent", forward_token=self._token)
+
 
 class PrintingClient:
     def __init__(self, token: str):
