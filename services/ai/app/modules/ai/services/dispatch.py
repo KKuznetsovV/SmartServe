@@ -76,8 +76,11 @@ async def dispatch_intent(
             fields["price"] = float(params.get("price", params.get("new_price")))  # type: ignore[arg-type]
         if "description" in params:
             fields["description"] = params["description"]
-        if "name" in params and params["name"] != item["name"]:
-            fields["name"] = params["name"]
+        # a rename needs a *different* key than the identifying hint _resolve_item already
+        # consumed above, since "the item to find" and "its new name" are never the same value
+        new_name = params.get("new_name") or params.get("new_item_name")
+        if new_name and new_name != item["name"]:
+            fields["name"] = new_name
         if not fields:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Could not determine what to change")
         updated = await menu.update_item(item["id"], **fields)
