@@ -36,15 +36,17 @@ class BusinessService:
         await self.db.flush()
         return location
 
-    async def get_location(self, location_id: str) -> Location:
+    async def get_location(self, location_id: str, business_id: str | None = None) -> Location:
         result = await self.db.execute(select(Location).where(Location.id == location_id))
         location = result.scalar_one_or_none()
-        if not location:
+        # A caller must only ever reach a location within their OWN business — never trust
+        # the path param alone (mirrors StaffService.get_user's same-shape check).
+        if not location or (business_id is not None and location.business_id != business_id):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
         return location
 
-    async def update_location(self, location_id: str, data: LocationUpdate) -> Location:
-        location = await self.get_location(location_id)
+    async def update_location(self, location_id: str, data: LocationUpdate, business_id: str | None = None) -> Location:
+        location = await self.get_location(location_id, business_id)
         for field, value in data.model_dump(exclude_none=True).items():
             setattr(location, field, value)
         await self.db.flush()

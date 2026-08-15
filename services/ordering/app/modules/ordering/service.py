@@ -44,6 +44,17 @@ VALID_ITEM_TRANSITIONS: dict[str, set[str]] = {
 }
 
 
+async def verify_location_owned(db: AsyncSession, location_id: str, business_id: str) -> Location:
+    """Raise 404 unless `location_id` belongs to `business_id`. Mirrors
+    services/reporting's `verify_location_owned` — never trust a location_id path/body
+    param alone for a tenant-scoped operation."""
+    result = await db.execute(select(Location).where(Location.id == location_id))
+    location = result.scalar_one_or_none()
+    if not location or location.business_id != business_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
+    return location
+
+
 class OrderService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -74,7 +85,7 @@ class OrderService:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid manager PIN")
         return user
 
-    async def apply_discount(self, order_id: str, data: ApplyDiscountIn) -> Order:
+    async def apply_discount(self, order_id: str, data: ApplyDiscountIn, business_id: str | None = None) -> Order:
         """Apply a discount code to an order's total.
 
         `Discount` is owned by `catalog` (services/catalog) but this mutates `Order`, which
@@ -82,12 +93,7 @@ class OrderService:
         the shared `discounts`/`locations` tables directly (same DB, read-only lookups; see
         docs/microservices-plan.md §4).
         """
-        order_result = await self.db.execute(
-            select(Order).where(Order.id == order_id).options(selectinload(Order.items))
-        )
-        order = order_result.scalar_one_or_none()
-        if not order:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+        order = await self.get_order(order_id, business_id)
         if order.status not in {"open", "submitted"}:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot apply discount to this order")
 
@@ -128,8 +134,15 @@ class OrderService:
         return order
 
     async def list_orders(
-        self, location_id: str, status_filter: str | None = None, limit: int = 100, offset: int = 0
+        self,
+        location_id: str,
+        status_filter: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
+        business_id: str | None = None,
     ) -> list[Order]:
+        if business_id is not None:
+            await verify_location_owned(self.db, location_id, business_id)
         q = select(Order).where(Order.location_id == location_id).options(selectinload(Order.items))
         if status_filter:
             q = q.where(Order.status == status_filter)
@@ -149,16 +162,26 @@ class OrderService:
         result = await self.db.execute(q)
         return list(result.scalars().all())
 
-    async def get_order(self, order_id: str) -> Order:
-        result = await self.db.execute(select(Order).where(Order.id == order_id).options(selectinload(Order.items)))
+    async def get_order(self, order_id: str, business_id: str | None = None) -> Order:
+        q = select(Order).where(Order.id == order_id).options(selectinload(Order.items))
+        if business_id is not None:
+            q = q.join(Location, Order.location_id == Location.id).where(Location.business_id == business_id)
+        result = await self.db.execute(q)
         order = result.scalar_one_or_none()
         if not order:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
         return order
 
-    async def create_order(self, data: OrderCreate, created_by: str | None = None) -> Order:
+    async def create_order(
+        self, data: OrderCreate, created_by: str | None = None, business_id: str | None = None
+    ) -> Order:
+        if business_id is not None:
+            await verify_location_owned(self.db, data.location_id, business_id)
+
         if data.table_id:
-            table_result = await self.db.execute(select(Table).where(Table.id == data.table_id, Table.active))
+            table_result = await self.db.execute(
+                select(Table).where(Table.id == data.table_id, Table.location_id == data.location_id, Table.active)
+            )
             if not table_result.scalar_one_or_none():
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Table not found")
 
@@ -184,8 +207,8 @@ class OrderService:
         await self.db.flush()
         return await self.get_order(order.id)
 
-    async def add_item(self, order_id: str, data: OrderItemCreate) -> OrderItem:
-        order = await self.get_order(order_id)
+    async def add_item(self, order_id: str, data: OrderItemCreate, business_id: str | None = None) -> OrderItem:
+        order = await self.get_order(order_id, business_id)
         if order.status not in ("open", "submitted"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -227,9 +250,11 @@ class OrderService:
         await self.db.flush()
         return order_item
 
-    async def update_item(self, order_id: str, item_id: str, data: OrderItemUpdate) -> OrderItem:
+    async def update_item(
+        self, order_id: str, item_id: str, data: OrderItemUpdate, business_id: str | None = None
+    ) -> OrderItem:
         """Adjust quantity, notes, or modifiers/customization of an item already on the order."""
-        order = await self.get_order(order_id)
+        order = await self.get_order(order_id, business_id)
         if order.status not in ("open", "submitted"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -267,7 +292,11 @@ class OrderService:
         await self.db.flush()
         return item
 
-    async def update_item_status(self, order_id: str, item_id: str, data: OrderItemStatusUpdate) -> OrderItem:
+    async def update_item_status(
+        self, order_id: str, item_id: str, data: OrderItemStatusUpdate, business_id: str | None = None
+    ) -> OrderItem:
+        if business_id is not None:
+            await self.get_order(order_id, business_id)
         result = await self.db.execute(select(OrderItem).where(OrderItem.id == item_id, OrderItem.order_id == order_id))
         item = result.scalar_one_or_none()
         if not item:
@@ -283,7 +312,9 @@ class OrderService:
         await self.db.flush()
         return item
 
-    async def reorder_items(self, order_id: str, ids: list[str]) -> None:
+    async def reorder_items(self, order_id: str, ids: list[str], business_id: str | None = None) -> None:
+        if business_id is not None:
+            await self.get_order(order_id, business_id)
         for order, item_id in enumerate(ids):
             await self.db.execute(
                 update(OrderItem)
@@ -291,8 +322,8 @@ class OrderService:
                 .values(sort_order=order)
             )
 
-    async def remove_item(self, order_id: str, item_id: str) -> None:
-        order = await self.get_order(order_id)
+    async def remove_item(self, order_id: str, item_id: str, business_id: str | None = None) -> None:
+        order = await self.get_order(order_id, business_id)
         if order.status != "open":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -315,8 +346,8 @@ class OrderService:
         await self.db.flush()
         await self._recalculate_totals(order, tax_rate, item_total)
 
-    async def transition_order(self, order_id: str, new_status: str) -> Order:
-        order = await self.get_order(order_id)
+    async def transition_order(self, order_id: str, new_status: str, business_id: str | None = None) -> Order:
+        order = await self.get_order(order_id, business_id)
         if new_status not in VALID_ORDER_TRANSITIONS.get(order.status, set()):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -327,9 +358,9 @@ class OrderService:
         await self.db.flush()
         return order
 
-    async def fire_course(self, order_id: str, data: OrderFireCourseRequest) -> Order:
+    async def fire_course(self, order_id: str, data: OrderFireCourseRequest, business_id: str | None = None) -> Order:
         """Release all 'held' items of the given fire course so the kitchen can start them."""
-        order = await self.get_order(order_id)
+        order = await self.get_order(order_id, business_id)
         if order.status not in ("submitted", "preparing", "ready"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -351,10 +382,10 @@ class OrderService:
         await self.db.flush()
         return await self.get_order(order_id)
 
-    async def assign_guests(self, order_id: str, data: AssignGuestsRequest) -> Order:
+    async def assign_guests(self, order_id: str, data: AssignGuestsRequest, business_id: str | None = None) -> Order:
         """Optionally tag items with a guest number so a table's single order/check can
         still be organized or paid per-guest — this never creates a separate Order."""
-        order = await self.get_order(order_id)
+        order = await self.get_order(order_id, business_id)
         if order.status in ("paid", "cancelled"):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot edit a closed order")
 
@@ -370,10 +401,12 @@ class OrderService:
         await self.db.flush()
         return await self.get_order(order_id)
 
-    async def apply_item_discount(self, order_id: str, data: OrderItemDiscountRequest) -> Order:
+    async def apply_item_discount(
+        self, order_id: str, data: OrderItemDiscountRequest, business_id: str | None = None
+    ) -> Order:
         """Apply (or clear, when both fields are None) a manual %/fixed discount to one or
         more items on the order — distinct from the order-level discount-code feature."""
-        order = await self.get_order(order_id)
+        order = await self.get_order(order_id, business_id)
         if order.status in ("paid", "cancelled"):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot edit a closed order")
         if data.discount_type is not None and data.discount_type not in ("percent", "fixed"):
@@ -401,10 +434,12 @@ class OrderService:
         await self.db.flush()
         return await self.get_order(order_id)
 
-    async def set_item_comp(self, order_id: str, data: OrderItemCompRequest, comped_by_user_id: str) -> Order:
+    async def set_item_comp(
+        self, order_id: str, data: OrderItemCompRequest, comped_by_user_id: str, business_id: str | None = None
+    ) -> Order:
         """Mark (or unmark) items as 'on the house' — the item stays on the order and visible
         to the kitchen, but contributes nothing to the bill."""
-        order = await self.get_order(order_id)
+        order = await self.get_order(order_id, business_id)
         if order.status in ("paid", "cancelled"):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot edit a closed order")
 
@@ -421,11 +456,11 @@ class OrderService:
         await self.db.flush()
         return await self.get_order(order_id)
 
-    async def delete_items(self, order_id: str, data: OrderItemDeleteRequest) -> Order:
+    async def delete_items(self, order_id: str, data: OrderItemDeleteRequest, business_id: str | None = None) -> Order:
         """Permanently remove one or more items. Items on an order still 'open' (not yet sent
         to the kitchen) can be removed freely; once submitted, a manager PIN + reason is
         required since the kitchen may already be preparing them."""
-        order = await self.get_order(order_id)
+        order = await self.get_order(order_id, business_id)
         if order.status in ("paid", "cancelled"):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot edit a closed order")
 

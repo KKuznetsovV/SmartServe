@@ -5,7 +5,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models import MenuCategory, MenuItem, Modifier, ModifierGroup
+from app.db.models import Location, MenuCategory, MenuItem, Modifier, ModifierGroup
 from app.modules.catalog.schemas import (
     BulkPriceUpdate,
     MenuCategoryCreate,
@@ -18,26 +18,44 @@ from app.modules.catalog.schemas import (
 )
 
 
+async def verify_location_owned(db: AsyncSession, location_id: str, business_id: str) -> Location:
+    """Raise 404 unless `location_id` belongs to `business_id`. Mirrors
+    services/reporting's `verify_location_owned` — never trust a location_id path/body
+    param alone for a tenant-scoped operation."""
+    result = await db.execute(select(Location).where(Location.id == location_id))
+    location = result.scalar_one_or_none()
+    if not location or location.business_id != business_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
+    return location
+
+
 class MenuService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
     # ── Categories ──────────────────────────────────────────────────────────
 
-    async def list_categories(self, location_id: str) -> list[MenuCategory]:
+    async def list_categories(self, location_id: str, business_id: str | None = None) -> list[MenuCategory]:
+        if business_id is not None:
+            await verify_location_owned(self.db, location_id, business_id)
         result = await self.db.execute(
             select(MenuCategory).where(MenuCategory.location_id == location_id).order_by(MenuCategory.sort_order)
         )
         return list(result.scalars().all())
 
-    async def get_category(self, category_id: str) -> MenuCategory:
-        result = await self.db.execute(select(MenuCategory).where(MenuCategory.id == category_id))
+    async def get_category(self, category_id: str, business_id: str | None = None) -> MenuCategory:
+        q = select(MenuCategory).where(MenuCategory.id == category_id)
+        if business_id is not None:
+            q = q.join(Location, MenuCategory.location_id == Location.id).where(Location.business_id == business_id)
+        result = await self.db.execute(q)
         cat = result.scalar_one_or_none()
         if not cat:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
         return cat
 
-    async def create_category(self, data: MenuCategoryCreate) -> MenuCategory:
+    async def create_category(self, data: MenuCategoryCreate, business_id: str | None = None) -> MenuCategory:
+        if business_id is not None:
+            await verify_location_owned(self.db, data.location_id, business_id)
         if data.parent_id:
             await self._validate_parent(data.parent_id, data.location_id)
         cat = MenuCategory(**data.model_dump())
@@ -45,8 +63,10 @@ class MenuService:
         await self.db.flush()
         return cat
 
-    async def update_category(self, category_id: str, data: MenuCategoryUpdate) -> MenuCategory:
-        cat = await self.get_category(category_id)
+    async def update_category(
+        self, category_id: str, data: MenuCategoryUpdate, business_id: str | None = None
+    ) -> MenuCategory:
+        cat = await self.get_category(category_id, business_id)
         if data.parent_id:
             if data.parent_id == category_id:
                 raise HTTPException(
@@ -65,11 +85,13 @@ class MenuService:
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Parent category is not in this location"
             )
 
-    async def delete_category(self, category_id: str) -> None:
-        cat = await self.get_category(category_id)
+    async def delete_category(self, category_id: str, business_id: str | None = None) -> None:
+        cat = await self.get_category(category_id, business_id)
         await self.db.delete(cat)
 
-    async def reorder_categories(self, location_id: str, ids: list[str]) -> None:
+    async def reorder_categories(self, location_id: str, ids: list[str], business_id: str | None = None) -> None:
+        if business_id is not None:
+            await verify_location_owned(self.db, location_id, business_id)
         for order, cat_id in enumerate(ids):
             await self.db.execute(
                 update(MenuCategory)
@@ -79,7 +101,9 @@ class MenuService:
 
     # ── Items ────────────────────────────────────────────────────────────────
 
-    async def list_items(self, category_id: str) -> list[MenuItem]:
+    async def list_items(self, category_id: str, business_id: str | None = None) -> list[MenuItem]:
+        if business_id is not None:
+            await self.get_category(category_id, business_id)
         result = await self.db.execute(
             select(MenuItem)
             .where(MenuItem.category_id == category_id)
@@ -88,20 +112,27 @@ class MenuService:
         )
         return list(result.scalars().all())
 
-    async def get_item(self, item_id: str) -> MenuItem:
-        result = await self.db.execute(
+    async def get_item(self, item_id: str, business_id: str | None = None) -> MenuItem:
+        q = (
             select(MenuItem)
             .where(MenuItem.id == item_id)
             .options(selectinload(MenuItem.modifier_groups).selectinload(ModifierGroup.modifiers))
         )
+        if business_id is not None:
+            q = (
+                q.join(MenuCategory, MenuItem.category_id == MenuCategory.id)
+                .join(Location, MenuCategory.location_id == Location.id)
+                .where(Location.business_id == business_id)
+            )
+        result = await self.db.execute(q)
         item = result.scalar_one_or_none()
         if not item:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
         return item
 
-    async def create_item(self, data: MenuItemCreate) -> MenuItem:
-        # Verify category exists
-        await self.get_category(data.category_id)
+    async def create_item(self, data: MenuItemCreate, business_id: str | None = None) -> MenuItem:
+        # Verify category exists (and, when scoped, that it's in the caller's own business)
+        await self.get_category(data.category_id, business_id)
         payload = data.model_dump()
         if payload.get("sort_order") is None:
             payload["sort_order"] = await self._next_sort_order(data.category_id)
@@ -117,12 +148,16 @@ class MenuService:
         )
         return result.scalar_one()
 
-    async def update_item(self, item_id: str, data: MenuItemUpdate) -> MenuItem:
-        item = await self.get_item(item_id)
+    async def update_item(self, item_id: str, data: MenuItemUpdate, business_id: str | None = None) -> MenuItem:
+        item = await self.get_item(item_id, business_id)
         updates = data.model_dump(exclude_none=True)
         # Moving to a different category with no explicit position: append to the end of it
-        if updates.get("category_id") and updates["category_id"] != item.category_id and "sort_order" not in updates:
-            updates["sort_order"] = await self._next_sort_order(updates["category_id"])
+        if updates.get("category_id") and updates["category_id"] != item.category_id:
+            # A rename target category must also belong to the caller's own business —
+            # otherwise an item could be relocated into another business's menu.
+            await self.get_category(updates["category_id"], business_id)
+            if "sort_order" not in updates:
+                updates["sort_order"] = await self._next_sort_order(updates["category_id"])
         for field, value in updates.items():
             setattr(item, field, value)
         await self.db.flush()
@@ -134,7 +169,9 @@ class MenuService:
         )
         return result.scalar_one()
 
-    async def reorder_items(self, category_id: str, ids: list[str]) -> None:
+    async def reorder_items(self, category_id: str, ids: list[str], business_id: str | None = None) -> None:
+        if business_id is not None:
+            await self.get_category(category_id, business_id)
         for order, item_id in enumerate(ids):
             await self.db.execute(
                 update(MenuItem)
@@ -142,12 +179,18 @@ class MenuService:
                 .values(sort_order=order)
             )
 
-    async def delete_item(self, item_id: str) -> None:
-        item = await self.get_item(item_id)
+    async def delete_item(self, item_id: str, business_id: str | None = None) -> None:
+        item = await self.get_item(item_id, business_id)
         await self.db.delete(item)
 
-    async def bulk_price_update(self, data: BulkPriceUpdate) -> int:
+    async def bulk_price_update(self, data: BulkPriceUpdate, business_id: str | None = None) -> int:
         """Returns count of updated items."""
+        if business_id is not None:
+            if data.category_id:
+                await self.get_category(data.category_id, business_id)
+            else:
+                await verify_location_owned(self.db, data.location_id, business_id)
+
         q = (
             select(MenuItem)
             .join(MenuCategory, MenuItem.category_id == MenuCategory.id)
@@ -170,8 +213,8 @@ class MenuService:
         await self.db.flush()
         return len(items)
 
-    async def set_stock(self, item_id: str, in_stock: bool) -> MenuItem:
-        item = await self.get_item(item_id)
+    async def set_stock(self, item_id: str, in_stock: bool, business_id: str | None = None) -> MenuItem:
+        item = await self.get_item(item_id, business_id)
         item.in_stock = in_stock
         await self.db.flush()
         return await self.get_item(item_id)
@@ -182,7 +225,9 @@ class MenuService:
         result = await self.db.execute(select(MenuCategory.location_id).where(MenuCategory.id == item.category_id))
         return result.scalar_one()
 
-    async def list_all_items(self, location_id: str) -> list[MenuItem]:
+    async def list_all_items(self, location_id: str, business_id: str | None = None) -> list[MenuItem]:
+        if business_id is not None:
+            await verify_location_owned(self.db, location_id, business_id)
         result = await self.db.execute(
             select(MenuItem)
             .join(MenuCategory, MenuItem.category_id == MenuCategory.id)
@@ -192,8 +237,8 @@ class MenuService:
         )
         return list(result.scalars().all())
 
-    async def create_modifier_group(self, data: ModifierGroupCreate) -> ModifierGroup:
-        await self.get_item(data.item_id)
+    async def create_modifier_group(self, data: ModifierGroupCreate, business_id: str | None = None) -> ModifierGroup:
+        await self.get_item(data.item_id, business_id)
         modifiers_data = data.modifiers
         group = ModifierGroup(**data.model_dump(exclude={"modifiers"}))
         self.db.add(group)
@@ -206,35 +251,52 @@ class MenuService:
         await self.db.flush()
         return await self.get_modifier_group(group.id)
 
-    async def get_modifier_group(self, group_id: str) -> ModifierGroup:
-        result = await self.db.execute(
-            select(ModifierGroup).where(ModifierGroup.id == group_id).options(selectinload(ModifierGroup.modifiers))
-        )
+    async def get_modifier_group(self, group_id: str, business_id: str | None = None) -> ModifierGroup:
+        q = select(ModifierGroup).where(ModifierGroup.id == group_id).options(selectinload(ModifierGroup.modifiers))
+        if business_id is not None:
+            q = (
+                q.join(MenuItem, ModifierGroup.item_id == MenuItem.id)
+                .join(MenuCategory, MenuItem.category_id == MenuCategory.id)
+                .join(Location, MenuCategory.location_id == Location.id)
+                .where(Location.business_id == business_id)
+            )
+        result = await self.db.execute(q)
         group = result.scalar_one_or_none()
         if not group:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Modifier group not found")
         return group
 
-    async def update_modifier_group(self, group_id: str, data: ModifierGroupUpdate) -> ModifierGroup:
-        group = await self.get_modifier_group(group_id)
+    async def update_modifier_group(
+        self, group_id: str, data: ModifierGroupUpdate, business_id: str | None = None
+    ) -> ModifierGroup:
+        group = await self.get_modifier_group(group_id, business_id)
         for field, value in data.model_dump(exclude_none=True).items():
             setattr(group, field, value)
         await self.db.flush()
         return group
 
-    async def delete_modifier_group(self, group_id: str) -> None:
-        group = await self.get_modifier_group(group_id)
+    async def delete_modifier_group(self, group_id: str, business_id: str | None = None) -> None:
+        group = await self.get_modifier_group(group_id, business_id)
         await self.db.delete(group)
 
-    async def add_modifier(self, group_id: str, data: ModifierCreate) -> Modifier:
-        await self.get_modifier_group(group_id)
+    async def add_modifier(self, group_id: str, data: ModifierCreate, business_id: str | None = None) -> Modifier:
+        await self.get_modifier_group(group_id, business_id)
         mod = Modifier(group_id=group_id, **data.model_dump())
         self.db.add(mod)
         await self.db.flush()
         return mod
 
-    async def delete_modifier(self, modifier_id: str) -> None:
-        result = await self.db.execute(select(Modifier).where(Modifier.id == modifier_id))
+    async def delete_modifier(self, modifier_id: str, business_id: str | None = None) -> None:
+        q = select(Modifier).where(Modifier.id == modifier_id)
+        if business_id is not None:
+            q = (
+                q.join(ModifierGroup, Modifier.group_id == ModifierGroup.id)
+                .join(MenuItem, ModifierGroup.item_id == MenuItem.id)
+                .join(MenuCategory, MenuItem.category_id == MenuCategory.id)
+                .join(Location, MenuCategory.location_id == Location.id)
+                .where(Location.business_id == business_id)
+            )
+        result = await self.db.execute(q)
         mod = result.scalar_one_or_none()
         if not mod:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Modifier not found")
