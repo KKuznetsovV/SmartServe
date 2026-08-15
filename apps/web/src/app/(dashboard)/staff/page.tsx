@@ -31,6 +31,7 @@ const createSchema = z.object({
   email: z.string().email().optional().or(z.literal('')),
   role: z.enum(['owner', 'manager', 'cashier', 'waiter', 'kitchen']),
   language: z.enum(['he', 'en']),
+  active: z.boolean().optional(),
   password: z.string().min(8).optional().or(z.literal('')),
   pin: z.string().length(4).regex(/^\d{4}$/, 'Must be 4 digits').optional().or(z.literal('')),
 })
@@ -66,8 +67,12 @@ export default function StaffPage() {
 
   function openEdit(u: User) {
     setEditing(u)
-    reset({ name: u.name, email: u.email ?? '', role: u.role, language: u.language, pin: '' })
+    reset({ name: u.name, email: u.email ?? '', role: u.role, language: u.language, active: u.active, pin: '' })
     setDialogOpen(true)
+  }
+
+  function toggleActive(u: User) {
+    updateStaff.mutate({ id: u.id, businessId: u.businessId, data: { active: !u.active } })
   }
 
   async function onSubmit(values: CreateForm) {
@@ -88,6 +93,46 @@ export default function StaffPage() {
     setDialogOpen(false)
   }
 
+  const activeStaff = (staff ?? []).filter((u) => u.active)
+  const inactiveStaff = (staff ?? []).filter((u) => !u.active)
+
+  function renderStaffCard(u: User) {
+    return (
+      <Card key={u.id} className={!u.active ? 'opacity-50' : ''}>
+        <CardContent className="p-4 flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{u.name}</span>
+              <Badge variant={ROLE_VARIANT[u.role as UserRole]} className="text-xs capitalize">
+                {u.role}
+              </Badge>
+              {!u.active && (
+                <Badge variant="outline" className="text-xs">Inactive</Badge>
+              )}
+            </div>
+            {u.email && (
+              <p className="text-sm text-muted-foreground mt-0.5">{u.email}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={u.active ? 'text-destructive hover:text-destructive' : ''}
+              disabled={updateStaff.isPending}
+              onClick={() => toggleActive(u)}
+            >
+              {u.active ? 'Deactivate' : 'Reactivate'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => openEdit(u)}>
+              Edit
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -101,31 +146,24 @@ export default function StaffPage() {
         <p className="text-muted-foreground">No staff members yet.</p>
       )}
 
-      <div className="space-y-2">
-        {staff?.map((u) => (
-          <Card key={u.id} className={!u.active ? 'opacity-50' : ''}>
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{u.name}</span>
-                  <Badge variant={ROLE_VARIANT[u.role as UserRole]} className="text-xs capitalize">
-                    {u.role}
-                  </Badge>
-                  {!u.active && (
-                    <Badge variant="outline" className="text-xs">Inactive</Badge>
-                  )}
-                </div>
-                {u.email && (
-                  <p className="text-sm text-muted-foreground mt-0.5">{u.email}</p>
-                )}
-              </div>
-              <Button variant="outline" size="sm" onClick={() => openEdit(u)}>
-                Edit
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {!isLoading && staff && staff.length > 0 && (
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <h2 className="text-sm font-medium text-muted-foreground">Active ({activeStaff.length})</h2>
+            {activeStaff.length === 0 && (
+              <p className="text-sm text-muted-foreground">No active staff members.</p>
+            )}
+            {activeStaff.map(renderStaffCard)}
+          </div>
+
+          {inactiveStaff.length > 0 && (
+            <div className="space-y-2">
+              <h2 className="text-sm font-medium text-muted-foreground">Inactive ({inactiveStaff.length})</h2>
+              {inactiveStaff.map(renderStaffCard)}
+            </div>
+          )}
+        </div>
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-sm">
@@ -190,7 +228,7 @@ export default function StaffPage() {
 
             {editing && (
               <div className="flex items-center gap-2">
-                <input type="checkbox" id="active" {...register('active' as keyof CreateForm)} />
+                <input type="checkbox" id="active" {...register('active')} />
                 <Label htmlFor="active">Active</Label>
               </div>
             )}
