@@ -10,6 +10,7 @@ export const OrderStatus = z.enum([
   'ready',
   'served',
   'paid',
+  'split',
   'cancelled',
 ])
 export type OrderStatus = z.infer<typeof OrderStatus>
