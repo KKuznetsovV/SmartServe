@@ -223,15 +223,17 @@ async def menu_import_start(
     await request.app.state.redis.setex(
         f"ai:import:{session_id}",
         _IMPORT_TTL,
-        json.dumps({
-            "business_id": ctx.claims.business_id,
-            "location_id": location["id"],
-            "items": result.get("items", []),
-            "history": [
-                {"role": "user", "content": user_content},
-                {"role": "assistant", "content": json.dumps(result)},
-            ],
-        }),
+        json.dumps(
+            {
+                "business_id": ctx.claims.business_id,
+                "location_id": location["id"],
+                "items": result.get("items", []),
+                "history": [
+                    {"role": "user", "content": user_content},
+                    {"role": "assistant", "content": json.dumps(result)},
+                ],
+            }
+        ),
     )
 
     return {
