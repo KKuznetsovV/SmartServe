@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 
+import redis.asyncio as aioredis
 import structlog
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,9 +25,11 @@ async def lifespan(app: FastAPI):
         raise RuntimeError("SECRET_KEY must be changed in production!")
     logger.info("ai service starting", env=settings.ENVIRONMENT)
     app.state.mq_connection = await mq.connect(settings.RABBITMQ_URL)
+    app.state.redis = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
     yield
     if app.state.mq_connection is not None:
         await app.state.mq_connection.close()
+    await app.state.redis.aclose()
     logger.info("ai service shutdown")
 
 
@@ -40,6 +43,7 @@ def create_app() -> FastAPI:
     )
 
     app.state.mq_connection = None
+    app.state.redis = None
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 

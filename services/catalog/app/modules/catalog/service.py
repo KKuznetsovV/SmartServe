@@ -1,5 +1,7 @@
 """Menu service — all business logic for categories, items, and modifiers."""
 
+from datetime import UTC, datetime
+
 from fastapi import HTTPException, status
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -106,18 +108,35 @@ class MenuService:
             await self.get_category(category_id, business_id)
         result = await self.db.execute(
             select(MenuItem)
-            .where(MenuItem.category_id == category_id)
+            .where(MenuItem.category_id == category_id, MenuItem.deleted_at.is_(None))
             .options(selectinload(MenuItem.modifier_groups).selectinload(ModifierGroup.modifiers))
             .order_by(MenuItem.sort_order, MenuItem.name)
         )
         return list(result.scalars().all())
 
-    async def get_item(self, item_id: str, business_id: str | None = None) -> MenuItem:
+    async def list_trashed_items(self, location_id: str, business_id: str | None = None) -> list[MenuItem]:
+        """Items currently in trash for a location — powers the menu editor's trash view."""
+        if business_id is not None:
+            await verify_location_owned(self.db, location_id, business_id)
+        result = await self.db.execute(
+            select(MenuItem)
+            .join(MenuCategory, MenuItem.category_id == MenuCategory.id)
+            .where(MenuCategory.location_id == location_id, MenuItem.deleted_at.is_not(None))
+            .options(selectinload(MenuItem.modifier_groups).selectinload(ModifierGroup.modifiers))
+            .order_by(MenuItem.deleted_at.desc())
+        )
+        return list(result.scalars().all())
+
+    async def get_item(
+        self, item_id: str, business_id: str | None = None, *, include_trashed: bool = False
+    ) -> MenuItem:
         q = (
             select(MenuItem)
             .where(MenuItem.id == item_id)
             .options(selectinload(MenuItem.modifier_groups).selectinload(ModifierGroup.modifiers))
         )
+        if not include_trashed:
+            q = q.where(MenuItem.deleted_at.is_(None))
         if business_id is not None:
             q = (
                 q.join(MenuCategory, MenuItem.category_id == MenuCategory.id)
@@ -180,7 +199,35 @@ class MenuService:
             )
 
     async def delete_item(self, item_id: str, business_id: str | None = None) -> None:
+        """Move an item to trash (soft-delete). Does not touch the row's DB identity —
+        historical `OrderItem`/reporting records reference this id and snapshot their own
+        name/price/category at the time they were created, so they are entirely unaffected.
+        An already-trashed item is not found by `get_item`'s default (non-`include_trashed`)
+        query, so re-trashing an already-trashed item correctly 404s instead of silently
+        no-op'ing twice."""
         item = await self.get_item(item_id, business_id)
+        item.deleted_at = datetime.now(UTC)
+        await self.db.flush()
+
+    async def restore_item(self, item_id: str, business_id: str | None = None) -> MenuItem:
+        """Clear an item's trash state, making it visible again in every default listing."""
+        item = await self.get_item(item_id, business_id, include_trashed=True)
+        if item.deleted_at is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Item is not in trash")
+        item.deleted_at = None
+        await self.db.flush()
+        return await self.get_item(item_id, business_id)
+
+    async def permanently_delete_item(self, item_id: str, business_id: str | None = None) -> None:
+        """Real, irreversible delete — only callable on an item that's already in trash, so an
+        item can never go from 'active on the menu' straight to permanently gone without
+        passing through the trash view first."""
+        item = await self.get_item(item_id, business_id, include_trashed=True)
+        if item.deleted_at is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Item must be moved to trash before it can be permanently deleted",
+            )
         await self.db.delete(item)
 
     async def bulk_price_update(self, data: BulkPriceUpdate, business_id: str | None = None) -> int:
@@ -194,6 +241,7 @@ class MenuService:
         q = (
             select(MenuItem)
             .join(MenuCategory, MenuItem.category_id == MenuCategory.id)
+            .where(MenuItem.deleted_at.is_(None))
             .options(selectinload(MenuItem.modifier_groups).selectinload(ModifierGroup.modifiers))
         )
         if data.category_id:
@@ -231,7 +279,11 @@ class MenuService:
         result = await self.db.execute(
             select(MenuItem)
             .join(MenuCategory, MenuItem.category_id == MenuCategory.id)
-            .where(MenuCategory.location_id == location_id, MenuItem.active.is_(True))
+            .where(
+                MenuCategory.location_id == location_id,
+                MenuItem.active.is_(True),
+                MenuItem.deleted_at.is_(None),
+            )
             .options(selectinload(MenuItem.modifier_groups).selectinload(ModifierGroup.modifiers))
             .order_by(MenuCategory.sort_order, MenuItem.sort_order, MenuItem.name)
         )

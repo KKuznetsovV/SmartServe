@@ -23,14 +23,14 @@ from app.modules.ai.services.report_dispatch import generate_report
 
 router = APIRouter()
 
-# In-memory pending executions / import sessions (replace with Redis in step/02)
-_pending: dict[str, dict] = {}
-_menu_import_sessions: dict[str, dict] = {}
+_PENDING_TTL = 600      # 10 minutes
+_IMPORT_TTL  = 1800     # 30 minutes
 
 
 @router.post("/command")
 async def ai_command(
     body: CommandRequest,
+    request: Request,
     ctx: AuthContext = Depends(get_auth_context),  # validates the JWT; any authenticated role may ask
 ):
     if not settings.ANTHROPIC_API_KEY:
@@ -108,12 +108,11 @@ async def ai_command(
         }
 
     execution_id = str(uuid.uuid4())
-    _pending[execution_id] = {
-        "intent": intent,
-        "params": params,
-        "context": body.context,
-        "message": body.message,
-    }
+    await request.app.state.redis.setex(
+        f"ai:pending:{execution_id}",
+        _PENDING_TTL,
+        json.dumps({"intent": intent, "params": params, "context": body.context, "message": body.message}),
+    )
 
     return {
         "intent": intent,
@@ -131,7 +130,8 @@ async def ai_confirm(
     request: Request,
     ctx: AuthContext = Depends(require_manager),
 ):
-    pending = _pending.pop(body.execution_id, None)
+    raw = await request.app.state.redis.getdel(f"ai:pending:{body.execution_id}")
+    pending = json.loads(raw) if raw else None
     if not pending:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Execution not found or already confirmed")
 
@@ -184,6 +184,7 @@ async def _get_owned_location(location_id: str, ctx: AuthContext) -> dict:
 
 @router.post("/menu-import")
 async def menu_import_start(
+    request: Request,
     location_id: str = Form(...),
     file: UploadFile = File(...),
     ctx: AuthContext = Depends(require_manager),
@@ -219,15 +220,19 @@ async def menu_import_start(
     result = parse_menu_import_reply(message)
 
     session_id = str(uuid.uuid4())
-    _menu_import_sessions[session_id] = {
-        "business_id": ctx.claims.business_id,
-        "location_id": location["id"],
-        "items": result.get("items", []),
-        "history": [
-            {"role": "user", "content": user_content},
-            {"role": "assistant", "content": json.dumps(result)},
-        ],
-    }
+    await request.app.state.redis.setex(
+        f"ai:import:{session_id}",
+        _IMPORT_TTL,
+        json.dumps({
+            "business_id": ctx.claims.business_id,
+            "location_id": location["id"],
+            "items": result.get("items", []),
+            "history": [
+                {"role": "user", "content": user_content},
+                {"role": "assistant", "content": json.dumps(result)},
+            ],
+        }),
+    )
 
     return {
         "sessionId": session_id,
@@ -240,9 +245,11 @@ async def menu_import_start(
 @router.post("/menu-import/message")
 async def menu_import_message(
     body: MenuImportMessageRequest,
+    request: Request,
     ctx: AuthContext = Depends(require_manager),
 ):
-    session = _menu_import_sessions.get(body.session_id)
+    raw = await request.app.state.redis.get(f"ai:import:{body.session_id}")
+    session = json.loads(raw) if raw else None
     if not session or session["business_id"] != ctx.claims.business_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Import session not found")
 
@@ -271,6 +278,7 @@ async def menu_import_message(
 
     session["items"] = result.get("items", session["items"])
     session["history"] = [*history, {"role": "assistant", "content": json.dumps(result)}]
+    await request.app.state.redis.setex(f"ai:import:{body.session_id}", _IMPORT_TTL, json.dumps(session))
 
     return {
         "sessionId": body.session_id,
@@ -283,9 +291,11 @@ async def menu_import_message(
 @router.post("/menu-import/apply")
 async def menu_import_apply(
     body: MenuImportApplyRequest,
+    request: Request,
     ctx: AuthContext = Depends(require_manager),
 ):
-    session = _menu_import_sessions.get(body.session_id)
+    raw = await request.app.state.redis.get(f"ai:import:{body.session_id}")
+    session = json.loads(raw) if raw else None
     if not session or session["business_id"] != ctx.claims.business_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Import session not found")
 
@@ -344,7 +354,7 @@ async def menu_import_apply(
             await printing.add_route(printer["id"], item["id"])
             routes_created += 1
 
-    del _menu_import_sessions[body.session_id]
+    await request.app.state.redis.delete(f"ai:import:{body.session_id}")
 
     return {
         "categoriesCreated": categories_created,

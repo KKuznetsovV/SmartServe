@@ -115,6 +115,21 @@ async def dispatch_intent(
         updated = await menu.set_stock(item["id"], bool(in_stock))
         return f"Marked '{updated['name']}' as {'in stock' if updated['inStock'] else 'out of stock'}"
 
+    if intent == "menu.move_to_trash":
+        item = await _resolve_item(params, location_id, menu)
+        await menu.move_to_trash(item["id"])
+        return f"Moved '{item['name']}' to trash"
+
+    if intent == "menu.restore_item":
+        item = await _resolve_trashed_item(params, location_id, menu)
+        restored = await menu.restore_item(item["id"])
+        return f"Restored '{restored['name']}' from trash"
+
+    if intent == "menu.permanently_delete_item":
+        item = await _resolve_trashed_item(params, location_id, menu)
+        await menu.permanently_delete_item(item["id"])
+        return f"Permanently deleted '{item['name']}' — this cannot be undone"
+
     raise HTTPException(
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
         detail=f"'{intent}' isn't automated yet — please make this change manually",
@@ -204,6 +219,21 @@ async def _resolve_item(params: dict, location_id: str, menu: MenuClient):
     idx = fuzzy_match(hint, [i["name"] for i in items])
     if idx is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"No item matching '{hint}' was found")
+    return items[idx]
+
+
+async def _resolve_trashed_item(params: dict, location_id: str, menu: MenuClient):
+    """Like `_resolve_item`, but searches the trash — `list_all_items` excludes trashed items
+    by default, so restore/permanent-delete must look up the target there instead."""
+    hint = params.get("name") or params.get("item_hint") or params.get("item_name")
+    if not hint:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Could not determine which item to update")
+    items = await menu.list_trashed_items(location_id)
+    idx = fuzzy_match(hint, [i["name"] for i in items])
+    if idx is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"No trashed item matching '{hint}' was found"
+        )
     return items[idx]
 
 

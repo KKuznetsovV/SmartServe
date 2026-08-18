@@ -10,6 +10,9 @@ SUPPORTED_INTENTS = [
     "menu.reorganize_categories",
     "menu.move_items_to_category",
     "menu.create_modifier_group",
+    "menu.move_to_trash",
+    "menu.restore_item",
+    "menu.permanently_delete_item",
     "printer.route",
     "printer.troubleshoot",
     "report.query",
@@ -40,6 +43,10 @@ Return ONLY valid JSON in this exact format:
 Examples:
 - "Add margherita pizza for 58 NIS" → intent: menu.create_item, params: {{name: "Margherita Pizza", price: 58, currency: "ILS"}}
 - "Rename the Coke to Coca-Cola" → intent: menu.update_item, params: {{item_hint: "Coke", new_name: "Coca-Cola"}}
+- "Delete the Margherita Pizza" → intent: menu.move_to_trash, params: {{item_hint: "Margherita Pizza"}}
+- "Trash the discontinued soup" → intent: menu.move_to_trash, params: {{item_hint: "discontinued soup"}}
+- "Restore the Margherita Pizza from trash" → intent: menu.restore_item, params: {{item_hint: "Margherita Pizza"}}
+- "Permanently delete the Margherita Pizza" → intent: menu.permanently_delete_item, params: {{item_hint: "Margherita Pizza"}}
 - "הגדל את כל מחירי הפסטה ב-10%" → intent: menu.bulk_price_change, params: {{category_hint: "פסטה", change_pct: 10}}
 - "Send burgers to the kitchen printer" → intent: printer.route, params: {{item_hint: "burger", printer_hint: "kitchen"}}
 - "Route all bar tickets to the kitchen printer instead" → intent: printer.route,

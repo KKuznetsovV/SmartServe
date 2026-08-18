@@ -113,6 +113,13 @@ class MenuItem(Base):
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     in_stock: Mapped[bool] = mapped_column(Boolean, default=True)
     default_fire_course: Mapped[int] = mapped_column(Integer, default=1)
+    # Soft-delete (trash) timestamp — deliberately separate from `active`/`in_stock`, which
+    # control order-grid visibility for the existing "toggle availability" feature and are a
+    # different concept. NULL means "not trashed"; a non-null value is when it was trashed.
+    # Excluded by default from every listing query (list_items/list_all_items/bulk_price_update);
+    # a real `db.delete()` only ever happens via `permanently_delete_item`, and only on an
+    # already-trashed item.
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
 
     category: Mapped[MenuCategory] = relationship(back_populates="items")
     modifier_groups: Mapped[list[ModifierGroup]] = relationship(back_populates="item")

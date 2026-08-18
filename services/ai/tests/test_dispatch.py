@@ -105,3 +105,107 @@ async def test_dispatch_printer_route_no_matching_printer(monkeypatch):
             printing,
         )
     assert "404" in str(exc_info.value) or "No printer" in str(exc_info.value)
+
+
+TRASHED_ITEMS = [
+    {"id": "item-trashed-1", "name": "Discontinued Soup", "categoryId": "cat-food"},
+]
+
+
+@pytest.mark.asyncio
+async def test_dispatch_move_to_trash(monkeypatch):
+    async def fake_catalog_get(path, *, forward_token=None, **kwargs):
+        return httpx.Response(200, json=ITEMS)
+
+    deleted_paths: list[str] = []
+
+    async def fake_catalog_delete(path, *, forward_token=None, **kwargs):
+        deleted_paths.append(path)
+        return httpx.Response(204)
+
+    monkeypatch.setattr(catalog_client, "get", fake_catalog_get)
+    monkeypatch.setattr(catalog_client, "delete", fake_catalog_delete)
+
+    menu = MenuClient("tok")
+    printing = PrintingClient("tok")
+
+    result = await dispatch_intent("menu.move_to_trash", {"item_hint": "Burger"}, "loc-1", menu, printing)
+
+    assert "Burger" in result
+    assert deleted_paths == ["/api/v1/menu/items/item-food-1"]
+
+
+@pytest.mark.asyncio
+async def test_dispatch_move_to_trash_no_match(monkeypatch):
+    async def fake_catalog_get(path, *, forward_token=None, **kwargs):
+        return httpx.Response(200, json=ITEMS)
+
+    monkeypatch.setattr(catalog_client, "get", fake_catalog_get)
+
+    menu = MenuClient("tok")
+    printing = PrintingClient("tok")
+
+    with pytest.raises(Exception) as exc_info:
+        await dispatch_intent("menu.move_to_trash", {"item_hint": "Sushi"}, "loc-1", menu, printing)
+    assert "404" in str(exc_info.value) or "No item" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_dispatch_restore_item(monkeypatch):
+    async def fake_catalog_get(path, *, forward_token=None, **kwargs):
+        assert path.endswith("/trash")
+        return httpx.Response(200, json=TRASHED_ITEMS)
+
+    async def fake_catalog_post(path, *, forward_token=None, **kwargs):
+        assert path == "/api/v1/menu/items/item-trashed-1/restore"
+        return httpx.Response(200, json={**TRASHED_ITEMS[0], "deletedAt": None})
+
+    monkeypatch.setattr(catalog_client, "get", fake_catalog_get)
+    monkeypatch.setattr(catalog_client, "post", fake_catalog_post)
+
+    menu = MenuClient("tok")
+    printing = PrintingClient("tok")
+
+    result = await dispatch_intent("menu.restore_item", {"item_hint": "Discontinued Soup"}, "loc-1", menu, printing)
+    assert "Discontinued Soup" in result
+
+
+@pytest.mark.asyncio
+async def test_dispatch_restore_item_not_in_trash(monkeypatch):
+    async def fake_catalog_get(path, *, forward_token=None, **kwargs):
+        return httpx.Response(200, json=TRASHED_ITEMS)
+
+    monkeypatch.setattr(catalog_client, "get", fake_catalog_get)
+
+    menu = MenuClient("tok")
+    printing = PrintingClient("tok")
+
+    with pytest.raises(Exception) as exc_info:
+        await dispatch_intent("menu.restore_item", {"item_hint": "Burger"}, "loc-1", menu, printing)
+    assert "404" in str(exc_info.value) or "No trashed item" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_dispatch_permanently_delete_item(monkeypatch):
+    async def fake_catalog_get(path, *, forward_token=None, **kwargs):
+        assert path.endswith("/trash")
+        return httpx.Response(200, json=TRASHED_ITEMS)
+
+    deleted_paths: list[str] = []
+
+    async def fake_catalog_delete(path, *, forward_token=None, **kwargs):
+        deleted_paths.append(path)
+        return httpx.Response(204)
+
+    monkeypatch.setattr(catalog_client, "get", fake_catalog_get)
+    monkeypatch.setattr(catalog_client, "delete", fake_catalog_delete)
+
+    menu = MenuClient("tok")
+    printing = PrintingClient("tok")
+
+    result = await dispatch_intent(
+        "menu.permanently_delete_item", {"item_hint": "Discontinued Soup"}, "loc-1", menu, printing
+    )
+
+    assert "Discontinued Soup" in result
+    assert deleted_paths == ["/api/v1/menu/items/item-trashed-1/permanent"]

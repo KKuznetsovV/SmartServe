@@ -215,7 +215,9 @@ class OrderService:
                 detail="Cannot add items to an order that is already being prepared",
             )
 
-        item_result = await self.db.execute(select(MenuItem).where(MenuItem.id == data.menu_item_id, MenuItem.active))
+        item_result = await self.db.execute(
+            select(MenuItem).where(MenuItem.id == data.menu_item_id, MenuItem.active, MenuItem.deleted_at.is_(None))
+        )
         menu_item = item_result.scalar_one_or_none()
         if not menu_item:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Menu item not found or unavailable")

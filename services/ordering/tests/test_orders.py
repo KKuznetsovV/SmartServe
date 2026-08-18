@@ -1,5 +1,7 @@
 """Integration tests for order lifecycle."""
 
+from datetime import UTC, datetime
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -654,6 +656,99 @@ async def test_update_order_item(
         headers=headers,
     )
     assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_add_item_rejects_trashed_menu_item(
+    client: AsyncClient,
+    db: AsyncSession,
+    business: Business,
+    manager_user: tuple[User, str],
+):
+    """A menu item that catalog has moved to trash (`deleted_at` set) must not be addable
+    to a brand-new order — mirrors the existing `active` check, so a trashed item can't
+    quietly leak back onto the order-taking grid via a stale client-side item id."""
+    _, token = manager_user
+    location = Location(business_id=business.id, name="Main")
+    db.add(location)
+    await db.flush()
+
+    item = MenuItem(category_id="cat-1", name="Discontinued Soup", price=20.0, tax_rate=0.17)
+    item.deleted_at = datetime.now(UTC)
+    db.add(item)
+    await db.flush()
+
+    headers = {"Authorization": f"Bearer {token}"}
+    order_id = (
+        await client.post(
+            "/api/v1/orders",
+            json={"locationId": location.id, "channel": "dine_in", "guestCount": 1},
+            headers=headers,
+        )
+    ).json()["id"]
+
+    resp = await client.post(
+        f"/api/v1/orders/{order_id}/items",
+        json={"menuItemId": item.id, "qty": 1},
+        headers=headers,
+    )
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_trashing_menu_item_does_not_affect_existing_order_item(
+    client: AsyncClient,
+    db: AsyncSession,
+    business: Business,
+    manager_user: tuple[User, str],
+):
+    """Trashing (or even permanently deleting) a MenuItem after it's already been added to
+    an order must never retroactively change that order — the order_item's own
+    menu_item_name/unit_price snapshot is what's authoritative, not a live join."""
+    _, token = manager_user
+    location = Location(business_id=business.id, name="Main")
+    db.add(location)
+    await db.flush()
+
+    item = MenuItem(category_id="cat-1", name="Soon To Be Trashed", price=33.0, tax_rate=0.17)
+    db.add(item)
+    await db.flush()
+
+    headers = {"Authorization": f"Bearer {token}"}
+    order_id = (
+        await client.post(
+            "/api/v1/orders",
+            json={"locationId": location.id, "channel": "dine_in", "guestCount": 1},
+            headers=headers,
+        )
+    ).json()["id"]
+
+    order_item = (
+        await client.post(
+            f"/api/v1/orders/{order_id}/items",
+            json={"menuItemId": item.id, "qty": 2},
+            headers=headers,
+        )
+    ).json()
+    assert order_item["menuItemName"] == "Soon To Be Trashed"
+
+    # Simulate catalog trashing (then permanently deleting) the underlying item.
+    item.deleted_at = datetime.now(UTC)
+    await db.flush()
+
+    order = (await client.get(f"/api/v1/orders/{order_id}", headers=headers)).json()
+    assert order["items"][0]["menuItemName"] == "Soon To Be Trashed"
+    assert order["subtotal"] == 66.0
+
+    # Now permanently delete the row outright (the real, irreversible delete) — the order
+    # must still render correctly since OrderItem never joins live to MenuItem for display.
+    await db.delete(item)
+    await db.flush()
+
+    order = (await client.get(f"/api/v1/orders/{order_id}", headers=headers)).json()
+    assert order["items"][0]["menuItemName"] == "Soon To Be Trashed"
+    assert order["items"][0]["unitPrice"] == 33.0
+    assert order["subtotal"] == 66.0
 
 
 # Note: payment-completes-order coverage lives in services/payments/tests, which builds

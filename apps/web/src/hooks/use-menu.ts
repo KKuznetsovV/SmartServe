@@ -98,7 +98,43 @@ export function useDeleteMenuItem() {
       apiClient.menuItems.delete(id),
     onSuccess: (_, { categoryId }) => {
       qc.invalidateQueries({ queryKey: ['items', categoryId] })
-      toast.success('Item deleted')
+      qc.invalidateQueries({ queryKey: ['trash'] })
+      toast.success('Item moved to trash')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+// ─── Trash ────────────────────────────────────────────────────────────────────
+
+export function useTrashedItems(locationId: string | null) {
+  return useQuery({
+    queryKey: ['trash', locationId],
+    queryFn: () => apiClient.menuItems.listTrash(locationId!),
+    enabled: !!locationId,
+  })
+}
+
+export function useRestoreMenuItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id }: { id: string; locationId: string }) => apiClient.menuItems.restore(id),
+    onSuccess: (item, { locationId }) => {
+      qc.invalidateQueries({ queryKey: ['trash', locationId] })
+      qc.invalidateQueries({ queryKey: ['items', item.categoryId] })
+      toast.success('Item restored')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function usePermanentlyDeleteMenuItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id }: { id: string; locationId: string }) => apiClient.menuItems.permanentDelete(id),
+    onSuccess: (_, { locationId }) => {
+      qc.invalidateQueries({ queryKey: ['trash', locationId] })
+      toast.success('Item permanently deleted')
     },
     onError: (e: Error) => toast.error(e.message),
   })

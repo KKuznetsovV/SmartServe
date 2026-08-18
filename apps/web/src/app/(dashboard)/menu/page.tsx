@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,6 +20,7 @@ import {
 } from '@/hooks/use-menu'
 import { CategoryNode } from '@/components/menu/category-node'
 import { ItemFormDialog } from '@/components/menu/item-form-dialog'
+import { TrashDialog } from '@/components/menu/trash-dialog'
 import type { MenuCategory, MenuItem } from '@smartserve/types'
 
 const schema = z.object({
@@ -54,6 +55,7 @@ export default function MenuPage() {
   const [itemDialogOpen, setItemDialogOpen] = useState(false)
   const [itemDialogCategoryId, setItemDialogCategoryId] = useState<string | null>(null)
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null)
+  const [trashDialogOpen, setTrashDialogOpen] = useState(false)
 
   const { data: categories = [], isLoading } = useCategories(activeLocationId)
   const createCategory = useCreateCategory()
@@ -138,10 +140,16 @@ export default function MenuPage() {
           <h1 className="text-2xl font-bold">Menu Management</h1>
           <p className="text-sm text-muted-foreground">Manage categories and menu items</p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="mr-1 h-4 w-4" />
-          Add Category
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setTrashDialogOpen(true)}>
+            <Trash2 className="mr-1 h-4 w-4" />
+            View Trash
+          </Button>
+          <Button onClick={openCreate}>
+            <Plus className="mr-1 h-4 w-4" />
+            Add Category
+          </Button>
+        </div>
       </div>
 
       {/* Category tree */}
@@ -228,6 +236,8 @@ export default function MenuPage() {
         categoryId={itemDialogCategoryId}
         editing={editingItem}
       />
+
+      <TrashDialog open={trashDialogOpen} onOpenChange={setTrashDialogOpen} locationId={activeLocationId} />
     </div>
   )
 }

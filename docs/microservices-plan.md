@@ -10,6 +10,53 @@
 
 ---
 
+## Step 28 (post-migration): Menu item trash / soft-delete
+
+`MenuService.delete_item()` previously did a permanent `db.delete(item)` — no soft-delete state existed
+anywhere, so removing a menu item was irreversible and (worse) any historical `OrderItem`/reporting record
+still logically pointing at that item's id had no real row to ever look back at. Step 28 replaces this with
+a proper trash state: move-to-trash, restore, and an explicit, separate permanent-delete.
+
+- **`catalog`**: `MenuItem` gained a `deleted_at: datetime | None` timestamp column (Alembic migration
+  `0002_menu_item_trash`, on top of a brand-new baseline Alembic chain for this service — `services/catalog`
+  had no Alembic setup at all before this pass, unlike `ordering`/`reporting`). Deliberately a separate
+  column from `active`/`in_stock` (which drive the existing toggle-availability feature) rather than reusing
+  either of them. `delete_item()` now sets `deleted_at` instead of deleting the row; a new `restore_item()`
+  clears it (400s if the item isn't actually trashed); a new `permanently_delete_item()` performs the real
+  `db.delete()` and only succeeds on an already-trashed item (400s otherwise) — permanent delete is always a
+  second, explicit step, never implicit in the regular delete endpoint.
+- **Trashed items excluded from every default listing**: `list_items`, `list_all_items`, and
+  `bulk_price_update` all now filter `deleted_at IS NULL`. This covers every consumer that reads through
+  those catalog endpoints — the menu editor, `apps/orders`' order-taking grid, printer routing, and the AI
+  dispatch layer's item lookups — without needing changes in any of those services, since catalog is the
+  single source of truth for the active item set. A new `GET /locations/{location_id}/trash` endpoint
+  (manager-only) is the only way to see trashed items.
+- **Historical data is unaffected**: `ordering`'s own `OrderItem` rows snapshot `menu_item_name`/`unit_price`
+  at the time the item was added and never join live to `MenuItem` for display; `reporting`'s `OrderItem`
+  mirror has its own independent `menu_item_name`/`category_name` snapshot columns and never joins to a live
+  `MenuItem` either. Verified directly (not assumed) by tracing every `MenuItem` query site in both services,
+  and covered by a new ordering test that trashes, then permanently deletes, the underlying `MenuItem` after
+  it's already on an order and asserts the order's display is unchanged. The one live lookup that *does* now
+  filter on `deleted_at` is `ordering.add_item()` — validating a **new** item being added to an order — so a
+  trashed item can't be added going forward, while anything already on an existing order keeps resolving
+  regardless of trash state.
+- **AI intents**: `menu.move_to_trash`, `menu.restore_item`, and `menu.permanently_delete_item` were added to
+  `SUPPORTED_INTENTS` with few-shot examples in `INTENT_SYSTEM_PROMPT`. Restore/permanent-delete resolve
+  their target from the trash list (`MenuClient.list_trashed_items`), not the active-item list `_resolve_item`
+  normally searches, via a new `_resolve_trashed_item` helper. `permanently_delete_item` requires confirmation
+  like every other mutating intent — `ai_command` already sets `requiresConfirmation: True` for every intent
+  except the read-only `report.query`, so no extra code was needed for that guarantee.
+- **Frontend**: the menu editor's existing delete button needed no code change — it already calls
+  `DELETE /items/{id}`, which now soft-deletes server-side. Added a "View Trash" dialog
+  (`apps/web/src/components/menu/trash-dialog.tsx`) listing trashed items per location with Restore and
+  Permanently Delete (with an inline confirm step, since it's irreversible) actions.
+- **Scope note**: automatic purge of trashed items after a retention window (e.g. 6 months) is explicitly
+  deferred to a future feature — it needs job-scheduling infrastructure this codebase doesn't have yet
+  (nothing currently runs on a schedule; every existing "background" action is either request-triggered or an
+  event-bus consumer). Manual permanent-delete (above) is the only purge path this pass implements.
+
+---
+
 ## Step 27 (post-migration): AI chat assistant hardening
 
 Step 26 wired `ai`'s `POST /ai/command` → `POST /ai/confirm` flow and the `ai.action_executed` event, but a
