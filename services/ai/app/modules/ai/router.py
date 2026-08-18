@@ -23,8 +23,8 @@ from app.modules.ai.services.report_dispatch import generate_report
 
 router = APIRouter()
 
-_PENDING_TTL = 600      # 10 minutes
-_IMPORT_TTL  = 1800     # 30 minutes
+_PENDING_TTL = 600  # 10 minutes
+_IMPORT_TTL = 1800  # 30 minutes
 
 
 @router.post("/command")

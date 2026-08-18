@@ -5,7 +5,7 @@ import httpx
 
 from app.clients import auth_client, catalog_client, printing_client
 from app.core.config import settings
-from app.modules.ai import router as router_module
+from app.main import app
 
 
 class FakeMessage:
@@ -53,12 +53,16 @@ async def test_menu_import_start(client, manager_token, monkeypatch):
 
 
 async def test_menu_import_apply(client, manager_token, monkeypatch):
-    router_module._menu_import_sessions["sess-1"] = {
-        "business_id": "biz-1",
-        "location_id": "loc-1",
-        "items": [{"name": "Pizza", "price": 42, "category": "Mains", "printerTypes": ["kitchen"]}],
-        "history": [],
-    }
+    await app.state.redis.setex(
+        "ai:import:sess-1",
+        1800,
+        json.dumps({
+            "business_id": "biz-1",
+            "location_id": "loc-1",
+            "items": [{"name": "Pizza", "price": 42, "category": "Mains", "printerTypes": ["kitchen"]}],
+            "history": [],
+        }),
+    )
 
     async def fake_catalog_get(path, *, forward_token=None, **kwargs):
         return httpx.Response(200, json=[{"id": "cat-1", "name": "Mains", "parentId": None}])
@@ -87,7 +91,7 @@ async def test_menu_import_apply(client, manager_token, monkeypatch):
     data = resp.json()
     assert data["itemsCreated"] == 1
     assert data["routesCreated"] == 1
-    assert "sess-1" not in router_module._menu_import_sessions
+    assert await app.state.redis.get("ai:import:sess-1") is None
 
 
 async def test_menu_import_apply_unknown_session(client, manager_token):

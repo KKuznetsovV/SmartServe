@@ -5,7 +5,7 @@ import httpx
 
 from app.clients import auth_client, catalog_client
 from app.core.config import settings
-from app.modules.ai import router as router_module
+from app.main import app
 
 
 class FakeMessage:
@@ -13,12 +13,12 @@ class FakeMessage:
         self.content = [SimpleNamespace(text=json.dumps(data))]
 
 
-def _seed_pending(execution_id, intent, params, location_id="loc-1"):
-    router_module._pending[execution_id] = {
-        "intent": intent,
-        "params": params,
-        "context": {"locationId": location_id},
-    }
+async def _seed_pending(execution_id, intent, params, location_id="loc-1"):
+    await app.state.redis.setex(
+        f"ai:pending:{execution_id}",
+        600,
+        json.dumps({"intent": intent, "params": params, "context": {"locationId": location_id}, "message": ""}),
+    )
 
 
 async def test_confirm_unknown_execution(client, manager_token):
@@ -31,7 +31,7 @@ async def test_confirm_unknown_execution(client, manager_token):
 
 
 async def test_confirm_requires_manager(client, staff_token):
-    _seed_pending("exec-1", "menu.create_item", {"name": "Pizza", "price": 10})
+    await _seed_pending("exec-1", "menu.create_item", {"name": "Pizza", "price": 10})
 
     resp = await client.post(
         "/api/v1/ai/confirm",
@@ -42,14 +42,14 @@ async def test_confirm_requires_manager(client, staff_token):
 
 
 async def test_confirm_no_token(client):
-    _seed_pending("exec-1b", "menu.create_item", {"name": "Pizza", "price": 10})
+    await _seed_pending("exec-1b", "menu.create_item", {"name": "Pizza", "price": 10})
 
     resp = await client.post("/api/v1/ai/confirm", json={"executionId": "exec-1b"})
     assert resp.status_code in (401, 403)
 
 
 async def test_confirm_location_not_owned(client, manager_token, monkeypatch):
-    _seed_pending("exec-2", "menu.create_item", {"name": "Pizza", "price": 10})
+    await _seed_pending("exec-2", "menu.create_item", {"name": "Pizza", "price": 10})
 
     async def fake_get(path, *, forward_token=None, **kwargs):
         return httpx.Response(200, json={"id": "loc-1", "businessId": "other-biz"})
@@ -65,7 +65,7 @@ async def test_confirm_location_not_owned(client, manager_token, monkeypatch):
 
 
 async def test_confirm_create_item_success(client, manager_token, monkeypatch):
-    _seed_pending("exec-3", "menu.create_item", {"name": "Pizza", "price": 42})
+    await _seed_pending("exec-3", "menu.create_item", {"name": "Pizza", "price": 42})
 
     async def fake_auth_get(path, *, forward_token=None, **kwargs):
         return httpx.Response(200, json={"id": "loc-1", "businessId": "biz-1"})
@@ -88,11 +88,11 @@ async def test_confirm_create_item_success(client, manager_token, monkeypatch):
     )
     assert resp.status_code == 200
     assert "Pizza" in resp.json()["message"]
-    assert "exec-3" not in router_module._pending
+    assert await app.state.redis.get("ai:pending:exec-3") is None
 
 
 async def test_confirm_toggle_availability(client, manager_token, monkeypatch):
-    _seed_pending("exec-4", "menu.toggle_availability", {"name": "Pizza", "in_stock": False})
+    await _seed_pending("exec-4", "menu.toggle_availability", {"name": "Pizza", "in_stock": False})
 
     async def fake_auth_get(path, *, forward_token=None, **kwargs):
         return httpx.Response(200, json={"id": "loc-1", "businessId": "biz-1"})

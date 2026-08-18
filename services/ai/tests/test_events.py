@@ -5,19 +5,21 @@ from unittest.mock import AsyncMock, patch
 import httpx
 
 from app.clients import auth_client, catalog_client
-from app.modules.ai import router as router_module
+from app.main import app
 
 
-def _seed_pending(execution_id, intent, params, location_id="loc-1"):
-    router_module._pending[execution_id] = {
-        "intent": intent,
-        "params": params,
-        "context": {"locationId": location_id},
-    }
+async def _seed_pending(execution_id, intent, params, location_id="loc-1"):
+    import json
+
+    await app.state.redis.setex(
+        f"ai:pending:{execution_id}",
+        600,
+        json.dumps({"intent": intent, "params": params, "context": {"locationId": location_id}, "message": ""}),
+    )
 
 
 async def test_confirm_publishes_ai_action_executed(client, manager_token, monkeypatch):
-    _seed_pending("exec-events-1", "menu.create_item", {"name": "Pizza", "price": 42})
+    await _seed_pending("exec-events-1", "menu.create_item", {"name": "Pizza", "price": 42})
 
     async def fake_auth_get(path, *, forward_token=None, **kwargs):
         return httpx.Response(200, json={"id": "loc-1", "businessId": "biz-1"})
