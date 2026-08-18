@@ -47,6 +47,9 @@ def get_url() -> str:
     return settings.DATABASE_URL
 
 
+VERSION_TABLE = "alembic_version_catalog"
+
+
 def run_migrations_offline() -> None:
     context.configure(
         url=get_url(),
@@ -54,13 +57,14 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         include_object=include_object,
+        version_table=VERSION_TABLE,
     )
     with context.begin_transaction():
         context.run_migrations()
 
 
 def do_run_migrations(connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata, include_object=include_object)
+    context.configure(connection=connection, target_metadata=target_metadata, include_object=include_object, version_table=VERSION_TABLE)
     with context.begin_transaction():
         context.run_migrations()
 

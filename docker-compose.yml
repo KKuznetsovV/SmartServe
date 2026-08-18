@@ -221,6 +221,7 @@ services:
       PRINTING_SERVICE_URL: http://printing:8000
       REPORTING_SERVICE_URL: http://reporting:8000
       RABBITMQ_URL: amqp://smartserve:smartserve@rabbitmq:5672/
+      REDIS_URL: redis://redis:6379/2
       ENVIRONMENT: development
     env_file:
       - ./.env
@@ -230,6 +231,7 @@ services:
       - printing
       - reporting
       - rabbitmq
+      - redis
     volumes:
       - ./services/ai:/app
       - ./services/_shared:/shared

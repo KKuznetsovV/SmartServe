@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     # Auth — ai only ever verifies tokens issued by `auth`, it never issues its own
     SECRET_KEY: str = "change-me-in-production-use-a-256-bit-random-string"
 
+    # Redis — pending executions and menu-import sessions
+    REDIS_URL: str = "redis://redis:6379/0"
+
     # RabbitMQ — publishes ai.action_executed audit events, never consumes
     RABBITMQ_URL: str = "amqp://guest:guest@localhost:5672/"
 
