@@ -29,6 +29,7 @@ VALID_ORDER_TRANSITIONS: dict[str, set[str]] = {
     "ready": {"served"},
     "served": {"paid"},
     "paid": set(),
+    "split": {"cancelled"},
     "cancelled": set(),
 }
 
