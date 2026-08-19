@@ -19,6 +19,7 @@ const STATUS_VARIANT: Record<OrderStatus, 'default' | 'secondary' | 'destructive
   ready: 'default',
   served: 'default',
   paid: 'default',
+  split: 'secondary',
   cancelled: 'destructive',
 }
 
@@ -29,6 +30,7 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
   ready: 'text-green-600',
   served: 'text-green-700',
   paid: 'text-green-800',
+  split: 'text-slate-600',
   cancelled: 'text-red-500',
 }
 
