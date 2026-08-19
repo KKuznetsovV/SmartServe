@@ -60,6 +60,7 @@ const ORDER_STATUS_VARIANT: Record<
   ready: 'default',
   served: 'default',
   paid: 'default',
+  split: 'secondary',
   cancelled: 'destructive',
 }
 

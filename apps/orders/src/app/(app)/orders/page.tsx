@@ -32,6 +32,7 @@ const STATUS_VARIANT: Record<OrderStatus, 'default' | 'secondary' | 'destructive
   ready: 'default',
   served: 'default',
   paid: 'default',
+  split: 'secondary',
   cancelled: 'destructive',
 }
 
