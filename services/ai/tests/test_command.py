@@ -21,9 +21,14 @@ async def test_command_requires_auth(client):
 async def test_command_missing_api_key(client, manager_token, monkeypatch):
     monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "")
 
+    async def fake_auth_get(path, *, forward_token=None, **kwargs):
+        return httpx.Response(200, json={"id": "loc-1", "businessId": "biz-1"})
+
+    monkeypatch.setattr(auth_client, "get", fake_auth_get)
+
     resp = await client.post(
         "/api/v1/ai/command",
-        json={"message": "add a pizza", "context": {}},
+        json={"message": "add a pizza", "context": {"locationId": "loc-1"}},
         headers={"Authorization": f"Bearer {manager_token}"},
     )
     assert resp.status_code == 503

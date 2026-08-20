@@ -92,7 +92,7 @@ def classify(message: str) -> dict | None:
     prompt = f"### Instruction:\n{_INSTRUCTION}\n\n### Input:\n{message}\n\n### Response:\n"
     try:
         output = _llm(prompt, max_tokens=200, stop=["###"], temperature=0.0)
-        text = output["choices"][0]["text"].strip()
+        text = output["choices"][0]["text"].strip()  # type: ignore[index]
         parsed = json.loads(text)
     except Exception as exc:
         logger.debug("local classifier inference/parse error: %s", exc)
