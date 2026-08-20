@@ -12,6 +12,7 @@ from app.api.v1.router import api_router
 from app.core import mq
 from app.core.config import settings
 from app.core.logging import setup_logging
+from app.modules.ai.services import local_classifier
 
 logger = structlog.get_logger()
 
@@ -26,6 +27,8 @@ async def lifespan(app: FastAPI):
     logger.info("ai service starting", env=settings.ENVIRONMENT)
     app.state.mq_connection = await mq.connect(settings.RABBITMQ_URL)
     app.state.redis = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+    if settings.LOCAL_MODEL_PATH:
+        local_classifier.load_model(settings.LOCAL_MODEL_PATH)
     yield
     if app.state.mq_connection is not None:
         await app.state.mq_connection.close()

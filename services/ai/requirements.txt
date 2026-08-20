@@ -10,3 +10,4 @@ structlog>=25.4.0
 slowapi>=0.1.9
 aio-pika>=9.4.0
 redis>=6.1.0
+llama-cpp-python>=0.3.0
