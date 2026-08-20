@@ -17,6 +17,7 @@ from app.modules.ai.schemas import CommandRequest, ConfirmRequest, MenuImportApp
 from app.modules.ai.services.client import create_message, parse_json_reply, parse_menu_import_reply
 from app.modules.ai.services.dispatch import dispatch_intent
 from app.modules.ai.services.import_parsing import MAX_UPLOAD_SIZE, build_content_block, fetch_menu_context
+from app.modules.ai.services.local_classifier import classify as local_classify
 from app.modules.ai.services.menu_client import MenuClient, PrintingClient
 from app.modules.ai.services.prompts import INTENT_SYSTEM_PROMPT, MENU_IMPORT_SYSTEM_PROMPT, SUPPORTED_INTENTS
 from app.modules.ai.services.report_dispatch import generate_report
@@ -33,12 +34,6 @@ async def ai_command(
     request: Request,
     ctx: AuthContext = Depends(get_auth_context),  # validates the JWT; any authenticated role may ask
 ):
-    if not settings.ANTHROPIC_API_KEY:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="AI service not configured (set ANTHROPIC_API_KEY)",
-        )
-
     # location_id/business_id are never trusted bare from the body — the location is
     # confirmed to belong to the caller's own (JWT-verified) business here, same check
     # `ai_confirm` already does, so a classify call can't be used to probe/target another
@@ -48,45 +43,59 @@ async def ai_command(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing location context")
     await _get_owned_location(location_id, ctx)
 
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    # Tier 1 — local model: fast, free, no network call.
+    local_result = local_classify(body.message)
+    if local_result is not None and local_result["confidence"] >= settings.LOCAL_MODEL_CONFIDENCE_THRESHOLD:
+        result = local_result
+        source = "local_model"
+    else:
+        # Tier 2/3 — Haiku → Sonnet cloud pipeline.
+        if not settings.ANTHROPIC_API_KEY:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="AI service not configured (set ANTHROPIC_API_KEY)",
+            )
 
-    system = INTENT_SYSTEM_PROMPT.format(
-        intents=", ".join(SUPPORTED_INTENTS), today=datetime.now(UTC).date().isoformat()
-    )
+        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        system = INTENT_SYSTEM_PROMPT.format(
+            intents=", ".join(SUPPORTED_INTENTS), today=datetime.now(UTC).date().isoformat()
+        )
 
-    message = await create_message(
-        client,
-        model=settings.AI_INTENT_MODEL,
-        max_tokens=256,
-        system=system,
-        messages=[{"role": "user", "content": body.message}],
-    )
-
-    try:
-        result = parse_json_reply(message)
-    except json.JSONDecodeError, IndexError, KeyError:
-        # Fallback to Sonnet when Haiku produces malformed output
         message = await create_message(
             client,
-            model=settings.AI_COMPLEX_MODEL,
-            max_tokens=512,
+            model=settings.AI_INTENT_MODEL,
+            max_tokens=256,
             system=system,
             messages=[{"role": "user", "content": body.message}],
         )
-        result = parse_json_reply(message)
 
-    confidence: float = result.get("confidence", 0)
+        try:
+            result = parse_json_reply(message)
+        except json.JSONDecodeError, IndexError, KeyError:
+            # Fallback to Sonnet when Haiku produces malformed output
+            message = await create_message(
+                client,
+                model=settings.AI_COMPLEX_MODEL,
+                max_tokens=512,
+                system=system,
+                messages=[{"role": "user", "content": body.message}],
+            )
+            result = parse_json_reply(message)
 
-    # If confidence is low, use Sonnet for a more careful classification
-    if confidence < settings.AI_INTENT_CONFIDENCE_THRESHOLD:
-        message = await create_message(
-            client,
-            model=settings.AI_COMPLEX_MODEL,
-            max_tokens=512,
-            system=system,
-            messages=[{"role": "user", "content": body.message}],
-        )
-        result = parse_json_reply(message)
+        confidence: float = result.get("confidence", 0)
+        source = "haiku"
+
+        # If confidence is low, use Sonnet for a more careful classification
+        if confidence < settings.AI_INTENT_CONFIDENCE_THRESHOLD:
+            message = await create_message(
+                client,
+                model=settings.AI_COMPLEX_MODEL,
+                max_tokens=512,
+                system=system,
+                messages=[{"role": "user", "content": body.message}],
+            )
+            result = parse_json_reply(message)
+            source = "sonnet"
 
     intent = result.get("intent")
     params = result.get("params", {})
@@ -105,13 +114,16 @@ async def ai_command(
             "preview": result.get("preview", ""),
             "requiresConfirmation": False,
             "report": report,
+            "source": source,
         }
 
     execution_id = str(uuid.uuid4())
     await request.app.state.redis.setex(
         f"ai:pending:{execution_id}",
         _PENDING_TTL,
-        json.dumps({"intent": intent, "params": params, "context": body.context, "message": body.message}),
+        json.dumps(
+            {"intent": intent, "params": params, "context": body.context, "message": body.message, "source": source}
+        ),
     )
 
     return {
@@ -121,6 +133,7 @@ async def ai_command(
         "preview": result.get("preview", ""),
         "requiresConfirmation": True,
         "executionId": execution_id,
+        "source": source,
     }
 
 
@@ -162,6 +175,7 @@ async def ai_confirm(
             "userId": ctx.claims.sub,
             "originalMessage": original_message,
             "message": message,
+            "source": pending.get("source", "unknown"),
         },
     )
 

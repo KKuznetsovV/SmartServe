@@ -21,7 +21,10 @@ class Settings(BaseSettings):
     PRINTING_SERVICE_URL: str = "http://printing:8000"
     REPORTING_SERVICE_URL: str = "http://reporting:8000"
 
-    # AI
+    # AI — local first-tier model (optional; empty = disabled, falls through to Haiku)
+    LOCAL_MODEL_PATH: str = ""
+    LOCAL_MODEL_CONFIDENCE_THRESHOLD: float = 0.9
+
     ANTHROPIC_API_KEY: str = ""
     AI_INTENT_MODEL: str = "claude-haiku-4-5"  # fast, cheap — intent classification
     AI_COMPLEX_MODEL: str = "claude-sonnet-4-5"  # complex reasoning, menu import, reorg

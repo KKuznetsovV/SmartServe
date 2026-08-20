@@ -223,6 +223,9 @@ services:
       RABBITMQ_URL: amqp://smartserve:smartserve@rabbitmq:5672/
       REDIS_URL: redis://redis:6379/2
       ENVIRONMENT: development
+      # Mount the quantized GGUF from the sibling smartserve-agent-model repo.
+      # Set to empty string to disable the local tier and use Haiku/Sonnet only.
+      LOCAL_MODEL_PATH: /models/Qwen2.5-1.5B-Instruct.Q4_K_M.gguf
     env_file:
       - ./.env
     depends_on:
@@ -235,6 +238,7 @@ services:
     volumes:
       - ./services/ai:/app
       - ./services/_shared:/shared
+      - ../smartserve-agent-model/inference_gguf:/models:ro
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   gateway:
