@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* @smartserve/ui lives outside this app's tree, so Tailwind's auto content
+   detection won't scan it by default — without this, classes used only in
+   that package (e.g. `inset-0` in the Dialog overlay) never get generated. */
+@source "../../../../packages/ui/src";
+
 /* Map CSS vars to Tailwind v4 color utilities */
 @theme inline {
   --color-background: hsl(var(--bg));

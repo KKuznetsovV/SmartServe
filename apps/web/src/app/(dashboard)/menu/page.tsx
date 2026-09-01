@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Search, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,6 +17,7 @@ import {
   useCreateCategory,
   useUpdateCategory,
   useDeleteCategory,
+  useAllMenuItems,
 } from '@/hooks/use-menu'
 import { CategoryNode } from '@/components/menu/category-node'
 import { ItemFormDialog } from '@/components/menu/item-form-dialog'
@@ -51,6 +52,7 @@ export default function MenuPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<MenuCategory | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
 
   const [itemDialogOpen, setItemDialogOpen] = useState(false)
   const [itemDialogCategoryId, setItemDialogCategoryId] = useState<string | null>(null)
@@ -62,6 +64,50 @@ export default function MenuPage() {
   const updateCategory = useUpdateCategory()
   const deleteCategory = useDeleteCategory()
 
+  const query = search.trim().toLowerCase()
+  const { data: allItems } = useAllMenuItems(activeLocationId, query.length > 0)
+
+  const matchingItemIds = useMemo(() => {
+    if (!query || !allItems) return null
+    return new Set(
+      allItems
+        .filter(
+          (item) =>
+            item.name.toLowerCase().includes(query) || item.nameHe?.toLowerCase().includes(query),
+        )
+        .map((item) => item.id),
+    )
+  }, [query, allItems])
+
+  /** Category ids that should be auto-expanded (and, for non-leaf ancestors, kept visible)
+   * because they, or one of their descendants, match the typed search. */
+  const forceExpandIds = useMemo(() => {
+    if (!query) return null
+    const byId = new Map(categories.map((c) => [c.id, c]))
+    const ids = new Set<string>()
+
+    for (const c of categories) {
+      if (c.name.toLowerCase().includes(query) || c.nameHe?.toLowerCase().includes(query)) {
+        ids.add(c.id)
+      }
+    }
+    if (allItems) {
+      for (const item of allItems) {
+        if (matchingItemIds?.has(item.id)) ids.add(item.categoryId)
+      }
+    }
+
+    const withAncestors = new Set(ids)
+    for (const id of ids) {
+      let current = byId.get(id)
+      while (current?.parentId) {
+        withAncestors.add(current.parentId)
+        current = byId.get(current.parentId)
+      }
+    }
+    return withAncestors
+  }, [query, categories, allItems, matchingItemIds])
+
   const {
     register,
     handleSubmit,
@@ -69,7 +115,9 @@ export default function MenuPage() {
     formState: { errors },
   } = useForm<FormData>({ resolver: zodResolver(schema) })
 
-  const topLevelCategories = categories.filter((c) => !c.parentId)
+  const topLevelCategories = categories
+    .filter((c) => !c.parentId)
+    .filter((c) => !query || forceExpandIds?.has(c.id))
 
   const openCreate = () => {
     setEditing(null)
@@ -152,6 +200,22 @@ export default function MenuPage() {
         </div>
       </div>
 
+      {/* Search */}
+      <div className="mb-4 max-w-sm space-y-1">
+        <Label htmlFor="menu-search">Search menu items</Label>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            id="menu-search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by item name…"
+            className="pl-8"
+            aria-label="Search menu items by name"
+          />
+        </div>
+      </div>
+
       {/* Category tree */}
       {isLoading ? (
         <div className="flex justify-center py-12">
@@ -165,8 +229,17 @@ export default function MenuPage() {
             Create your first category
           </Button>
         </div>
+      ) : query && topLevelCategories.length === 0 ? (
+        <p className="text-muted-foreground" role="status" aria-live="polite">
+          No menu items match &quot;{search}&quot;.
+        </p>
       ) : (
         <div className="space-y-2">
+          {query && (
+            <p className="text-sm text-muted-foreground" role="status" aria-live="polite">
+              {matchingItemIds?.size ?? 0} item{(matchingItemIds?.size ?? 0) !== 1 ? 's' : ''} match &quot;{search}&quot;
+            </p>
+          )}
           {topLevelCategories.map((cat) => (
             <CategoryNode
               key={cat.id}
@@ -175,6 +248,9 @@ export default function MenuPage() {
               onEdit={openEdit}
               onDelete={handleDelete}
               deletingId={deletingId}
+              searchQuery={query}
+              matchingItemIds={matchingItemIds}
+              forceExpandIds={forceExpandIds}
               onAddItem={openAddItem}
               onEditItem={openEditItem}
             />

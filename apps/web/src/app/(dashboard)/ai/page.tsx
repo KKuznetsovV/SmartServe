@@ -35,6 +35,10 @@ export default function AiPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const aiCommand = useAiCommand()
   const aiConfirm = useAiConfirm()
+  // aiConfirm.isPending only flips after a re-render, so a rapid double-click can fire
+  // mutateAsync twice for the same entry before the button disables — track in-flight
+  // confirmations synchronously via a ref (not state) to close that race.
+  const confirmingIds = useRef<Set<string>>(new Set())
 
   // Menu import (upload menu photo/PDF/sheet, converse with AI to organize it)
   const [importSessionId, setImportSessionId] = useState<string | null>(null)
@@ -122,6 +126,8 @@ export default function AiPage() {
 
   async function handleConfirm(entry: HistoryEntry) {
     if (!entry.response?.executionId) return
+    if (confirmingIds.current.has(entry.id)) return
+    confirmingIds.current.add(entry.id)
     try {
       const result = await aiConfirm.mutateAsync(entry.response.executionId)
       setHistory((h) =>
@@ -136,6 +142,8 @@ export default function AiPage() {
       setHistory((h) =>
         h.map((e) => (e.id === entry.id ? { ...e, status: 'error', resultMessage: msg } : e)),
       )
+    } finally {
+      confirmingIds.current.delete(entry.id)
     }
   }
 

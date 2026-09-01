@@ -63,6 +63,7 @@ export const OrderSchema = z.object({
   taxAmount: z.number().min(0),
   total: z.number().min(0),
   notes: z.string().optional(),
+  createdBy: z.string().uuid().nullable().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 })

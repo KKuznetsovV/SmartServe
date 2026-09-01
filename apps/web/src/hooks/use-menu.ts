@@ -62,6 +62,16 @@ export function useMenuItems(categoryId: string | null, enabled = true) {
   })
 }
 
+/** All items for a location in one call (across every category) — used to power search/filter
+ * without having to lazily expand every category node first. */
+export function useAllMenuItems(locationId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: ['items', 'all', locationId],
+    queryFn: () => apiClient.menuItems.listStock(locationId!),
+    enabled: !!locationId && enabled,
+  })
+}
+
 export function useCreateMenuItem() {
   const qc = useQueryClient()
   return useMutation({

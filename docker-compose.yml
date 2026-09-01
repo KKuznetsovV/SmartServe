@@ -270,6 +270,7 @@ services:
       - "3000:3000"
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8080
+      NEXT_PUBLIC_ORDERS_URL: http://localhost:3001
     depends_on:
       - gateway
 

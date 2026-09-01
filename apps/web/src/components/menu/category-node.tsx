@@ -25,6 +25,9 @@ export function CategoryNode({
   deletingId,
   onAddItem,
   onEditItem,
+  searchQuery,
+  matchingItemIds,
+  forceExpandIds,
 }: {
   category: MenuCategory
   categories: MenuCategory[]
@@ -33,11 +36,22 @@ export function CategoryNode({
   deletingId: string | null
   onAddItem: (categoryId: string) => void
   onEditItem: (item: MenuItem) => void
+  /** Active search term (lowercased), if any. */
+  searchQuery?: string
+  /** Ids of items across the whole location matching `searchQuery`, or null when not searching. */
+  matchingItemIds?: Set<string> | null
+  /** Category ids that should be auto-expanded because they (or a descendant) match `searchQuery`. */
+  forceExpandIds?: Set<string> | null
 }) {
-  const [expanded, setExpanded] = useState(false)
+  const [manuallyExpanded, setManuallyExpanded] = useState(false)
+  const isForceExpanded = !!searchQuery && !!forceExpandIds?.has(category.id)
+  const expanded = manuallyExpanded || isForceExpanded
   const [dragOver, setDragOver] = useState(false)
-  const children = categories.filter((c) => c.parentId === category.id)
+  const children = categories
+    .filter((c) => c.parentId === category.id)
+    .filter((c) => !searchQuery || forceExpandIds?.has(c.id))
   const { data: items = [], isLoading: itemsLoading } = useMenuItems(category.id, expanded)
+  const displayItems = searchQuery && matchingItemIds ? items.filter((i) => matchingItemIds.has(i.id)) : items
   const updateItem = useUpdateMenuItem()
   const reorderItems = useReorderMenuItems()
 
@@ -78,7 +92,7 @@ export function CategoryNode({
     <div>
       <Card
         className={`group cursor-pointer transition-shadow hover:shadow-md ${dragOver ? 'ring-2 ring-primary' : ''}`}
-        onClick={() => setExpanded((v) => !v)}
+        onClick={() => setManuallyExpanded((v) => !v)}
         onDragOver={(e) => {
           e.preventDefault()
           setDragOver(true)
@@ -139,6 +153,9 @@ export function CategoryNode({
                   deletingId={deletingId}
                   onAddItem={onAddItem}
                   onEditItem={onEditItem}
+                  searchQuery={searchQuery}
+                  matchingItemIds={matchingItemIds}
+                  forceExpandIds={forceExpandIds}
                 />
               ))}
             </div>
@@ -148,9 +165,11 @@ export function CategoryNode({
             <div className="flex justify-center py-4">
               <Spinner />
             </div>
-          ) : items.length > 0 ? (
+          ) : searchQuery && items.length > 0 && displayItems.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No items in this category match your search.</p>
+          ) : displayItems.length > 0 ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {items.map((item) => (
+              {displayItems.map((item) => (
                 <div
                   key={item.id}
                   className="flex items-start gap-1"

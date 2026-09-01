@@ -10,6 +10,9 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import type { OrderStatus } from '@smartserve/types'
 
+// The orders/tables screens live in the separate `orders` app (different port/origin), not this app.
+const ORDERS_APP_URL = process.env.NEXT_PUBLIC_ORDERS_URL ?? 'http://localhost:3001'
+
 const ACTIVE_STATUSES: OrderStatus[] = ['open', 'submitted', 'preparing', 'ready']
 
 const STATUS_VARIANT: Record<OrderStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -124,7 +127,7 @@ export default function DashboardPage() {
       {/* Live order status breakdown */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {ACTIVE_STATUSES.map((s) => (
-          <Link key={s} href={`/orders?status=${s}`}>
+          <a key={s} href={`${ORDERS_APP_URL}/orders?status=${s}`}>
             <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
               <CardContent className="p-4 text-center">
                 <p className={`text-3xl font-bold ${STATUS_COLOR[s]}`}>
@@ -133,18 +136,18 @@ export default function DashboardPage() {
                 <p className="text-xs text-muted-foreground capitalize mt-1">{s}</p>
               </CardContent>
             </Card>
-          </Link>
+          </a>
         ))}
       </div>
 
       {/* Quick actions */}
       <div className="flex flex-wrap gap-3">
-        <Link href="/orders">
+        <a href={`${ORDERS_APP_URL}/orders`}>
           <Button>New Order</Button>
-        </Link>
-        <Link href="/tables">
+        </a>
+        <a href={`${ORDERS_APP_URL}/tables`}>
           <Button variant="outline">Floor Plan</Button>
-        </Link>
+        </a>
         <Link href="/menu">
           <Button variant="outline">Menu</Button>
         </Link>
@@ -164,7 +167,7 @@ export default function DashboardPage() {
         )}
 
         {recentOrders.map((o) => (
-          <Link key={o.id} href={`/orders/${o.id}`}>
+          <a key={o.id} href={`${ORDERS_APP_URL}/orders/${o.id}`}>
             <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
               <CardContent className="p-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -190,7 +193,7 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
             </Card>
-          </Link>
+          </a>
         ))}
       </div>
     </div>

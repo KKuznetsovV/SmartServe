@@ -1,18 +1,24 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import { Search } from 'lucide-react'
 import { useOrders, useCreateOrder } from '@/hooks/use-orders'
 import { useLocationWs } from '@/hooks/use-ws'
 import { useTables } from '@/hooks/use-tables'
+import { useStaff } from '@/hooks/use-staff'
 import { useAuthStore } from '@/lib/auth-store'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Spinner } from '@/components/ui/spinner'
 import type { OrderStatus, OrderChannel } from '@smartserve/types'
+
+const FINAL_STATUSES = new Set<OrderStatus>(['paid', 'cancelled', 'split'])
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: '', label: 'All' },
@@ -45,21 +51,47 @@ const CHANNEL_LABELS: Record<OrderChannel, string> = {
 
 export default function OrdersPage() {
   const locationId = useAuthStore((s) => s.activeLocationId)
+  const businessId = useAuthStore((s) => s.activeBusinessId)
+  const currentUser = useAuthStore((s) => s.user)
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [showCreate, setShowCreate] = useState(false)
   const [selectedTableId, setSelectedTableId] = useState<string>('')
   const [channel, setChannel] = useState<OrderChannel>('dine_in')
   const [guestCount, setGuestCount] = useState<string>('')
 
+  const [search, setSearch] = useState('')
+  const [serverFilter, setServerFilter] = useState('')
+  const [activeOnly, setActiveOnly] = useState(false)
+
   const { data: orders, isLoading } = useOrders(locationId, statusFilter || undefined)
   const { data: tables } = useTables(locationId)
   const createOrder = useCreateOrder()
+
+  // Only owners/managers are authorized to list staff — for other roles this stays disabled
+  // and the server filter dropdown is simply omitted below.
+  const canListStaff = currentUser?.role === 'owner' || currentUser?.role === 'manager'
+  const { data: staff } = useStaff(businessId, canListStaff)
+  const serverNameById = useMemo(() => new Map((staff ?? []).map((s) => [s.id, s.name])), [staff])
 
   useLocationWs(locationId)
 
   const guestCountRequired = channel === 'dine_in'
   const parsedGuestCount = guestCount ? Number(guestCount) : undefined
   const guestCountInvalid = guestCountRequired && (!parsedGuestCount || parsedGuestCount < 1)
+
+  const filteredOrders = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    return (orders ?? []).filter((order) => {
+      if (activeOnly && FINAL_STATUSES.has(order.status)) return false
+      if (serverFilter && order.createdBy !== serverFilter) return false
+      if (query) {
+        const matchesTable = order.tableName?.toLowerCase().includes(query)
+        const matchesTotal = order.total.toFixed(2).includes(query) || String(order.total).includes(query)
+        if (!matchesTable && !matchesTotal) return false
+      }
+      return true
+    })
+  }, [orders, search, serverFilter, activeOnly])
 
   async function handleCreateOrder() {
     if (!locationId) return
@@ -144,14 +176,58 @@ export default function OrdersPage() {
         ))}
       </div>
 
+      {/* Search & filters */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="flex-1 space-y-1">
+          <Label htmlFor="order-search">Search</Label>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="order-search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by table or check total…"
+              className="pl-8"
+              aria-label="Search orders by table number or check total"
+            />
+          </div>
+        </div>
+        {canListStaff && (
+          <div className="space-y-1 sm:w-48">
+            <Label htmlFor="order-server-filter">Server</Label>
+            <Select
+              id="order-server-filter"
+              value={serverFilter}
+              onChange={(e) => setServerFilter(e.target.value)}
+              aria-label="Filter by server who ordered"
+            >
+              <option value="">All servers</option>
+              {(staff ?? []).map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </Select>
+          </div>
+        )}
+        <div className="flex items-center gap-2 pb-1.5">
+          <Checkbox id="order-active-only" checked={activeOnly} onCheckedChange={setActiveOnly} />
+          <Label htmlFor="order-active-only" className="cursor-pointer">Active only</Label>
+        </div>
+      </div>
+
       {isLoading && <Spinner />}
 
       {!isLoading && orders?.length === 0 && (
         <p className="text-muted-foreground">No orders found.</p>
       )}
 
+      {!isLoading && orders && orders.length > 0 && filteredOrders.length === 0 && (
+        <p className="text-muted-foreground" role="status" aria-live="polite">
+          No orders match your filters.
+        </p>
+      )}
+
       <div className="space-y-2">
-        {orders?.map((order) => (
+        {filteredOrders.map((order) => (
           <Link key={order.id} href={`/orders/${order.id}`}>
             <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
               <CardContent className="p-4 flex items-center justify-between">
@@ -169,6 +245,11 @@ export default function OrdersPage() {
                     {order.guestCount != null && (
                       <span className="text-xs text-muted-foreground">
                         {order.guestCount} guest{order.guestCount !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                    {order.createdBy && serverNameById.get(order.createdBy) && (
+                      <span className="text-xs text-muted-foreground">
+                        · {serverNameById.get(order.createdBy)}
                       </span>
                     )}
                   </div>
