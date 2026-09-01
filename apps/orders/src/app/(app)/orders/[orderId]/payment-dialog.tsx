@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useCreatePayment } from '@/hooks/use-payments'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -9,12 +10,12 @@ import { Label } from '@/components/ui/label'
 import { formatPrice, splitBillByGuest } from '@/lib/utils'
 import type { Order, Payment, PaymentMethod } from '@smartserve/types'
 
-const METHODS: { value: PaymentMethod; label: string; icon: string }[] = [
-  { value: 'cash', label: 'Cash', icon: '💵' },
-  { value: 'card', label: 'Credit Card', icon: '💳' },
-  { value: 'tap', label: 'Tap to Pay', icon: '📱' },
-  { value: 'mobile', label: 'Mobile Pay', icon: '📲' },
-  { value: 'voucher', label: 'Voucher', icon: '🎟️' },
+const METHODS: { value: PaymentMethod; key: string; icon: string }[] = [
+  { value: 'cash', key: 'cash', icon: '💵' },
+  { value: 'card', key: 'card', icon: '💳' },
+  { value: 'tap', key: 'tap', icon: '📱' },
+  { value: 'mobile', key: 'mobile', icon: '📲' },
+  { value: 'voucher', key: 'voucher', icon: '🎟️' },
 ]
 
 const TIP_PERCENT_PRESETS = [10, 15, 18, 20]
@@ -32,6 +33,9 @@ interface Props {
 }
 
 export function PaymentDialog({ open, onOpenChange, orderId, order, payments, remaining }: Props) {
+  const t = useTranslations('paymentDialog')
+  const tPaymentMethod = useTranslations('paymentMethod')
+  const tCommon = useTranslations('common')
   const [splitMode, setSplitMode] = useState<SplitMode>('full')
   const [method, setMethod] = useState<PaymentMethod>('cash')
   const [amount, setAmount] = useState(remaining.toFixed(2))
@@ -98,13 +102,13 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Collect Payment</DialogTitle>
+          <DialogTitle>{t('title')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* Split mode */}
           <div className="space-y-1">
-            <Label>How to split</Label>
+            <Label>{t('howToSplit')}</Label>
             <div className="flex gap-2">
               <Button
                 type="button"
@@ -116,7 +120,7 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
                   setAmount(remaining.toFixed(2))
                 }}
               >
-                Full
+                {t('full')}
               </Button>
               <Button
                 type="button"
@@ -127,7 +131,7 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
                   setShareTag(null)
                 }}
               >
-                Split Equally
+                {t('splitEqually')}
               </Button>
               {guestShares.length > 0 && (
                 <Button
@@ -139,7 +143,7 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
                     setShareTag(null)
                   }}
                 >
-                  Per Guest
+                  {t('perGuest')}
                 </Button>
               )}
             </div>
@@ -148,7 +152,7 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
           {splitMode === 'equal' && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Label className="shrink-0">Split into</Label>
+                <Label className="shrink-0">{t('splitInto')}</Label>
                 <Input
                   type="number"
                   min={2}
@@ -157,7 +161,7 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
                   value={equalWays}
                   onChange={(e) => setEqualWays(Math.max(2, Math.min(20, Number(e.target.value) || 2)))}
                 />
-                <span className="text-sm text-muted-foreground">ways</span>
+                <span className="text-sm text-muted-foreground">{t('ways')}</span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {Array.from({ length: equalWays }, (_, i) => i + 1).map((shareNumber) => {
@@ -169,15 +173,15 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
                       type="button"
                       disabled={isPaid}
                       onClick={() => pickShare(shareNumber, share.remaining)}
-                      className={`rounded-lg border p-2 text-xs text-left transition-colors disabled:opacity-50 ${
+                      className={`rounded-lg border p-2 text-xs text-start transition-colors disabled:opacity-50 ${
                         shareTag === shareNumber
                           ? 'border-primary bg-primary/10 font-medium'
                           : 'border-border hover:bg-muted'
                       }`}
                     >
-                      <p className="font-medium">Share {shareNumber}</p>
+                      <p className="font-medium">{t('share', { number: shareNumber })}</p>
                       <p className="text-muted-foreground">
-                        {isPaid ? 'Paid' : `${formatPrice(share.remaining)} due`}
+                        {isPaid ? t('paid') : t('due', { amount: formatPrice(share.remaining) })}
                       </p>
                     </button>
                   )
@@ -196,15 +200,15 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
                     type="button"
                     disabled={isPaid}
                     onClick={() => pickShare(share.guestNumber, share.remaining)}
-                    className={`rounded-lg border p-2 text-xs text-left transition-colors disabled:opacity-50 ${
+                    className={`rounded-lg border p-2 text-xs text-start transition-colors disabled:opacity-50 ${
                       shareTag === share.guestNumber
                         ? 'border-primary bg-primary/10 font-medium'
                         : 'border-border hover:bg-muted'
                     }`}
                   >
-                    <p className="font-medium">Guest {share.guestNumber}</p>
+                    <p className="font-medium">{t('guest', { number: share.guestNumber })}</p>
                     <p className="text-muted-foreground">
-                      {isPaid ? 'Paid' : `${formatPrice(share.remaining)} due (est.)`}
+                      {isPaid ? t('paid') : t('dueEstimate', { amount: formatPrice(share.remaining) })}
                     </p>
                   </button>
                 )
@@ -214,7 +218,7 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
 
           {/* Method grid */}
           <div className="space-y-1">
-            <Label>Payment method</Label>
+            <Label>{t('paymentMethodLabel')}</Label>
             <div className="grid grid-cols-3 gap-2">
               {METHODS.map((m) => (
                 <button
@@ -228,7 +232,7 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
                   }`}
                 >
                   <span className="text-xl">{m.icon}</span>
-                  {m.label}
+                  {tPaymentMethod(m.key)}
                 </button>
               ))}
             </div>
@@ -236,7 +240,7 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
 
           {/* Amount */}
           <div className="space-y-1">
-            <Label>Amount (₪)</Label>
+            <Label>{t('amount')}</Label>
             <Input
               type="number"
               min="0.01"
@@ -244,12 +248,12 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
             />
-            <p className="text-xs text-muted-foreground">Balance due: ₪{remaining.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground">{t('balanceDue', { amount: remaining.toFixed(2) })}</p>
           </div>
 
           {/* Tip */}
           <div className="space-y-1">
-            <Label>Tip</Label>
+            <Label>{t('tip')}</Label>
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
@@ -257,7 +261,7 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
                 variant={tipMode === 'none' ? 'default' : 'outline'}
                 onClick={() => setTipMode('none')}
               >
-                No tip
+                {t('noTip')}
               </Button>
               {TIP_PERCENT_PRESETS.map((p) => (
                 <Button
@@ -279,7 +283,7 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
                 variant={tipMode === 'amount' ? 'default' : 'outline'}
                 onClick={() => setTipMode('amount')}
               >
-                Amount
+                {t('customAmount')}
               </Button>
               <Button
                 type="button"
@@ -287,7 +291,7 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
                 variant={tipMode === 'total' ? 'default' : 'outline'}
                 onClick={() => setTipMode('total')}
               >
-                Total incl. tip
+                {t('totalInclTip')}
               </Button>
             </div>
             {tipMode === 'amount' && (
@@ -295,7 +299,7 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
                 type="number"
                 min="0"
                 step="0.01"
-                placeholder="Tip amount (₪)"
+                placeholder={t('tipAmountPlaceholder')}
                 value={tipAmountInput}
                 onChange={(e) => setTipAmountInput(e.target.value)}
               />
@@ -305,24 +309,24 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
                 type="number"
                 min="0"
                 step="0.01"
-                placeholder="Total the guest will pay, incl. tip (₪)"
+                placeholder={t('tipTotalPlaceholder')}
                 value={tipTotalInput}
                 onChange={(e) => setTipTotalInput(e.target.value)}
               />
             )}
             {tipMode !== 'none' && (
               <p className="text-xs text-muted-foreground">
-                Tip: {formatPrice(tipAmount)} · Charging {formatPrice(chargeTotal)} total
+                {t('tipSummary', { tip: formatPrice(tipAmount), total: formatPrice(chargeTotal) })}
               </p>
             )}
           </div>
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {tCommon('cancel')}
             </Button>
             <Button onClick={handleConfirm} disabled={createPayment.isPending || baseAmount <= 0}>
-              Confirm Payment
+              {t('confirmPayment')}
             </Button>
           </div>
         </div>

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 import { Paperclip, X, Trash2 } from 'lucide-react'
 import { useAiCommand, useAiConfirm, useMenuImportUpload, useMenuImportMessage, useMenuImportApply } from '@/hooks/use-ai'
 import { useAuthStore } from '@/lib/auth-store'
@@ -27,6 +28,7 @@ const ACCEPTED_FILE_TYPES =
   'image/png,image/jpeg,image/webp,image/gif,application/pdf,text/csv,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,.csv,.txt,.docx'
 
 export default function AiPage() {
+  const t = useTranslations('ai')
   const locationId = useAuthStore((s) => s.activeLocationId)
   const [input, setInput] = useState('')
   const [history, setHistory] = useState<HistoryEntry[]>([])
@@ -73,7 +75,7 @@ export default function AiPage() {
         h.map((e) => (e.id === entryId ? { ...e, status: 'confirmed', resultMessage: turn.message } : e)),
       )
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to read that file'
+      const msg = err instanceof Error ? err.message : t('failedToReadFile')
       setHistory((h) => h.map((e) => (e.id === entryId ? { ...e, status: 'error', resultMessage: msg } : e)))
     }
   }
@@ -95,7 +97,7 @@ export default function AiPage() {
           h.map((e) => (e.id === entryId ? { ...e, status: 'confirmed', resultMessage: turn.message } : e)),
         )
       } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Failed'
+        const msg = err instanceof Error ? err.message : t('failed')
         setHistory((h) => h.map((e) => (e.id === entryId ? { ...e, status: 'error', resultMessage: msg } : e)))
       }
       return
@@ -113,7 +115,7 @@ export default function AiPage() {
         h.map((e) => (e.id === entryId ? { ...e, status: 'pending', response } : e)),
       )
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed'
+      const msg = err instanceof Error ? err.message : t('failed')
       setHistory((h) =>
         h.map((e) => (e.id === entryId ? { ...e, status: 'error', resultMessage: msg } : e)),
       )
@@ -132,7 +134,7 @@ export default function AiPage() {
         ),
       )
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed'
+      const msg = err instanceof Error ? err.message : t('failed')
       setHistory((h) =>
         h.map((e) => (e.id === entry.id ? { ...e, status: 'error', resultMessage: msg } : e)),
       )
@@ -162,11 +164,12 @@ export default function AiPage() {
     try {
       const result = await importApply.mutateAsync({ sessionId: importSessionId, items: importItems, locationId })
       toast.success(
-        `Added ${result.itemsCreated} item(s) across ${result.categoriesCreated} new categor${result.categoriesCreated === 1 ? 'y' : 'ies'}, routed ${result.routesCreated} printer link(s)${result.unrouted.length ? `. No matching printer for: ${result.unrouted.join(', ')}` : ''}.`,
+        t('importSuccess', { itemsCreated: result.itemsCreated, categoriesCreated: result.categoriesCreated, routesCreated: result.routesCreated }) +
+          (result.unrouted.length ? t('importSuccessUnrouted', { names: result.unrouted.join(', ') }) : '.'),
       )
       cancelImport()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to apply menu import')
+      toast.error(err instanceof Error ? err.message : t('failedToApplyImport'))
     }
   }
 
@@ -174,14 +177,14 @@ export default function AiPage() {
 
   return (
     <div className="p-6 flex flex-col h-[calc(100vh-4rem)] max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">AI Assistant</h1>
+      <h1 className="text-2xl font-bold mb-4">{t('title')}</h1>
 
       {/* Conversation history */}
       <div className="flex-1 overflow-y-auto space-y-4 pb-4">
         {history.length === 0 && (
           <div className="text-center text-muted-foreground text-sm py-12 space-y-2">
             <p className="text-4xl">🤖</p>
-            <p>Type a command in natural language, or upload a menu file to import it.</p>
+            <p>{t('emptyStateHint')}</p>
             <p className="text-xs">{'e.g. "Add margherita pizza for ₪58" or "הגדל את כל מחירי הפסטה ב-10%"'}</p>
           </div>
         )}
@@ -200,7 +203,7 @@ export default function AiPage() {
 
             {/* AI response */}
             {entry.status === 'pending' && !entry.response && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground pl-1">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground ps-1">
                 <span className="animate-pulse">●●●</span>
               </div>
             )}
@@ -231,7 +234,7 @@ export default function AiPage() {
             )}
 
             {entry.status === 'dismissed' && (
-              <p className="text-xs text-muted-foreground pl-1">Dismissed.</p>
+              <p className="text-xs text-muted-foreground ps-1">{t('dismissed')}</p>
             )}
 
             {entry.status === 'error' && !entry.response && !entry.isImport && (
@@ -249,14 +252,14 @@ export default function AiPage() {
           <Card className="border-primary/30">
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-semibold">Menu import — review before applying</p>
-                <Button size="sm" variant="ghost" onClick={cancelImport} title="Cancel import">
+                <p className="text-sm font-semibold">{t('importReviewTitle')}</p>
+                <Button size="sm" variant="ghost" onClick={cancelImport} title={t('cancelImportTooltip')}>
                   <X className="h-4 w-4" />
                 </Button>
               </div>
 
               {importItems.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No items extracted yet.</p>
+                <p className="text-sm text-muted-foreground">{t('noItemsExtracted')}</p>
               ) : (
                 <div className="space-y-2 max-h-80 overflow-y-auto">
                   {importItems.map((item, i) => (
@@ -264,18 +267,18 @@ export default function AiPage() {
                       <Input
                         value={item.name}
                         onChange={(e) => updateImportItem(i, { name: e.target.value })}
-                        placeholder="Item name"
+                        placeholder={t('itemNamePlaceholder')}
                       />
                       <Input
                         value={item.category ?? ''}
                         onChange={(e) => updateImportItem(i, { category: e.target.value })}
-                        placeholder="Category"
+                        placeholder={t('categoryPlaceholder')}
                       />
                       <Input
                         type="number"
                         value={item.price ?? ''}
                         onChange={(e) => updateImportItem(i, { price: Number(e.target.value) })}
-                        placeholder="Price"
+                        placeholder={t('pricePlaceholder')}
                       />
                       <div className="flex gap-2 text-xs">
                         {(['kitchen', 'receipt', 'label'] as const).map((type) => {
@@ -299,7 +302,7 @@ export default function AiPage() {
                           )
                         })}
                       </div>
-                      <Button size="icon" variant="ghost" onClick={() => removeImportItem(i)} title="Remove item">
+                      <Button size="icon" variant="ghost" onClick={() => removeImportItem(i)} title={t('removeItemTooltip')}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -310,15 +313,15 @@ export default function AiPage() {
               <div className="flex items-center justify-between gap-2 pt-2 border-t">
                 <p className="text-xs text-muted-foreground">
                   {importNeedsClarification
-                    ? 'Reply below to refine categories, prices, or printer routing.'
-                    : `${importItems.length} item(s) ready to import.`}
+                    ? t('refineHint')
+                    : t('itemsReady', { count: importItems.length })}
                 </p>
                 <Button
                   size="sm"
                   onClick={handleApplyImport}
                   disabled={importApply.isPending || importItems.length === 0}
                 >
-                  {importApply.isPending ? 'Applying…' : 'Apply to Menu'}
+                  {importApply.isPending ? t('applying') : t('applyToMenu')}
                 </Button>
               </div>
             </CardContent>
@@ -343,7 +346,7 @@ export default function AiPage() {
           size="icon"
           onClick={() => fileInputRef.current?.click()}
           disabled={isLoading}
-          title="Upload a menu photo, PDF, or spreadsheet"
+          title={t('uploadTooltip')}
         >
           <Paperclip className="h-4 w-4" />
         </Button>
@@ -359,15 +362,15 @@ export default function AiPage() {
           }}
           placeholder={
             importSessionId
-              ? 'Reply to continue the menu import... (Enter to send, Shift+Enter for a new line)'
-              : 'Type a command or paste a whole menu... (Enter to send, Shift+Enter for a new line)'
+              ? t('replyToImport')
+              : t('typeOrPaste')
           }
           disabled={isLoading}
           rows={1}
           className="flex-1 resize-none max-h-60 overflow-y-auto"
         />
         <Button onClick={handleSend} disabled={isLoading || !input.trim()}>
-          {isLoading ? '…' : 'Send'}
+          {isLoading ? '…' : t('send')}
         </Button>
       </div>
     </div>

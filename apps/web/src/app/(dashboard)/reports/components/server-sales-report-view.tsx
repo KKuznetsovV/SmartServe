@@ -1,10 +1,12 @@
 'use client'
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { useTranslations } from 'next-intl'
 import { formatPrice } from '@/lib/utils'
 import type { ServerSalesReport } from '@smartserve/types'
 
 export function ServerSalesReportView({ report }: { report: ServerSalesReport }) {
+  const t = useTranslations('reports')
   const filtered = Boolean(report.itemId || report.categoryId)
   const chartData = report.rows
     .slice()
@@ -31,26 +33,26 @@ export function ServerSalesReportView({ report }: { report: ServerSalesReport })
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b">
-            <th className="pb-2 text-left font-medium text-muted-foreground">Server</th>
-            <th className="pb-2 text-right font-medium text-muted-foreground">Orders</th>
-            {filtered && <th className="pb-2 text-right font-medium text-muted-foreground">Qty</th>}
-            <th className="pb-2 text-right font-medium text-muted-foreground">Revenue</th>
+            <th className="pb-2 text-start font-medium text-muted-foreground">{t('colServer')}</th>
+            <th className="pb-2 text-end font-medium text-muted-foreground">{t('orders')}</th>
+            {filtered && <th className="pb-2 text-end font-medium text-muted-foreground">{t('qty')}</th>}
+            <th className="pb-2 text-end font-medium text-muted-foreground">{t('revenueCol')}</th>
           </tr>
         </thead>
         <tbody>
           {report.rows.length === 0 && (
             <tr>
               <td colSpan={filtered ? 4 : 3} className="py-4 text-center text-muted-foreground">
-                No sales in this range
+                {t('noSalesInRange')}
               </td>
             </tr>
           )}
           {report.rows.map((row, i) => (
             <tr key={row.serverId ?? i} className="border-b last:border-0">
               <td className="py-2">{row.serverName}</td>
-              <td className="py-2 text-right tabular-nums">{row.orderCount}</td>
-              {filtered && <td className="py-2 text-right tabular-nums">{row.qty ?? 0}</td>}
-              <td className="py-2 text-right font-medium tabular-nums">{formatPrice(row.revenue)}</td>
+              <td className="py-2 text-end tabular-nums">{row.orderCount}</td>
+              {filtered && <td className="py-2 text-end tabular-nums">{row.qty ?? 0}</td>}
+              <td className="py-2 text-end font-medium tabular-nums">{formatPrice(row.revenue)}</td>
             </tr>
           ))}
         </tbody>

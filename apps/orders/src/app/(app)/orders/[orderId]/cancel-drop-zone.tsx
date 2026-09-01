@@ -2,11 +2,13 @@
 
 import { useDroppable } from '@dnd-kit/core'
 import { Trash2 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 
 /** Floating drop target that appears while dragging an order item out to remove/cancel it. */
 export function CancelDropZone({ visible, mode }: { visible: boolean; mode: 'remove' | 'cancel' }) {
   const { setNodeRef, isOver } = useDroppable({ id: 'cancel-zone' })
+  const t = useTranslations('cancelDropZone')
 
   return (
     <div
@@ -20,7 +22,7 @@ export function CancelDropZone({ visible, mode }: { visible: boolean; mode: 'rem
       )}
     >
       <Trash2 className="h-4 w-4" />
-      {mode === 'remove' ? 'Drop here to remove item' : 'Drop here to cancel item'}
+      {mode === 'remove' ? t('dropToRemove') : t('dropToCancel')}
     </div>
   )
 }

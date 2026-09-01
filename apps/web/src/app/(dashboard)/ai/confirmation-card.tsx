@@ -1,25 +1,9 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import type { AiCommandResponse } from '@smartserve/types'
-
-export const INTENT_LABELS: Record<string, string> = {
-  'menu.create_item': 'Create menu item',
-  'menu.update_item': 'Update menu item',
-  'menu.bulk_price_change': 'Bulk price change',
-  'menu.toggle_availability': 'Toggle availability',
-  'menu.create_category': 'Create category',
-  'menu.create_modifier_group': 'Create modifier group',
-  'printer.route': 'Configure print routing',
-  'printer.troubleshoot': 'Printer troubleshoot',
-  'report.query': 'Report query',
-  'staff.add_user': 'Add staff member',
-  'staff.set_permissions': 'Set permissions',
-  'inventory.set_threshold': 'Inventory threshold',
-  'settings.business': 'Business settings',
-  'help.general': 'Help',
-}
 
 export function confidenceColor(c: number) {
   if (c >= 0.85) return 'text-green-600'
@@ -49,6 +33,7 @@ export function AiConfirmationCard({
   onConfirm,
   onDismiss,
 }: AiConfirmationCardProps) {
+  const t = useTranslations('ai')
   return (
     <Card
       className={
@@ -63,7 +48,7 @@ export function AiConfirmationCard({
         <div className="flex items-start justify-between gap-2">
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              {INTENT_LABELS[response.intent] ?? response.intent}
+              {t.has(`intent_${response.intent}`) ? t(`intent_${response.intent}`) : response.intent}
             </p>
             {/* dir="auto" so a Hebrew preview renders RTL even when the dashboard's own
              * locale/dir is set to English (and vice versa) */}
@@ -82,10 +67,10 @@ export function AiConfirmationCard({
         {status === 'pending' && response.requiresConfirmation && (
           <div className="flex gap-2">
             <Button size="sm" onClick={onConfirm} disabled={isLoading}>
-              Confirm
+              {t('confirmButton')}
             </Button>
             <Button size="sm" variant="outline" onClick={onDismiss}>
-              Dismiss
+              {t('dismiss')}
             </Button>
           </div>
         )}

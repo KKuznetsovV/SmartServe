@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import type { PinStaff } from '@smartserve/types'
 import { apiClient } from '@/lib/api'
 import { Button } from '@/components/ui/button'
@@ -25,11 +26,14 @@ export function ManagerOverrideDialog({
   open,
   onOpenChange,
   locationId,
-  title = 'Manager Approval Required',
-  description = 'This order has already been submitted. A manager must approve this change.',
+  title,
+  description,
   pending,
   onConfirm,
 }: Props) {
+  const t = useTranslations('managerOverrideDialog')
+  const tCommon = useTranslations('common')
+  const tRoles = useTranslations('roles')
   const [managers, setManagers] = useState<PinStaff[]>([])
   const [managerId, setManagerId] = useState('')
   const [pin, setPin] = useState('')
@@ -55,17 +59,17 @@ export function ManagerOverrideDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle>{title ?? t('defaultTitle')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">{description}</p>
+          <p className="text-sm text-muted-foreground">{description ?? t('defaultDescription')}</p>
           {managers.length === 0 ? (
-            <p className="text-sm text-destructive">No manager/owner with a PIN found for this location.</p>
+            <p className="text-sm text-destructive">{t('noManagerFound')}</p>
           ) : (
             <Select value={managerId} onChange={(e) => setManagerId(e.target.value)}>
               {managers.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.name} ({m.role})
+                  {m.name} ({tRoles.has(m.role) ? tRoles(m.role) : m.role})
                 </option>
               ))}
             </Select>
@@ -73,25 +77,25 @@ export function ManagerOverrideDialog({
           <Input
             type="password"
             inputMode="numeric"
-            placeholder="Manager PIN"
+            placeholder={t('pinPlaceholder')}
             value={pin}
             onChange={(e) => setPin(e.target.value)}
           />
           <Textarea
-            placeholder="Reason for this change"
+            placeholder={t('reasonPlaceholder')}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {tCommon('cancel')}
             </Button>
             <Button
               variant="destructive"
               disabled={!canConfirm || pending}
               onClick={() => onConfirm({ managerUserId: managerId, pin, reason: reason.trim() })}
             >
-              Confirm
+              {tCommon('confirm')}
             </Button>
           </div>
         </div>

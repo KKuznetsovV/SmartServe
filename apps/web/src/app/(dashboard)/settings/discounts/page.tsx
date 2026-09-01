@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Trash2, ToggleLeft, ToggleRight, Plus } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { useAuthStore } from '@/lib/auth-store'
 import { useDiscounts, useCreateDiscount, useUpdateDiscount, useDeleteDiscount } from '@/hooks/use-discounts'
 import { Button } from '@/components/ui/button'
@@ -25,6 +26,8 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 export default function DiscountsPage() {
+  const t = useTranslations('discounts')
+  const tCommon = useTranslations('common')
   const businessId = useAuthStore((s) => s.activeBusinessId)
   const [showForm, setShowForm] = useState(false)
 
@@ -64,65 +67,65 @@ export default function DiscountsPage() {
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Discounts</h1>
+        <h1 className="text-2xl font-bold">{t('title')}</h1>
         <Button onClick={() => setShowForm((v) => !v)} size="sm">
-          <Plus className="mr-1 size-4" />
-          New Discount
+          <Plus className="me-1 size-4" />
+          {t('newDiscount')}
         </Button>
       </div>
 
       {showForm && (
         <Card>
           <CardHeader>
-            <CardTitle>Create Discount</CardTitle>
+            <CardTitle>{t('createDiscount')}</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1">
-                <Label>Code</Label>
+                <Label>{t('code')}</Label>
                 <Input {...register('code')} placeholder="SUMMER20" className="uppercase" />
                 {errors.code && <p className="text-xs text-red-500">{errors.code.message}</p>}
               </div>
 
               <div className="space-y-1">
-                <Label>Name</Label>
+                <Label>{t('name')}</Label>
                 <Input {...register('name')} placeholder="Summer Sale" />
                 {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
               </div>
 
               <div className="space-y-1">
-                <Label>Type</Label>
+                <Label>{t('type')}</Label>
                 <select
                   {...register('type')}
                   className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
                 >
-                  <option value="percent">Percentage (%)</option>
-                  <option value="fixed">Fixed Amount</option>
+                  <option value="percent">{t('type_percent')}</option>
+                  <option value="fixed">{t('type_fixed')}</option>
                 </select>
               </div>
 
               <div className="space-y-1">
-                <Label>Value {discountType === 'percent' ? '(%)' : '(amount)'}</Label>
+                <Label>{t('value')} {discountType === 'percent' ? '(%)' : '(amount)'}</Label>
                 <Input {...register('value')} type="number" step="0.01" placeholder={discountType === 'percent' ? '10' : '5.00'} />
                 {errors.value && <p className="text-xs text-red-500">{errors.value.message}</p>}
               </div>
 
               <div className="space-y-1">
-                <Label>Min order amount</Label>
+                <Label>{t('minOrderAmount')}</Label>
                 <Input {...register('minOrderAmount')} type="number" step="0.01" placeholder="0" />
               </div>
 
               <div className="space-y-1">
-                <Label>Expires at (optional)</Label>
+                <Label>{t('expiresAtOptional')}</Label>
                 <Input {...register('expiresAt')} type="datetime-local" />
               </div>
 
               <div className="flex gap-2 sm:col-span-2">
                 <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'Creating…' : 'Create'}
+                  {isSubmitting ? t('creating') : tCommon('create')}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => { reset(); setShowForm(false) }}>
-                  Cancel
+                  {tCommon('cancel')}
                 </Button>
               </div>
             </form>
@@ -131,7 +134,7 @@ export default function DiscountsPage() {
       )}
 
       {discounts.length === 0 && !showForm && (
-        <p className="text-muted-foreground text-sm">No discounts yet. Create one to get started.</p>
+        <p className="text-muted-foreground text-sm">{t('noDiscounts')}</p>
       )}
 
       <div className="grid gap-3">
@@ -144,24 +147,24 @@ export default function DiscountsPage() {
                   <p className="text-muted-foreground text-sm">{d.name}</p>
                 </div>
                 <Badge variant={d.type === 'percent' ? 'secondary' : 'outline'}>
-                  {d.type === 'percent' ? `${d.value}%` : `₪${d.value} off`}
+                  {d.type === 'percent' ? `${d.value}%` : t('off', { value: d.value })}
                 </Badge>
                 {d.minOrderAmount > 0 && (
-                  <span className="text-muted-foreground text-xs">min ₪{d.minOrderAmount}</span>
+                  <span className="text-muted-foreground text-xs">{t('minOrder', { amount: d.minOrderAmount })}</span>
                 )}
                 {d.expiresAt && (
                   <span className="text-muted-foreground text-xs">
-                    expires {new Date(d.expiresAt).toLocaleDateString()}
+                    {t('expires', { date: new Date(d.expiresAt).toLocaleDateString() })}
                   </span>
                 )}
               </div>
 
               <div className="flex items-center gap-2">
-                <Badge variant={d.active ? 'success' : 'secondary'}>{d.active ? 'Active' : 'Inactive'}</Badge>
+                <Badge variant={d.active ? 'success' : 'secondary'}>{d.active ? t('active') : t('inactive')}</Badge>
                 <Button
                   size="icon"
                   variant="ghost"
-                  title={d.active ? 'Deactivate' : 'Activate'}
+                  title={d.active ? t('deactivate') : t('activate')}
                   onClick={() =>
                     updateMutation.mutate({ id: d.id, businessId: d.businessId, data: { active: !d.active } })
                   }
@@ -171,7 +174,7 @@ export default function DiscountsPage() {
                 <Button
                   size="icon"
                   variant="ghost"
-                  title="Delete"
+                  title={tCommon('delete')}
                   onClick={() => deleteMutation.mutate({ id: d.id, businessId: d.businessId })}
                 >
                   <Trash2 className="size-4 text-red-500" />

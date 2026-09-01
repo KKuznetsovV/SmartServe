@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useDraggable } from '@dnd-kit/core'
 import { GlassWater, UtensilsCrossed } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { useCategories, useMenuItems } from '@/hooks/use-menu'
 import { Spinner } from '@/components/ui/spinner'
 import { formatPrice } from '@/lib/utils'
@@ -15,6 +16,7 @@ interface Props {
 
 /** Menu browser: two top-level branches (e.g. Food/Drinks) → subcategories → draggable/tappable item cards. */
 export function MenuPanel({ locationId, onItemTap }: Props) {
+  const t = useTranslations('menuPanel')
   const { data: categories, isLoading: categoriesLoading } = useCategories(locationId)
 
   const roots = useMemo(
@@ -52,7 +54,7 @@ export function MenuPanel({ locationId, onItemTap }: Props) {
   if (roots.length === 0) {
     return (
       <div className="rounded-lg border p-8 text-center text-sm text-muted-foreground">
-        No menu categories yet.
+        {t('noCategories')}
       </div>
     )
   }
@@ -110,7 +112,7 @@ export function MenuPanel({ locationId, onItemTap }: Props) {
             <DraggableItemCard key={item.id} item={item} onTap={() => onItemTap(item)} />
           ))}
         {!itemsLoading && availableItems.length === 0 && (
-          <p className="col-span-full py-8 text-center text-sm text-muted-foreground">No available items</p>
+          <p className="col-span-full py-8 text-center text-sm text-muted-foreground">{t('noAvailableItems')}</p>
         )}
       </div>
     </div>
@@ -118,6 +120,7 @@ export function MenuPanel({ locationId, onItemTap }: Props) {
 }
 
 function DraggableItemCard({ item, onTap }: { item: MenuItem; onTap: () => void }) {
+  const t = useTranslations('menuPanel')
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `menu-item-${item.id}`,
     data: { type: 'menu-item' as const, item },
@@ -130,14 +133,14 @@ function DraggableItemCard({ item, onTap }: { item: MenuItem; onTap: () => void 
       onClick={onTap}
       {...listeners}
       {...attributes}
-      className={`touch-none select-none rounded-lg border bg-card p-3 text-left shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing ${
+      className={`touch-none select-none rounded-lg border bg-card p-3 text-start shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing ${
         isDragging ? 'opacity-40' : ''
       }`}
     >
       <p className="text-sm font-medium leading-tight">{item.name}</p>
       <p className="mt-1 text-sm font-semibold text-primary">{formatPrice(item.price)}</p>
       {item.modifierGroups.length > 0 && (
-        <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Customizable</p>
+        <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{t('customizable')}</p>
       )}
     </button>
   )
@@ -146,7 +149,7 @@ function DraggableItemCard({ item, onTap }: { item: MenuItem; onTap: () => void 
 /** Floating clone rendered inside DragOverlay while a menu item card is being dragged. */
 export function MenuItemCardPreview({ item }: { item: MenuItem }) {
   return (
-    <div className="w-40 cursor-grabbing rounded-lg border bg-card p-3 text-left shadow-lg">
+    <div className="w-40 cursor-grabbing rounded-lg border bg-card p-3 text-start shadow-lg">
       <p className="text-sm font-medium leading-tight">{item.name}</p>
       <p className="mt-1 text-sm font-semibold text-primary">{formatPrice(item.price)}</p>
     </div>

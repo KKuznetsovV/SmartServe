@@ -1,9 +1,20 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { NextIntlClientProvider } from 'next-intl'
 import { SalesReportView } from '@/app/(dashboard)/reports/components/sales-report-view'
 import { ServerSalesReportView } from '@/app/(dashboard)/reports/components/server-sales-report-view'
 import { ClosedOrdersReportView } from '@/app/(dashboard)/reports/components/closed-orders-report-view'
 import type { SalesReport, ServerSalesReport, ClosedOrdersReport } from '@smartserve/types'
+import messages from '@/messages/en.json'
+
+function renderWithIntl(ui: React.ReactElement) {
+  return render(
+    <NextIntlClientProvider locale="en" messages={messages}>
+      {ui}
+    </NextIntlClientProvider>,
+  )
+}
+
 
 describe('SalesReportView', () => {
   it('renders grouped rows and totals', () => {
@@ -15,7 +26,7 @@ describe('SalesReportView', () => {
       totalQty: 5,
       totalRevenue: 250,
     }
-    render(<SalesReportView report={report} />)
+    renderWithIntl(<SalesReportView report={report} />)
     expect(screen.getByText('Burger')).toBeInTheDocument()
   })
 
@@ -28,7 +39,7 @@ describe('SalesReportView', () => {
       totalQty: 0,
       totalRevenue: 0,
     }
-    render(<SalesReportView report={report} />)
+    renderWithIntl(<SalesReportView report={report} />)
     expect(screen.getByText(/no sales in this range/i)).toBeInTheDocument()
   })
 })
@@ -42,7 +53,7 @@ describe('ServerSalesReportView', () => {
       categoryId: null,
       rows: [{ serverId: 's-1', serverName: 'Alice', orderCount: 3, qty: 7, revenue: 140 }],
     }
-    render(<ServerSalesReportView report={filtered} />)
+    renderWithIntl(<ServerSalesReportView report={filtered} />)
     expect(screen.getByText('Alice')).toBeInTheDocument()
     expect(screen.getByText('Qty')).toBeInTheDocument()
   })
@@ -55,7 +66,7 @@ describe('ServerSalesReportView', () => {
       categoryId: null,
       rows: [{ serverId: 's-1', serverName: 'Alice', orderCount: 3, qty: null, revenue: 140 }],
     }
-    render(<ServerSalesReportView report={unfiltered} />)
+    renderWithIntl(<ServerSalesReportView report={unfiltered} />)
     expect(screen.queryByText('Qty')).not.toBeInTheDocument()
   })
 })
@@ -78,9 +89,9 @@ describe('ClosedOrdersReportView', () => {
         },
       ],
     }
-    render(<ClosedOrdersReportView report={report} />)
+    renderWithIntl(<ClosedOrdersReportView report={report} />)
     expect(screen.getByText('Bob')).toBeInTheDocument()
-    expect(screen.getByText('paid')).toBeInTheDocument()
+    expect(screen.getByText('Paid')).toBeInTheDocument()
   })
 
   it('shows an empty state when there are no closed orders', () => {
@@ -90,7 +101,7 @@ describe('ClosedOrdersReportView', () => {
       status: 'cancelled',
       orders: [],
     }
-    render(<ClosedOrdersReportView report={report} />)
+    renderWithIntl(<ClosedOrdersReportView report={report} />)
     expect(screen.getByText(/no closed orders in this range/i)).toBeInTheDocument()
   })
 })

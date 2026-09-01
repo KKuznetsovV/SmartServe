@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useStaff, useCreateStaff, useUpdateStaff } from '@/hooks/use-staff'
+import { useTranslations } from 'next-intl'
 import { useAuthStore } from '@/lib/auth-store'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -44,6 +45,8 @@ type CreateForm = z.infer<typeof createSchema>
 type EditForm = z.infer<typeof editSchema>
 
 export default function StaffPage() {
+  const t = useTranslations('staff')
+  const tCommon = useTranslations('common')
   const activeBusinessId = useAuthStore((s) => s.activeBusinessId)
   const { data: staff, isLoading } = useStaff(activeBusinessId)
   const createStaff = useCreateStaff()
@@ -103,11 +106,11 @@ export default function StaffPage() {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-medium">{u.name}</span>
-              <Badge variant={ROLE_VARIANT[u.role as UserRole]} className="text-xs capitalize">
-                {u.role}
+              <Badge variant={ROLE_VARIANT[u.role as UserRole]} className="text-xs">
+                {t(`role_${u.role}` as `role_${UserRole}`)}
               </Badge>
               {!u.active && (
-                <Badge variant="outline" className="text-xs">Inactive</Badge>
+                <Badge variant="outline" className="text-xs">{t('inactive')}</Badge>
               )}
             </div>
             {u.email && (
@@ -122,10 +125,10 @@ export default function StaffPage() {
               disabled={updateStaff.isPending}
               onClick={() => toggleActive(u)}
             >
-              {u.active ? 'Deactivate' : 'Reactivate'}
+              {u.active ? t('deactivate') : t('reactivate')}
             </Button>
             <Button variant="outline" size="sm" onClick={() => openEdit(u)}>
-              Edit
+              {tCommon('edit')}
             </Button>
           </div>
         </CardContent>
@@ -136,29 +139,29 @@ export default function StaffPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Staff</h1>
-        <Button onClick={openCreate}>+ Add Staff</Button>
+        <h1 className="text-2xl font-bold">{t('title')}</h1>
+        <Button onClick={openCreate}>+ {t('addStaff')}</Button>
       </div>
 
       {isLoading && <Spinner />}
 
       {!isLoading && staff?.length === 0 && (
-        <p className="text-muted-foreground">No staff members yet.</p>
+        <p className="text-muted-foreground">{t('noStaff')}</p>
       )}
 
       {!isLoading && staff && staff.length > 0 && (
         <div className="space-y-6">
           <div className="space-y-2">
-            <h2 className="text-sm font-medium text-muted-foreground">Active ({activeStaff.length})</h2>
+            <h2 className="text-sm font-medium text-muted-foreground">{t('activeCount', { count: activeStaff.length })}</h2>
             {activeStaff.length === 0 && (
-              <p className="text-sm text-muted-foreground">No active staff members.</p>
+              <p className="text-sm text-muted-foreground">{t('noActiveStaff')}</p>
             )}
             {activeStaff.map(renderStaffCard)}
           </div>
 
           {inactiveStaff.length > 0 && (
             <div className="space-y-2">
-              <h2 className="text-sm font-medium text-muted-foreground">Inactive ({inactiveStaff.length})</h2>
+              <h2 className="text-sm font-medium text-muted-foreground">{t('inactiveCount', { count: inactiveStaff.length })}</h2>
               {inactiveStaff.map(renderStaffCard)}
             </div>
           )}
@@ -168,35 +171,35 @@ export default function StaffPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{editing ? 'Edit Staff Member' : 'Add Staff Member'}</DialogTitle>
+            <DialogTitle>{editing ? t('editStaffMember') : t('addStaffMember')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-1">
-              <Label>Name</Label>
-              <Input {...register('name')} placeholder="Full name" />
+              <Label>{t('name')}</Label>
+              <Input {...register('name')} placeholder={t('fullNamePlaceholder')} />
               {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
             </div>
 
             <div className="space-y-1">
-              <Label>Email (optional)</Label>
+              <Label>{t('emailOptional')}</Label>
               <Input type="email" {...register('email')} placeholder="name@example.com" />
               {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label>Role</Label>
+                <Label>{t('role')}</Label>
                 <Select {...register('role')}>
                   {ROLES.map((r) => (
-                    <option key={r} value={r} className="capitalize">
-                      {r}
+                    <option key={r} value={r}>
+                      {t(`role_${r}` as `role_${UserRole}`)}
                     </option>
                   ))}
                 </Select>
                 {errors.role && <p className="text-xs text-destructive">{errors.role.message}</p>}
               </div>
               <div className="space-y-1">
-                <Label>Language</Label>
+                <Label>{t('preferredLanguage')}</Label>
                 <Select {...register('language')}>
                   <option value="he">עברית</option>
                   <option value="en">English</option>
@@ -206,8 +209,8 @@ export default function StaffPage() {
 
             {!editing && (
               <div className="space-y-1">
-                <Label>Password (optional)</Label>
-                <Input type="password" {...register('password')} placeholder="Min 8 chars" />
+                <Label>{t('passwordOptional')}</Label>
+                <Input type="password" {...register('password')} placeholder={t('passwordMinCharsPlaceholder')} />
                 {errors.password && (
                   <p className="text-xs text-destructive">{errors.password.message}</p>
                 )}
@@ -215,7 +218,7 @@ export default function StaffPage() {
             )}
 
             <div className="space-y-1">
-              <Label>PIN {editing ? '(leave blank to keep)' : '(optional, 4 digits)'}</Label>
+              <Label>{editing ? t('pinEditHint') : t('pinCreateHint')}</Label>
               <Input
                 type="password"
                 maxLength={4}
@@ -229,16 +232,16 @@ export default function StaffPage() {
             {editing && (
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="active" {...register('active')} />
-                <Label htmlFor="active">Active</Label>
+                <Label htmlFor="active">{t('active')}</Label>
               </div>
             )}
 
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                Cancel
+                {tCommon('cancel')}
               </Button>
               <Button type="submit" disabled={createStaff.isPending || updateStaff.isPending}>
-                {editing ? 'Save' : 'Add'}
+                {editing ? tCommon('save') : tCommon('add')}
               </Button>
             </div>
           </form>

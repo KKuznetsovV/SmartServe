@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useLocale, useTranslations } from 'next-intl'
 import { useOrders } from '@/hooks/use-orders'
 import { useReportSummary } from '@/hooks/use-reports'
 import { useAuthStore } from '@/lib/auth-store'
@@ -35,6 +36,10 @@ const STATUS_COLOR: Record<OrderStatus, string> = {
 }
 
 export default function DashboardPage() {
+  const t = useTranslations('dashboard')
+  const tOrders = useTranslations('orders')
+  const tNav = useTranslations('nav')
+  const locale = useLocale()
   const locationId = useAuthStore((s) => s.activeLocationId)
   const user = useAuthStore((s) => s.user)
 
@@ -65,10 +70,10 @@ export default function DashboardPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold">
-          {user ? `Welcome back, ${user.name.split(' ')[0]}` : 'Dashboard'}
+          {user ? t('welcomeBack', { name: user.name.split(' ')[0] }) : t('title')}
         </h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          {new Date().toLocaleDateString('he-IL', {
+          {new Date().toLocaleDateString(locale === 'he' ? 'he-IL' : 'en-US', {
             weekday: 'long',
             year: 'numeric',
             month: 'long',
@@ -82,7 +87,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="pb-1">
             <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Revenue today
+              {t('revenueToday')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -92,7 +97,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="pb-1">
             <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Paid orders
+              {t('paidOrders')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -102,7 +107,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="pb-1">
             <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Avg order
+              {t('avgOrder')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -112,7 +117,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="pb-1">
             <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Active now
+              {t('activeNow')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -130,7 +135,7 @@ export default function DashboardPage() {
                 <p className={`text-3xl font-bold ${STATUS_COLOR[s]}`}>
                   {countByStatus[s] ?? 0}
                 </p>
-                <p className="text-xs text-muted-foreground capitalize mt-1">{s}</p>
+                <p className="text-xs text-muted-foreground mt-1">{tOrders(`status.${s}`)}</p>
               </CardContent>
             </Card>
           </Link>
@@ -140,27 +145,27 @@ export default function DashboardPage() {
       {/* Quick actions */}
       <div className="flex flex-wrap gap-3">
         <Link href="/orders">
-          <Button>New Order</Button>
+          <Button>{tOrders('newOrder')}</Button>
         </Link>
         <Link href="/tables">
-          <Button variant="outline">Floor Plan</Button>
+          <Button variant="outline">{t('floorPlan')}</Button>
         </Link>
         <Link href="/menu">
-          <Button variant="outline">Menu</Button>
+          <Button variant="outline">{tNav('menu')}</Button>
         </Link>
         <Link href="/reports">
-          <Button variant="outline">Reports</Button>
+          <Button variant="outline">{tNav('reports')}</Button>
         </Link>
       </div>
 
       {/* Recent orders */}
       <div className="space-y-2">
-        <h2 className="text-base font-semibold">Recent Orders</h2>
+        <h2 className="text-base font-semibold">{t('recentOrders')}</h2>
 
         {isLoading && <Spinner />}
 
         {!isLoading && recentOrders.length === 0 && (
-          <p className="text-sm text-muted-foreground">No orders yet today.</p>
+          <p className="text-sm text-muted-foreground">{t('noOrdersToday')}</p>
         )}
 
         {recentOrders.map((o) => (
@@ -172,20 +177,20 @@ export default function DashboardPage() {
                     #{o.id.slice(0, 8)}
                   </span>
                   {o.tableName && <span className="text-sm">{o.tableName}</span>}
-                  <span className="text-xs text-muted-foreground capitalize">
-                    {o.channel.replace('_', ' ')}
+                  <span className="text-xs text-muted-foreground">
+                    {tOrders(`channel.${o.channel}`)}
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-muted-foreground">
-                    {new Date(o.createdAt).toLocaleTimeString('he-IL', {
+                    {new Date(o.createdAt).toLocaleTimeString(locale === 'he' ? 'he-IL' : 'en-US', {
                       hour: '2-digit',
                       minute: '2-digit',
                     })}
                   </span>
                   <span className="text-sm font-medium">₪{o.total.toFixed(0)}</span>
-                  <Badge variant={STATUS_VARIANT[o.status as OrderStatus]} className="text-xs capitalize">
-                    {o.status}
+                  <Badge variant={STATUS_VARIANT[o.status as OrderStatus]} className="text-xs">
+                    {tOrders(`status.${o.status}`)}
                   </Badge>
                 </div>
               </CardContent>

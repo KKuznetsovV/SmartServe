@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { ChefHat, Lock, Delete } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import type { PinStaff } from '@smartserve/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -11,11 +12,15 @@ import { Spinner } from '@/components/ui/spinner'
 import { apiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import { useDeviceStore } from '@/lib/device-store'
+import { LocaleToggle } from '@/components/layout/locale-toggle'
 
 const PIN_LENGTH = 4
 
 export default function LoginPage() {
   const router = useRouter()
+  const t = useTranslations('auth')
+  const tCommon = useTranslations('common')
+  const tRoles = useTranslations('roles')
   const locationId = useDeviceStore((s) => s.locationId)
   const setAuth = useAuthStore((s) => s.setAuth)
   const setTokens = useAuthStore((s) => s.setTokens)
@@ -35,7 +40,7 @@ export default function LoginPage() {
     apiClient.auth
       .pinStaff(locationId)
       .then(setStaff)
-      .catch(() => toast.error('Failed to load staff list'))
+      .catch(() => toast.error(t('failedLoadStaff')))
       .finally(() => setLoadingStaff(false))
   }, [locationId, router])
 
@@ -52,7 +57,7 @@ export default function LoginPage() {
       setActiveLocation(user.businessId, locationId)
       router.push('/orders')
     } catch {
-      toast.error('Invalid PIN')
+      toast.error(t('invalidPin'))
       setPin('')
     } finally {
       setSubmitting(false)
@@ -69,6 +74,9 @@ export default function LoginPage() {
   if (!selected) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
+        <div className="absolute end-4 top-4">
+          <LocaleToggle />
+        </div>
         <div className="mb-6 flex items-center gap-2">
           <ChefHat className="h-6 w-6 text-primary" />
           <h1 className="text-xl font-semibold">SmartServe</h1>
@@ -87,16 +95,18 @@ export default function LoginPage() {
                   {member.name.charAt(0).toUpperCase()}
                 </div>
                 <span className="font-medium">{member.name}</span>
-                <span className="text-xs capitalize text-muted-foreground">{member.role}</span>
+                <span className="text-xs capitalize text-muted-foreground">
+                  {tRoles.has(member.role) ? tRoles(member.role) : member.role}
+                </span>
               </button>
             ))}
             {staff.length === 0 && (
-              <p className="col-span-full text-sm text-muted-foreground">No staff found for this location.</p>
+              <p className="col-span-full text-sm text-muted-foreground">{t('noStaffFound')}</p>
             )}
           </div>
         )}
         <Button variant="ghost" className="mt-6 text-xs" onClick={() => router.push('/setup')}>
-          Change location
+          {t('changeLocation')}
         </Button>
       </div>
     )
@@ -110,7 +120,9 @@ export default function LoginPage() {
             <Lock className="h-6 w-6 text-primary" />
           </div>
           <CardTitle>{selected.name}</CardTitle>
-          <p className="text-sm capitalize text-muted-foreground">{selected.role}</p>
+          <p className="text-sm capitalize text-muted-foreground">
+            {tRoles.has(selected.role) ? tRoles(selected.role) : selected.role}
+          </p>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-4">
           <div className="flex gap-3">
@@ -146,7 +158,7 @@ export default function LoginPage() {
                 setPin('')
               }}
             >
-              Back
+              {tCommon('back')}
             </Button>
             <Button
               type="button"

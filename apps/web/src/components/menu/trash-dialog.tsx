@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { RotateCcw, Trash2 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog'
@@ -23,6 +24,8 @@ export function TrashDialog({
   onOpenChange: (v: boolean) => void
   locationId: string
 }) {
+  const t = useTranslations('trash')
+  const tCommon = useTranslations('common')
   const { data: trashedItems = [], isLoading } = useTrashedItems(open ? locationId : null)
   const restoreItem = useRestoreMenuItem()
   const permanentlyDeleteItem = usePermanentlyDeleteMenuItem()
@@ -37,7 +40,7 @@ export function TrashDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Trash</DialogTitle>
+          <DialogTitle>{t('title')}</DialogTitle>
           <DialogClose onClose={() => onOpenChange(false)} />
         </DialogHeader>
         <div className="max-h-[60vh] space-y-2 overflow-y-auto">
@@ -46,7 +49,7 @@ export function TrashDialog({
               <Spinner />
             </div>
           ) : trashedItems.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">Trash is empty</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">{t('empty')}</p>
           ) : (
             trashedItems.map((item) => (
               <Card key={item.id}>
@@ -55,23 +58,23 @@ export function TrashDialog({
                     <span className="block truncate font-medium">{item.name}</span>
                     <span className="text-xs text-muted-foreground">
                       {formatPrice(item.price)}
-                      {item.deletedAt && ` · trashed ${new Date(item.deletedAt).toLocaleDateString()}`}
+                      {item.deletedAt && ` · ${t('trashedOn', { date: new Date(item.deletedAt).toLocaleDateString() })}`}
                     </span>
                   </div>
                   {confirmingId === item.id ? (
                     <div className="flex shrink-0 items-center gap-2">
-                      <span className="text-xs text-destructive">Delete forever?</span>
+                      <span className="text-xs text-destructive">{t('confirmDeleteForever')}</span>
                       <Button
                         size="sm"
                         variant="destructive"
                         disabled={permanentlyDeleteItem.isPending}
                         onClick={() => handlePermanentDelete(item.id)}
                       >
-                        {permanentlyDeleteItem.isPending && <Spinner className="mr-1 h-3 w-3" />}
-                        Confirm
+                        {permanentlyDeleteItem.isPending && <Spinner className="me-1 h-3 w-3" />}
+                        {tCommon('confirm')}
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => setConfirmingId(null)}>
-                        Cancel
+                        {tCommon('cancel')}
                       </Button>
                     </div>
                   ) : (
@@ -82,14 +85,14 @@ export function TrashDialog({
                         disabled={restoreItem.isPending}
                         onClick={() => restoreItem.mutate({ id: item.id, locationId })}
                       >
-                        <RotateCcw className="mr-1 h-3 w-3" />
-                        Restore
+                        <RotateCcw className="me-1 h-3 w-3" />
+                        {t('restore')}
                       </Button>
                       <Button
                         size="icon"
                         variant="ghost"
                         onClick={() => setConfirmingId(item.id)}
-                        title="Permanently delete"
+                        title={t('permanentlyDelete')}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>

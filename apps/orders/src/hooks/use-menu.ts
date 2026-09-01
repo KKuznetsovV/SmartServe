@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 import { apiClient } from '@/lib/api'
 import type { MenuCategory, MenuItem, ModifierGroup } from '@smartserve/types'
 
@@ -17,11 +18,12 @@ export function useCategories(locationId: string | null) {
 
 export function useCreateCategory() {
   const qc = useQueryClient()
+  const t = useTranslations('menu')
   return useMutation({
     mutationFn: (data: Omit<MenuCategory, 'id'>) => apiClient.menuCategories.create(data),
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ['categories', variables.locationId] })
-      toast.success('Category created')
+      toast.success(t('toastCategoryCreated'))
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -29,12 +31,13 @@ export function useCreateCategory() {
 
 export function useUpdateCategory() {
   const qc = useQueryClient()
+  const t = useTranslations('menu')
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<MenuCategory> }) =>
       apiClient.menuCategories.update(id, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['categories'] })
-      toast.success('Category updated')
+      toast.success(t('toastCategoryUpdated'))
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -42,11 +45,12 @@ export function useUpdateCategory() {
 
 export function useDeleteCategory() {
   const qc = useQueryClient()
+  const t = useTranslations('menu')
   return useMutation({
     mutationFn: (id: string) => apiClient.menuCategories.delete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['categories'] })
-      toast.success('Category deleted')
+      toast.success(t('toastCategoryDeleted'))
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -72,12 +76,13 @@ export function useMenuItem(itemId: string | null) {
 
 export function useCreateMenuItem() {
   const qc = useQueryClient()
+  const t = useTranslations('menu')
   return useMutation({
     mutationFn: (data: Omit<MenuItem, 'id' | 'modifierGroups' | 'sortOrder'> & { sortOrder?: number }) =>
       apiClient.menuItems.create(data),
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ['items', variables.categoryId] })
-      toast.success('Item created')
+      toast.success(t('toastItemCreated'))
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -85,6 +90,7 @@ export function useCreateMenuItem() {
 
 export function useUpdateMenuItem() {
   const qc = useQueryClient()
+  const t = useTranslations('menu')
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<MenuItem>; oldCategoryId?: string }) =>
       apiClient.menuItems.update(id, data),
@@ -93,7 +99,7 @@ export function useUpdateMenuItem() {
       if (variables.oldCategoryId && variables.oldCategoryId !== item.categoryId) {
         qc.invalidateQueries({ queryKey: ['items', variables.oldCategoryId] })
       }
-      toast.success('Item updated')
+      toast.success(t('toastItemUpdated'))
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -101,12 +107,13 @@ export function useUpdateMenuItem() {
 
 export function useDeleteMenuItem() {
   const qc = useQueryClient()
+  const t = useTranslations('menu')
   return useMutation({
     mutationFn: ({ id, categoryId }: { id: string; categoryId: string }) =>
       apiClient.menuItems.delete(id),
     onSuccess: (_, { categoryId }) => {
       qc.invalidateQueries({ queryKey: ['items', categoryId] })
-      toast.success('Item deleted')
+      toast.success(t('toastItemDeleted'))
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -140,12 +147,13 @@ export function useReorderMenuItems() {
 
 export function useCreateModifierGroup() {
   const qc = useQueryClient()
+  const t = useTranslations('menu')
   return useMutation({
     mutationFn: (data: Omit<ModifierGroup, 'id'>) =>
       apiClient.modifierGroups.create(data),
     onSuccess: (mg) => {
       qc.invalidateQueries({ queryKey: ['items', mg.itemId] })
-      toast.success('Modifier group created')
+      toast.success(t('toastModifierGroupCreated'))
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -153,12 +161,13 @@ export function useCreateModifierGroup() {
 
 export function useDeleteModifierGroup() {
   const qc = useQueryClient()
+  const t = useTranslations('menu')
   return useMutation({
     mutationFn: ({ id, itemId }: { id: string; itemId: string }) =>
       apiClient.modifierGroups.delete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['items'] })
-      toast.success('Modifier group deleted')
+      toast.success(t('toastModifierGroupDeleted'))
     },
     onError: (e: Error) => toast.error(e.message),
   })

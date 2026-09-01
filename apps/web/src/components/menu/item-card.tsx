@@ -5,6 +5,7 @@ import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Plus, Pencil, Trash2, Power, PowerOff, ChevronDown, ChevronUp } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -48,6 +49,8 @@ function ModifierGroupDialog({
   onOpenChange: (v: boolean) => void
   menuItemId: string
 }) {
+  const t = useTranslations('menu')
+  const tCommon = useTranslations('common')
   const createMG = useCreateModifierGroup()
   const {
     register,
@@ -86,34 +89,34 @@ function ModifierGroupDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Add Modifier Group</DialogTitle>
+          <DialogTitle>{t('addModifierGroup')}</DialogTitle>
           <DialogClose onClose={() => onOpenChange(false)} />
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label>Group Name</Label>
+              <Label>{t('groupName')}</Label>
               <Input {...register('name')} placeholder="e.g. Size" />
               {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
             </div>
             <div className="space-y-1">
-              <Label>שם (עברית)</Label>
+              <Label>{t('nameHebrew')}</Label>
               <Input {...register('nameHe')} placeholder="גודל" dir="rtl" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label>Min Selections</Label>
+              <Label>{t('minSelections')}</Label>
               <Input type="number" {...register('minSelect')} defaultValue={0} />
             </div>
             <div className="space-y-1">
-              <Label>Max Selections</Label>
+              <Label>{t('maxSelections')}</Label>
               <Input type="number" {...register('maxSelect')} defaultValue={1} />
             </div>
           </div>
 
           <div>
-            <Label>Options</Label>
+            <Label>{t('options')}</Label>
             {errors.modifiers?.root && (
               <p className="text-xs text-destructive">{errors.modifiers.root.message}</p>
             )}
@@ -122,7 +125,7 @@ function ModifierGroupDialog({
                 <div key={field.id} className="flex gap-2">
                   <Input
                     {...register(`modifiers.${idx}.name`)}
-                    placeholder="Option name"
+                    placeholder={t('optionNamePlaceholder')}
                     className="flex-1"
                   />
                   <Input
@@ -149,19 +152,19 @@ function ModifierGroupDialog({
                 size="sm"
                 onClick={() => append({ name: '', priceDelta: 0 })}
               >
-                <Plus className="mr-1 h-3 w-3" />
-                Add Option
+                <Plus className="me-1 h-3 w-3" />
+                {t('addOption')}
               </Button>
             </div>
           </div>
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {tCommon('cancel')}
             </Button>
             <Button type="submit" disabled={createMG.isPending}>
-              {createMG.isPending && <Spinner className="mr-2 h-4 w-4" />}
-              Create Group
+              {createMG.isPending && <Spinner className="me-2 h-4 w-4" />}
+              {t('createGroup')}
             </Button>
           </div>
         </form>
@@ -179,6 +182,7 @@ export function ItemCard({
   categoryId: string
   onEdit: (item: MenuItem) => void
 }) {
+  const t = useTranslations('menu')
   const [expanded, setExpanded] = useState(false)
   const [mgDialogOpen, setMgDialogOpen] = useState(false)
   const deleteItem = useDeleteMenuItem()
@@ -213,7 +217,7 @@ export function ItemCard({
         <div className="flex items-center justify-between gap-2">
           <span className="font-semibold">{formatPrice(item.price)}</span>
           <Badge variant={item.inStock ? 'success' : 'warning'}>
-            {item.inStock ? 'In Stock' : 'Out of Stock'}
+            {item.inStock ? t('inStock') : t('outOfStock')}
           </Badge>
         </div>
 
@@ -227,7 +231,7 @@ export function ItemCard({
                 variant="ghost"
                 size="icon"
                 onClick={() => toggleStock.mutate({ id: item.id, inStock: !item.inStock, categoryId })}
-                title={item.inStock ? 'Mark out of stock' : 'Mark in stock'}
+                title={item.inStock ? t('markOutOfStock') : t('markInStock')}
               >
                 {item.inStock ? (
                   <Power className="h-4 w-4 text-emerald-600" />
@@ -263,7 +267,7 @@ export function ItemCard({
                         <Badge key={mod.id} variant="outline" className="text-xs">
                           {mod.name}
                           {mod.priceDelta !== 0 && (
-                            <span className="ml-1 text-muted-foreground">
+                            <span className="ms-1 text-muted-foreground">
                               {mod.priceDelta > 0 ? '+' : ''}
                               {formatPrice(mod.priceDelta)}
                             </span>
@@ -282,8 +286,8 @@ export function ItemCard({
               className="text-xs text-muted-foreground"
               onClick={() => setMgDialogOpen(true)}
             >
-              <Plus className="mr-1 h-3 w-3" />
-              Add Modifier Group
+              <Plus className="me-1 h-3 w-3" />
+              {t('addModifierGroup')}
             </Button>
           </div>
         )}

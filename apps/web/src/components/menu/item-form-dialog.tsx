@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -35,6 +36,8 @@ export function ItemFormDialog({
   categoryId: string | null
   editing: MenuItem | null
 }) {
+  const t = useTranslations('menu')
+  const tCommon = useTranslations('common')
   const createItem = useCreateMenuItem()
   const updateItem = useUpdateMenuItem()
 
@@ -88,55 +91,52 @@ export function ItemFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>{editing ? 'Edit Item' : 'New Item'}</DialogTitle>
+          <DialogTitle>{editing ? t('editItem') : t('newItem')}</DialogTitle>
           <DialogClose onClose={() => onOpenChange(false)} />
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label>Name (English)</Label>
+              <Label>{t('nameEnglish')}</Label>
               <Input {...register('name')} placeholder="e.g. Margherita Pizza" />
               {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
             </div>
             <div className="space-y-1">
-              <Label>שם (עברית)</Label>
+              <Label>{t('nameHebrew')}</Label>
               <Input {...register('nameHe')} placeholder="פיצה מרגריטה" dir="rtl" />
             </div>
           </div>
           <div className="space-y-1">
-            <Label>Description</Label>
-            <Textarea {...register('description')} placeholder="Optional description..." rows={2} />
+            <Label>{t('description')}</Label>
+            <Textarea {...register('description')} placeholder={t('descriptionPlaceholder')} rows={2} />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">
-              <Label>Price (₪)</Label>
+              <Label>{t('price')} (₪)</Label>
               <Input type="number" step="0.01" {...register('price')} />
               {errors.price && <p className="text-xs text-destructive">{errors.price.message}</p>}
             </div>
             <div className="space-y-1">
-              <Label>Tax Rate</Label>
+              <Label>{t('taxRate')}</Label>
               <Input type="number" step="0.01" {...register('taxRate')} />
             </div>
             <div className="space-y-1">
-              <Label>Prep Time (min)</Label>
+              <Label>{t('prepTime')}</Label>
               <Input type="number" {...register('preparationTimeMin')} />
             </div>
           </div>
           <div className="space-y-1">
-            <Label>Default Fire Course</Label>
-            <p className="text-xs text-muted-foreground">
-              Course 1 fires immediately when the order is submitted. Courses 2-5 are held back
-              until the server fires that course.
-            </p>
+            <Label>{t('defaultFireCourse')}</Label>
+            <p className="text-xs text-muted-foreground">{t('fireCourseHint')}</p>
             <Input type="number" min={1} max={5} {...register('defaultFireCourse')} />
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {tCommon('cancel')}
             </Button>
             <Button type="submit" disabled={createItem.isPending || updateItem.isPending}>
-              {(createItem.isPending || updateItem.isPending) && <Spinner className="mr-2 h-4 w-4" />}
-              {editing ? 'Save Changes' : 'Create Item'}
+              {(createItem.isPending || updateItem.isPending) && <Spinner className="me-2 h-4 w-4" />}
+              {editing ? t('saveChanges') : t('createItem')}
             </Button>
           </div>
         </form>

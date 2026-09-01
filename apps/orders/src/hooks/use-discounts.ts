@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 import { apiClient } from '@/lib/api'
 import type { Discount } from '@smartserve/types'
 
@@ -16,11 +17,12 @@ export function useDiscounts(businessId: string | null) {
 
 export function useCreateDiscount() {
   const qc = useQueryClient()
+  const t = useTranslations('discounts')
   return useMutation({
     mutationFn: (data: Omit<Discount, 'id' | 'createdAt'>) => apiClient.discounts.create(data),
     onSuccess: (d) => {
       qc.invalidateQueries({ queryKey: ['discounts', d.businessId] })
-      toast.success('Discount created')
+      toast.success(t('toastCreated'))
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -28,6 +30,7 @@ export function useCreateDiscount() {
 
 export function useUpdateDiscount() {
   const qc = useQueryClient()
+  const t = useTranslations('discounts')
   return useMutation({
     mutationFn: ({
       id,
@@ -40,7 +43,7 @@ export function useUpdateDiscount() {
     }) => apiClient.discounts.update(id, data),
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['discounts', vars.businessId] })
-      toast.success('Discount updated')
+      toast.success(t('toastUpdated'))
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -48,11 +51,12 @@ export function useUpdateDiscount() {
 
 export function useDeleteDiscount() {
   const qc = useQueryClient()
+  const t = useTranslations('discounts')
   return useMutation({
     mutationFn: ({ id }: { id: string; businessId: string }) => apiClient.discounts.delete(id),
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['discounts', vars.businessId] })
-      toast.success('Discount deleted')
+      toast.success(t('toastDeleted'))
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -60,13 +64,14 @@ export function useDeleteDiscount() {
 
 export function useApplyDiscount() {
   const qc = useQueryClient()
+  const t = useTranslations('discounts')
   return useMutation({
     mutationFn: ({ orderId, code }: { orderId: string; code: string }) =>
       apiClient.orders.applyDiscount(orderId, code),
     onSuccess: (order) => {
       qc.invalidateQueries({ queryKey: ['order', order.id] })
       qc.invalidateQueries({ queryKey: ['orders'] })
-      toast.success('Discount applied')
+      toast.success(t('toastApplied'))
     },
     onError: (e: Error) => toast.error(e.message),
   })
