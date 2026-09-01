@@ -150,6 +150,63 @@ async def test_dispatch_move_to_trash_no_match(monkeypatch):
     assert "404" in str(exc_info.value) or "No item" in str(exc_info.value)
 
 
+CATEGORIES_NESTED = [
+    {"id": "cat-drinks", "name": "Drinks", "parentId": None},
+    {"id": "cat-soft-drinks", "name": "Soft Drinks", "parentId": "cat-drinks"},
+    {"id": "cat-food", "name": "Food", "parentId": None},
+]
+ITEMS_NESTED = [
+    {"id": "item-beer", "name": "Beer", "categoryId": "cat-drinks"},
+    {"id": "item-cola", "name": "Cola", "categoryId": "cat-soft-drinks"},
+    {"id": "item-burger", "name": "Burger", "categoryId": "cat-food"},
+]
+
+
+@pytest.mark.asyncio
+async def test_dispatch_move_to_trash_by_category_trashes_descendants(monkeypatch):
+    async def fake_catalog_get(path, *, forward_token=None, **kwargs):
+        if path.endswith("/categories"):
+            return httpx.Response(200, json=CATEGORIES_NESTED)
+        return httpx.Response(200, json=ITEMS_NESTED)
+
+    deleted_paths: list[str] = []
+
+    async def fake_catalog_delete(path, *, forward_token=None, **kwargs):
+        deleted_paths.append(path)
+        return httpx.Response(204)
+
+    monkeypatch.setattr(catalog_client, "get", fake_catalog_get)
+    monkeypatch.setattr(catalog_client, "delete", fake_catalog_delete)
+
+    menu = MenuClient("tok")
+    printing = PrintingClient("tok")
+
+    result = await dispatch_intent("menu.move_to_trash", {"category_hint": "Drinks"}, "loc-1", menu, printing)
+
+    # "Drinks" (direct: Beer) plus its child "Soft Drinks" (Cola) — not "Food" (Burger).
+    assert sorted(deleted_paths) == sorted(["/api/v1/menu/items/item-beer", "/api/v1/menu/items/item-cola"])
+    assert "2" in result and "Drinks" in result
+
+
+@pytest.mark.asyncio
+async def test_dispatch_move_to_trash_by_category_no_items(monkeypatch):
+    empty_category_items = [i for i in ITEMS_NESTED if i["categoryId"] != "cat-food"]
+
+    async def fake_catalog_get(path, *, forward_token=None, **kwargs):
+        if path.endswith("/categories"):
+            return httpx.Response(200, json=CATEGORIES_NESTED)
+        return httpx.Response(200, json=empty_category_items)
+
+    monkeypatch.setattr(catalog_client, "get", fake_catalog_get)
+
+    menu = MenuClient("tok")
+    printing = PrintingClient("tok")
+
+    with pytest.raises(Exception) as exc_info:
+        await dispatch_intent("menu.move_to_trash", {"category_hint": "Food"}, "loc-1", menu, printing)
+    assert "404" in str(exc_info.value) or "No items found" in str(exc_info.value)
+
+
 @pytest.mark.asyncio
 async def test_dispatch_restore_item(monkeypatch):
     async def fake_catalog_get(path, *, forward_token=None, **kwargs):

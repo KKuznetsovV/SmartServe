@@ -45,6 +45,10 @@ Examples:
 - "Rename the Coke to Coca-Cola" → intent: menu.update_item, params: {{item_hint: "Coke", new_name: "Coca-Cola"}}
 - "Delete the Margherita Pizza" → intent: menu.move_to_trash, params: {{item_hint: "Margherita Pizza"}}
 - "Trash the discontinued soup" → intent: menu.move_to_trash, params: {{item_hint: "discontinued soup"}}
+- "Delete all items in the Music-Inspired Cocktails category" → intent: menu.move_to_trash,
+  params: {{category_hint: "Music-Inspired Cocktails"}}
+- "מחק את כל הפריטים בקטגוריית קוקטיילים בהשראת מוזיקה" → intent: menu.move_to_trash,
+  params: {{category_hint: "קוקטיילים בהשראת מוזיקה"}}
 - "Restore the Margherita Pizza from trash" → intent: menu.restore_item, params: {{item_hint: "Margherita Pizza"}}
 - "Permanently delete the Margherita Pizza" → intent: menu.permanently_delete_item, params: {{item_hint: "Margherita Pizza"}}
 - "הגדל את כל מחירי הפסטה ב-10%" → intent: menu.bulk_price_change, params: {{category_hint: "פסטה", change_pct: 10}}
