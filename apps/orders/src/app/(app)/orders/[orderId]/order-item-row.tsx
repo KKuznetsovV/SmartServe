@@ -3,6 +3,7 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, Pencil } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn, formatPrice, getItemLineTotal } from '@/lib/utils'
@@ -31,6 +32,8 @@ interface Props {
 
 /** A single order item row: drag the handle to reorder, or drag it onto the cancel zone to remove it. */
 export function OrderItemRow({ item, draggable, onEdit, selectable, selected, onToggleSelect }: Props) {
+  const t = useTranslations('orderItemRow')
+  const tItemStatus = useTranslations('itemStatus')
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
     data: { type: 'order-item' as const, item },
@@ -55,7 +58,7 @@ export function OrderItemRow({ item, draggable, onEdit, selectable, selected, on
             className="mt-0.5"
             checked={!!selected}
             onCheckedChange={() => onToggleSelect?.(item.id)}
-            aria-label="Select item"
+            aria-label={t('selectItem')}
           />
         ) : (
           draggable && (
@@ -64,7 +67,7 @@ export function OrderItemRow({ item, draggable, onEdit, selectable, selected, on
               {...attributes}
               {...listeners}
               className="mt-0.5 touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
-              aria-label="Drag to reorder or remove"
+              aria-label={t('dragToReorder')}
             >
               <GripVertical className="h-4 w-4" />
             </button>
@@ -80,26 +83,26 @@ export function OrderItemRow({ item, draggable, onEdit, selectable, selected, on
           {item.notes && <p className="text-xs italic text-muted-foreground">{item.notes}</p>}
           <div className="flex items-center gap-1 flex-wrap">
             <Badge variant={STATUS_VARIANT[item.status] ?? 'outline'} className="text-xs capitalize">
-              {item.status}
+              {tItemStatus(item.status)}
             </Badge>
             {item.fireCourse > 1 && (
               <Badge variant="outline" className="text-xs">
-                Course {item.fireCourse}
+                {t('course', { n: item.fireCourse })}
               </Badge>
             )}
             {item.guestNumber != null && (
               <Badge variant="outline" className="text-xs">
-                Guest {item.guestNumber}
+                {t('guest', { n: item.guestNumber })}
               </Badge>
             )}
             {item.isComped && (
               <Badge variant="secondary" className="text-xs">
-                On the house
+                {t('onTheHouse')}
               </Badge>
             )}
             {!item.isComped && item.discountAmount > 0 && (
               <Badge variant="secondary" className="text-xs">
-                Discount −{formatPrice(item.discountAmount)}
+                {t('discount', { amount: formatPrice(item.discountAmount) })}
               </Badge>
             )}
           </div>
@@ -111,13 +114,13 @@ export function OrderItemRow({ item, draggable, onEdit, selectable, selected, on
             type="button"
             onClick={() => onEdit(item)}
             className="text-muted-foreground hover:text-foreground"
-            aria-label="Edit item"
+            aria-label={t('editItem')}
           >
             <Pencil className="h-3.5 w-3.5" />
           </button>
         )}
         {item.isComped || item.discountAmount > 0 ? (
-          <div className="text-right">
+          <div className="text-end">
             <span className="block text-xs text-muted-foreground line-through">
               {formatPrice(item.unitPrice * item.qty)}
             </span>

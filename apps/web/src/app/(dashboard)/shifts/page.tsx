@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useLocale, useTranslations } from 'next-intl'
 import { useAuthStore } from '@/lib/auth-store'
 import { useCurrentShift, useShiftHistory, useOpenShift, useCloseShift } from '@/hooks/use-shifts'
 import { Badge } from '@/components/ui/badge'
@@ -10,16 +11,19 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
 
-function formatDuration(from: string, to?: string) {
+function formatDuration(from: string, to: string | undefined, hourAbbrev: string, minuteAbbrev: string) {
   const start = new Date(from)
   const end = to ? new Date(to) : new Date()
   const mins = Math.floor((end.getTime() - start.getTime()) / 60_000)
   const h = Math.floor(mins / 60)
   const m = mins % 60
-  return h > 0 ? `${h}h ${m}m` : `${m}m`
+  return h > 0 ? `${h}${hourAbbrev} ${m}${minuteAbbrev}` : `${m}${minuteAbbrev}`
 }
 
 export default function ShiftsPage() {
+  const t = useTranslations('shifts')
+  const locale = useLocale()
+  const dateLocale = locale === 'he' ? 'he-IL' : 'en-US'
   const activeLocationId = useAuthStore((s) => s.activeLocationId)
   const { data: current, isLoading } = useCurrentShift(activeLocationId)
   const { data: history } = useShiftHistory(activeLocationId)
@@ -39,15 +43,15 @@ export default function ShiftsPage() {
 
   return (
     <div className="p-6 space-y-6 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold">Shift Management</h1>
+      <h1 className="text-2xl font-bold">{t('title')}</h1>
 
       {/* Current shift */}
       <Card>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Current Shift</CardTitle>
+            <CardTitle className="text-base">{t('currentShift')}</CardTitle>
             <Badge variant={current ? 'success' : 'outline'}>
-              {current ? 'Open' : 'No shift open'}
+              {current ? t('open') : t('noShiftOpen')}
             </Badge>
           </div>
         </CardHeader>
@@ -56,20 +60,20 @@ export default function ShiftsPage() {
             <>
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div>
-                  <p className="text-muted-foreground">Opened</p>
-                  <p className="font-medium">{new Date(current.openedAt).toLocaleTimeString('he-IL')}</p>
+                  <p className="text-muted-foreground">{t('opened')}</p>
+                  <p className="font-medium">{new Date(current.openedAt).toLocaleTimeString(dateLocale)}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Duration</p>
-                  <p className="font-medium">{formatDuration(current.openedAt)}</p>
+                  <p className="text-muted-foreground">{t('duration')}</p>
+                  <p className="font-medium">{formatDuration(current.openedAt, undefined, t('hourAbbrev'), t('minuteAbbrev'))}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Opening cash</p>
+                  <p className="text-muted-foreground">{t('openingCash')}</p>
                   <p className="font-medium">₪{current.openingCash.toFixed(2)}</p>
                 </div>
               </div>
               <div className="space-y-2 pt-2 border-t">
-                <Label htmlFor="closing-cash">Closing cash count (₪)</Label>
+                <Label htmlFor="closing-cash">{t('closingCashCount')}</Label>
                 <div className="flex gap-2">
                   <Input
                     id="closing-cash"
@@ -91,19 +95,19 @@ export default function ShiftsPage() {
                       })
                     }
                   >
-                    Close Shift
+                    {t('closeShift')}
                   </Button>
                 </div>
                 {current.openingCash > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    Expected cash drift: ₪{(parseFloat(closingCash) - current.openingCash).toFixed(2)}
+                    {t('expectedCashDrift', { amount: (parseFloat(closingCash) - current.openingCash).toFixed(2) })}
                   </p>
                 )}
               </div>
             </>
           ) : (
             <div className="space-y-2">
-              <Label htmlFor="opening-cash">Opening cash float (₪)</Label>
+              <Label htmlFor="opening-cash">{t('openingCashFloat')}</Label>
               <div className="flex gap-2">
                 <Input
                   id="opening-cash"
@@ -123,7 +127,7 @@ export default function ShiftsPage() {
                     })
                   }
                 >
-                  Open Shift
+                  {t('openShift')}
                 </Button>
               </div>
             </div>
@@ -135,17 +139,17 @@ export default function ShiftsPage() {
       {history && history.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Recent Shifts</CardTitle>
+            <CardTitle className="text-base">{t('recentShifts')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {history.map((s) => (
               <div key={s.id} className="flex items-center justify-between py-2 border-b last:border-0 text-sm">
                 <div className="space-y-0.5">
-                  <p className="font-medium">{new Date(s.openedAt).toLocaleDateString('he-IL')}</p>
+                  <p className="font-medium">{new Date(s.openedAt).toLocaleDateString(dateLocale)}</p>
                   <p className="text-xs text-muted-foreground">
-                    {new Date(s.openedAt).toLocaleTimeString('he-IL')}
-                    {s.closedAt && ` → ${new Date(s.closedAt).toLocaleTimeString('he-IL')}`}
-                    {s.closedAt && ` · ${formatDuration(s.openedAt, s.closedAt)}`}
+                    {new Date(s.openedAt).toLocaleTimeString(dateLocale)}
+                    {s.closedAt && ` → ${new Date(s.closedAt).toLocaleTimeString(dateLocale)}`}
+                    {s.closedAt && ` · ${formatDuration(s.openedAt, s.closedAt, t('hourAbbrev'), t('minuteAbbrev'))}`}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -155,7 +159,7 @@ export default function ShiftsPage() {
                     </span>
                   )}
                   <Badge variant={s.status === 'open' ? 'success' : 'secondary'}>
-                    {s.status}
+                    {s.status === 'open' ? t('open') : t('closed')}
                   </Badge>
                 </div>
               </div>

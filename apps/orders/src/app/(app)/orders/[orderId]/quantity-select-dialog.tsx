@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -18,6 +19,8 @@ interface Props {
 /** Asks how many units of each multi-quantity selected item a bulk action (guest tag,
  * discount, comp, delete) should apply to — the rest of that line stays untouched. */
 export function QuantitySelectDialog({ open, onOpenChange, items, onConfirm }: Props) {
+  const t = useTranslations('quantitySelectDialog')
+  const tCommon = useTranslations('common')
   const [quantities, setQuantities] = useState<Record<string, number>>({})
 
   function handleOpenChange(isOpen: boolean) {
@@ -36,20 +39,17 @@ export function QuantitySelectDialog({ open, onOpenChange, items, onConfirm }: P
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>How many units?</DialogTitle>
+          <DialogTitle>{t('title')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            One or more selected items have more than one unit. Choose how many units of each to
-            apply this action to — the remaining units stay on the order untouched.
-          </p>
+          <p className="text-sm text-muted-foreground">{t('description')}</p>
           <div className="space-y-2">
             {items.map((item) => (
               <div key={item.id} className="flex items-center justify-between gap-3 border-b pb-2 last:border-0">
                 <div>
                   <p className="text-sm font-medium">{item.menuItemName}</p>
                   <p className="text-xs text-muted-foreground">
-                    {item.qty} on order · {formatPrice(item.unitPrice)} each
+                    {item.qty} {t('onOrder')} · {formatPrice(item.unitPrice)} {t('each')}
                   </p>
                 </div>
                 <Input
@@ -65,9 +65,9 @@ export function QuantitySelectDialog({ open, onOpenChange, items, onConfirm }: P
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {tCommon('cancel')}
             </Button>
-            <Button onClick={() => onConfirm(quantities)}>Continue</Button>
+            <Button onClick={() => onConfirm(quantities)}>{t('continue')}</Button>
           </div>
         </div>
       </DialogContent>

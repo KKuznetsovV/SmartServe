@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useOrders, useOrder, useUpdateOrderItemStatus } from '@/hooks/use-orders'
 import { useLocationWs } from '@/hooks/use-ws'
 import { useAuthStore } from '@/lib/auth-store'
@@ -23,6 +24,9 @@ const ITEM_STATUS_STYLE: Record<OrderItemStatus, string> = {
 const ACTIVE_STATUSES = ['submitted', 'preparing']
 
 function OrderCard({ orderId }: { orderId: string }) {
+  const t = useTranslations('kitchen')
+  const tItemStatus = useTranslations('itemStatus')
+  const tOrders = useTranslations('orders')
   const { data: order } = useOrder(orderId)
   const updateStatus = useUpdateOrderItemStatus()
 
@@ -55,24 +59,24 @@ function OrderCard({ orderId }: { orderId: string }) {
         <div>
           <span className="font-mono text-lg font-bold">#{order.id.slice(0, 6)}</span>
           {order.tableName && (
-            <span className="ml-2 text-zinc-400 text-sm">{order.tableName}</span>
+            <span className="ms-2 text-zinc-400 text-sm">{order.tableName}</span>
           )}
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-zinc-500 capitalize">
-            {order.channel.replace('_', ' ')}
+            {tOrders(`channel.${order.channel}` as never)}
           </span>
           {!allReady && (
             <button
               onClick={markAllReady}
               className="text-xs px-2 py-1 rounded bg-green-700 hover:bg-green-600 text-white transition-colors"
             >
-              All Ready ✓
+              {t('allReady')}
             </button>
           )}
           {allReady && (
             <span className="text-xs px-2 py-1 rounded bg-green-900 text-green-400 border border-green-700">
-              ✓ Ready
+              {t('ready')}
             </span>
           )}
         </div>
@@ -87,7 +91,7 @@ function OrderCard({ orderId }: { orderId: string }) {
               key={item.id}
               onClick={() => bumpItem(item.id, item.status as OrderItemStatus)}
               disabled={!next}
-              className={`w-full text-left rounded-lg border p-3 transition-colors ${
+              className={`w-full text-start rounded-lg border p-3 transition-colors ${
                 ITEM_STATUS_STYLE[item.status as OrderItemStatus]
               } ${next ? 'hover:brightness-125 cursor-pointer' : 'cursor-default'}`}
             >
@@ -96,7 +100,7 @@ function OrderCard({ orderId }: { orderId: string }) {
                   {item.qty}× {item.menuItemName}
                 </span>
                 <span className="text-xs uppercase tracking-wide opacity-70">
-                  {item.status}
+                  {tItemStatus(item.status)}
                 </span>
               </div>
               {item.modifiers.length > 0 && (
@@ -116,6 +120,7 @@ function OrderCard({ orderId }: { orderId: string }) {
 }
 
 export default function KitchenPage() {
+  const t = useTranslations('kitchen')
   const locationId = useAuthStore((s) => s.activeLocationId)
   const { data: submitted, isLoading: l1 } = useOrders(locationId, 'submitted')
   const { data: preparing, isLoading: l2 } = useOrders(locationId, 'preparing')
@@ -134,10 +139,10 @@ export default function KitchenPage() {
       {/* Header */}
       <div className="flex items-center justify-between py-2 border-b border-zinc-800">
         <h1 className="text-xl font-bold tracking-wide text-zinc-100">
-          🍳 Kitchen Display
+          🍳 {t('title')}
         </h1>
         <div className="flex items-center gap-3 text-sm text-zinc-400">
-          <span>{activeOrders.length} active order{activeOrders.length !== 1 ? 's' : ''}</span>
+          <span>{t('activeOrders', { count: activeOrders.length })}</span>
           <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
         </div>
       </div>
@@ -151,7 +156,7 @@ export default function KitchenPage() {
       {!isLoading && activeOrders.length === 0 && (
         <div className="flex flex-col items-center justify-center py-24 text-zinc-600 space-y-2">
           <p className="text-5xl">✓</p>
-          <p className="text-lg">All caught up</p>
+          <p className="text-lg">{t('allCaughtUp')}</p>
         </div>
       )}
 

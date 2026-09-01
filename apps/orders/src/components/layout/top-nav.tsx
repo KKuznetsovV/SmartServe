@@ -6,6 +6,7 @@ import { ChefHat, ClipboardList, Grid3x3, LogOut, Monitor } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/lib/auth-store'
+import { LocaleToggle } from './locale-toggle'
 
 const navItems = [
   { href: '/orders', icon: ClipboardList, key: 'orders' },
@@ -49,7 +50,7 @@ export function TopNav() {
           className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <ChefHat className="h-4 w-4 shrink-0" />
-          Kitchen Display
+          {tNav('kitchenDisplay')}
         </a>
         {activeLocationId && (
           <a
@@ -59,12 +60,13 @@ export function TopNav() {
             className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <Monitor className="h-4 w-4 shrink-0" />
-            Customer Display
+            {tNav('customerDisplay')}
           </a>
         )}
       </nav>
 
       <div className="flex items-center gap-3">
+        <LocaleToggle />
         <span className="truncate text-sm font-medium">{user?.name}</span>
         <button
           onClick={clearAuth}

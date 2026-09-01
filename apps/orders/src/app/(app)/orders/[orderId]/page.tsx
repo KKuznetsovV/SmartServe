@@ -13,6 +13,7 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
+import { useTranslations } from 'next-intl'
 import {
   useOrder,
   useSubmitOrder,
@@ -64,12 +65,12 @@ const ORDER_STATUS_VARIANT: Record<
   cancelled: 'destructive',
 }
 
-const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
-  cash: 'Cash',
-  card: 'Credit Card',
-  tap: 'Tap to Pay',
-  mobile: 'Mobile Pay',
-  voucher: 'Voucher',
+const PAYMENT_METHOD_LABEL_KEY: Record<PaymentMethod, string> = {
+  cash: 'cash',
+  card: 'card',
+  tap: 'tap',
+  mobile: 'mobile',
+  voucher: 'voucher',
 }
 
 interface Props {
@@ -79,6 +80,10 @@ interface Props {
 export default function OrderDetailPage({ params }: Props) {
   const { orderId } = use(params)
   const router = useRouter()
+  const t = useTranslations('orderDetail')
+  const tOrders = useTranslations('orders')
+  const tPaymentMethod = useTranslations('paymentMethod')
+  const tCommon = useTranslations('common')
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [configuringItem, setConfiguringItem] = useState<MenuItem | null>(null)
   const [editingItem, setEditingItem] = useState<OrderItem | null>(null)
@@ -118,7 +123,7 @@ export default function OrderDetailPage({ params }: Props) {
 
   async function handleCancel() {
     if (!order) return
-    if (!confirm('Cancel this order?')) return
+    if (!confirm(t('cancelOrderConfirm'))) return
     await cancelOrder.mutateAsync({ orderId, locationId: order.locationId })
     router.push('/orders')
   }
@@ -277,7 +282,7 @@ export default function OrderDetailPage({ params }: Props) {
   async function handleDeleteSelected(selections: ItemSelection[]) {
     if (selections.length === 0 || !order) return
     if (order.status === 'open') {
-      if (!confirm(`Delete ${selections.length} item(s)?`)) return
+      if (!confirm(t('deleteItemsConfirm', { count: selections.length }))) return
       await deleteItems.mutateAsync({ orderId, items: selections })
       exitSelectMode()
     } else {
@@ -297,9 +302,9 @@ export default function OrderDetailPage({ params }: Props) {
   if (!order) {
     return (
       <div className="p-6">
-        <p className="text-muted-foreground">Order not found.</p>
+        <p className="text-muted-foreground">{t('orderNotFound')}</p>
         <Button variant="outline" className="mt-4" onClick={() => router.push('/orders')}>
-          Back
+          {tCommon('back')}
         </Button>
       </div>
     )
@@ -323,16 +328,16 @@ export default function OrderDetailPage({ params }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <Button variant="ghost" size="sm" onClick={() => router.push('/orders')} className="mb-1 -ml-2">
-            ← Orders
+          <Button variant="ghost" size="sm" onClick={() => router.push('/orders')} className="mb-1 -ms-2">
+            ← {t('back')}
           </Button>
           <h1 className="text-2xl font-bold">
-            Order <span className="font-mono text-xl">#{order.id.slice(0, 8)}</span>
+            {t('orderNumber')} <span className="font-mono text-xl">#{order.id.slice(0, 8)}</span>
           </h1>
           <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
             {order.tableName && <span>{order.tableName}</span>}
             <span>·</span>
-            <span className="capitalize">{order.channel.replace('_', ' ')}</span>
+            <span className="capitalize">{tOrders(`channel.${order.channel}`)}</span>
             <span>·</span>
             <span>{new Date(order.createdAt).toLocaleString('he-IL')}</span>
           </div>
@@ -341,7 +346,7 @@ export default function OrderDetailPage({ params }: Props) {
           variant={ORDER_STATUS_VARIANT[order.status as OrderStatus]}
           className="text-sm capitalize"
         >
-          {order.status}
+          {tOrders(`status.${order.status}`)}
         </Badge>
       </div>
 
@@ -353,22 +358,22 @@ export default function OrderDetailPage({ params }: Props) {
       {/* Items */}
       <Card ref={setDropRef} className={cn(canAddItems && isOver && 'ring-2 ring-primary')}>
         <CardHeader className="pb-2 flex-row items-center justify-between">
-          <CardTitle className="text-base">Items ({order.items.length})</CardTitle>
+          <CardTitle className="text-base">{t('itemsCount', { count: order.items.length })}</CardTitle>
           {canSelectItems && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
             >
-              {selectMode ? 'Done' : 'Select'}
+              {selectMode ? t('done') : t('select')}
             </Button>
           )}
         </CardHeader>
         <CardContent className="space-y-2">
           {order.items.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              No items yet.
-              {canAddItems && ' Tap or drag an item from the menu to add it.'}
+              {t('noItemsYet')}
+              {canAddItems && ' ' + t('tapOrDragHint')}
             </p>
           )}
           <SortableContext items={order.items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
@@ -390,12 +395,12 @@ export default function OrderDetailPage({ params }: Props) {
       {selectMode && selectedIds.size > 0 && (
         <Card className="border-primary">
           <CardContent className="p-3 flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium mr-1">{selectedIds.size} selected</span>
+            <span className="text-sm font-medium me-1">{t('selectedCount', { count: selectedIds.size })}</span>
             <Button variant="outline" size="sm" onClick={() => startBulkAction('guest')}>
-              Assign to Guest
+              {t('assignToGuest')}
             </Button>
             <Button variant="outline" size="sm" onClick={() => startBulkAction('discount')}>
-              Discount
+              {t('discount')}
             </Button>
             <Button
               variant="outline"
@@ -403,7 +408,7 @@ export default function OrderDetailPage({ params }: Props) {
               onClick={() => startBulkAction('comp-on')}
               disabled={setItemComp.isPending}
             >
-              On the House
+              {t('onTheHouse')}
             </Button>
             <Button
               variant="outline"
@@ -411,7 +416,7 @@ export default function OrderDetailPage({ params }: Props) {
               onClick={() => startBulkAction('comp-off')}
               disabled={setItemComp.isPending}
             >
-              Remove Comp
+              {t('removeComp')}
             </Button>
             <Button
               variant="destructive"
@@ -419,7 +424,7 @@ export default function OrderDetailPage({ params }: Props) {
               onClick={() => startBulkAction('delete')}
               disabled={deleteItems.isPending}
             >
-              Delete
+              {tCommon('delete')}
             </Button>
           </CardContent>
         </Card>
@@ -429,31 +434,31 @@ export default function OrderDetailPage({ params }: Props) {
       <Card>
         <CardContent className="p-4 space-y-1">
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Subtotal</span>
+            <span className="text-muted-foreground">{t('subtotal')}</span>
             <span>₪{order.subtotal.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Tax (17%)</span>
+            <span className="text-muted-foreground">{t('tax', { rate: 17 })}</span>
             <span>₪{order.taxAmount.toFixed(2)}</span>
           </div>
           {order.discountAmount > 0 && (
             <div className="flex justify-between text-sm text-emerald-600">
-              <span>Discount</span>
+              <span>{t('discount')}</span>
               <span>−₪{order.discountAmount.toFixed(2)}</span>
             </div>
           )}
           <div className="flex justify-between font-bold text-base pt-1 border-t">
-            <span>Total</span>
+            <span>{t('total')}</span>
             <span>₪{order.total.toFixed(2)}</span>
           </div>
           {paidAmount > 0 && (
             <>
               <div className="flex justify-between text-sm text-green-600">
-                <span>Paid</span>
+                <span>{t('paid')}</span>
                 <span>−₪{paidAmount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between font-semibold text-sm pt-1 border-t">
-                <span>Remaining</span>
+                <span>{t('remaining')}</span>
                 <span>₪{remaining.toFixed(2)}</span>
               </div>
             </>
@@ -465,7 +470,7 @@ export default function OrderDetailPage({ params }: Props) {
       {['open', 'submitted'].includes(order.status) && !order.discountId && (
         <div className="flex gap-2">
           <Input
-            placeholder="Discount code"
+            placeholder={t('discountCodePlaceholder')}
             value={discountCode}
             onChange={(e) => setDiscountCode(e.target.value)}
             className="max-w-xs uppercase"
@@ -478,7 +483,7 @@ export default function OrderDetailPage({ params }: Props) {
               setDiscountCode('')
             }}
           >
-            Apply
+            {tCommon('apply')}
           </Button>
         </div>
       )}
@@ -487,16 +492,16 @@ export default function OrderDetailPage({ params }: Props) {
       {payments && payments.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Payments</CardTitle>
+            <CardTitle className="text-base">{t('payments')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {payments.map((p) => (
               <div key={p.id} className="flex justify-between items-center text-sm py-1 border-b last:border-0">
                 <div>
                   <span className="font-medium">
-                    {PAYMENT_METHOD_LABEL[p.method as PaymentMethod]}
+                    {tPaymentMethod(PAYMENT_METHOD_LABEL_KEY[p.method as PaymentMethod])}
                   </span>
-                  <span className="ml-2 text-xs text-muted-foreground">
+                  <span className="ms-2 text-xs text-muted-foreground">
                     {new Date(p.createdAt).toLocaleTimeString('he-IL')}
                   </span>
                 </div>
@@ -510,7 +515,7 @@ export default function OrderDetailPage({ params }: Props) {
       {/* Notes */}
       {order.notes && (
         <p className="text-sm text-muted-foreground">
-          <span className="font-medium">Notes: </span>
+          <span className="font-medium">{t('notes')} </span>
           {order.notes}
         </p>
       )}
@@ -519,11 +524,11 @@ export default function OrderDetailPage({ params }: Props) {
       <div className="flex gap-3">
         {canSubmit && (
           <Button onClick={handleSubmit} disabled={submitOrder.isPending}>
-            Submit to Kitchen
+            {t('submitToKitchen')}
           </Button>
         )}
         {canPay && remaining > 0 && (
-          <Button onClick={() => setPaymentOpen(true)}>Collect Payment</Button>
+          <Button onClick={() => setPaymentOpen(true)}>{t('collectPayment')}</Button>
         )}
         {['submitted', 'preparing', 'ready'].includes(order.status) &&
           heldCourses.map((course) => (
@@ -533,7 +538,7 @@ export default function OrderDetailPage({ params }: Props) {
               disabled={fireCourse.isPending}
               onClick={() => fireCourse.mutate({ orderId, course })}
             >
-              Fire Course {course}
+              {t('fireCourse', { course })}
             </Button>
           ))}
         {canCancel && (
@@ -543,7 +548,7 @@ export default function OrderDetailPage({ params }: Props) {
             onClick={handleCancel}
             disabled={cancelOrder.isPending}
           >
-            Cancel Order
+            {t('cancelOrder')}
           </Button>
         )}
       </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useReportSummary, useSalesReport, useSalesByServerReport, useClosedOrdersReport } from '@/hooks/use-reports'
 import { useCategories, useMenuItems } from '@/hooks/use-menu'
 import { useAuthStore } from '@/lib/auth-store'
@@ -17,36 +18,16 @@ import { DateRangeFields } from './components/date-range-fields'
 import { SalesReportView } from './components/sales-report-view'
 import { ServerSalesReportView } from './components/server-sales-report-view'
 
-const PERIODS: { value: ReportPeriod; label: string }[] = [
-  { value: 'today', label: 'Today' },
-  { value: 'week', label: 'Last 7 days' },
-  { value: 'month', label: 'Last 30 days' },
-]
-
-const CHANNEL_LABELS: Record<string, string> = {
-  dine_in: 'Dine In',
-  takeaway: 'Takeaway',
-  delivery: 'Delivery',
-  online: 'Online',
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  open: 'Open',
-  submitted: 'Submitted',
-  preparing: 'Preparing',
-  ready: 'Ready',
-  served: 'Served',
-  paid: 'Paid',
-  cancelled: 'Cancelled',
-}
+const PERIODS: ReportPeriod[] = ['today', 'week', 'month']
 
 type ReportTab = 'sales' | 'sales-by-server' | 'closed-orders'
 
-const TABS: { value: ReportTab; label: string }[] = [
-  { value: 'sales', label: 'Sales' },
-  { value: 'sales-by-server', label: 'Sales by Server' },
-  { value: 'closed-orders', label: 'Closed Orders' },
-]
+const TABS: ReportTab[] = ['sales', 'sales-by-server', 'closed-orders']
+const TAB_KEY: Record<ReportTab, 'tab_sales' | 'tab_salesByServer' | 'tab_closedOrders'> = {
+  sales: 'tab_sales',
+  'sales-by-server': 'tab_salesByServer',
+  'closed-orders': 'tab_closedOrders',
+}
 
 function isoDate(daysAgo: number): string {
   const d = new Date()
@@ -55,6 +36,8 @@ function isoDate(daysAgo: number): string {
 }
 
 function OverviewSection() {
+  const t = useTranslations('reports')
+  const tOrders = useTranslations('orders')
   const locationId = useAuthStore((s) => s.activeLocationId)
   const [period, setPeriod] = useState<ReportPeriod>('today')
   const { data, isLoading } = useReportSummary(locationId, period)
@@ -66,21 +49,21 @@ function OverviewSection() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Overview</h2>
+        <h2 className="text-lg font-semibold">{t('overview')}</h2>
 
         {/* Period selector */}
         <div className="flex gap-1 rounded-lg border p-1 bg-muted">
           {PERIODS.map((p) => (
             <button
-              key={p.value}
-              onClick={() => setPeriod(p.value)}
+              key={p}
+              onClick={() => setPeriod(p)}
               className={`px-3 py-1 rounded-md text-sm transition-colors ${
-                period === p.value
+                period === p
                   ? 'bg-background shadow-sm font-medium'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              {p.label}
+              {t(`period_${p}`)}
             </button>
           ))}
         </div>
@@ -94,7 +77,7 @@ function OverviewSection() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card>
               <CardHeader className="pb-1">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Revenue</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">{t('revenue')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold">₪{data.totalRevenue.toFixed(2)}</p>
@@ -102,7 +85,7 @@ function OverviewSection() {
             </Card>
             <Card>
               <CardHeader className="pb-1">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Orders</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">{t('orders')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold">{data.orderCount}</p>
@@ -110,7 +93,7 @@ function OverviewSection() {
             </Card>
             <Card>
               <CardHeader className="pb-1">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Avg Order</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">{t('avgOrder')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold">₪{data.avgOrderValue.toFixed(2)}</p>
@@ -122,16 +105,16 @@ function OverviewSection() {
             {/* Revenue by channel */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Revenue by Channel</CardTitle>
+                <CardTitle className="text-base">{t('revenueByChannel')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {channelEntries.length === 0 && (
-                  <p className="text-sm text-muted-foreground">No data</p>
+                  <p className="text-sm text-muted-foreground">{t('noData')}</p>
                 )}
                 {channelEntries.map(([channel, revenue]) => (
                   <div key={channel}>
                     <div className="flex justify-between text-sm mb-1">
-                      <span>{CHANNEL_LABELS[channel] ?? channel}</span>
+                      <span>{tOrders(`channel.${channel}`)}</span>
                       <span className="font-medium">₪{revenue.toFixed(2)}</span>
                     </div>
                     <div className="h-2 rounded-full bg-muted overflow-hidden">
@@ -148,15 +131,15 @@ function OverviewSection() {
             {/* Orders by status */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Orders by Status</CardTitle>
+                <CardTitle className="text-base">{t('ordersByStatus')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 {statusEntries.length === 0 && (
-                  <p className="text-sm text-muted-foreground">No data</p>
+                  <p className="text-sm text-muted-foreground">{t('noData')}</p>
                 )}
                 {statusEntries.map(([status, count]) => (
                   <div key={status} className="flex justify-between text-sm">
-                    <span className="capitalize">{STATUS_LABELS[status] ?? status}</span>
+                    <span>{tOrders(`status.${status}`)}</span>
                     <span className="font-medium tabular-nums">{count}</span>
                   </div>
                 ))}
@@ -168,23 +151,23 @@ function OverviewSection() {
           {data.topItems.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Top Items</CardTitle>
+                <CardTitle className="text-base">{t('topItems')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left pb-2 font-medium text-muted-foreground">Item</th>
-                      <th className="text-right pb-2 font-medium text-muted-foreground">Qty</th>
-                      <th className="text-right pb-2 font-medium text-muted-foreground">Revenue</th>
+                      <th className="text-start pb-2 font-medium text-muted-foreground">{t('item')}</th>
+                      <th className="text-end pb-2 font-medium text-muted-foreground">{t('qty')}</th>
+                      <th className="text-end pb-2 font-medium text-muted-foreground">{t('revenueCol')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.topItems.map((item, i) => (
                       <tr key={i} className="border-b last:border-0">
                         <td className="py-2">{item.menuItemName}</td>
-                        <td className="py-2 text-right tabular-nums">{item.qty}</td>
-                        <td className="py-2 text-right tabular-nums font-medium">
+                        <td className="py-2 text-end tabular-nums">{item.qty}</td>
+                        <td className="py-2 text-end tabular-nums font-medium">
                           ₪{item.revenue.toFixed(2)}
                         </td>
                       </tr>
@@ -306,6 +289,8 @@ function ClosedOrdersTab({
   endDate: string
 }) {
   const [status, setStatus] = useState<ClosedOrderStatusFilter | ''>('')
+  const t = useTranslations('reports')
+  const tOrders = useTranslations('orders')
   const { start, end } = useMemo(() => dayRangeToIso(startDate, endDate), [startDate, endDate])
   const { data, isLoading } = useClosedOrdersReport(locationId, { start, end, status: status || undefined })
 
@@ -313,16 +298,16 @@ function ClosedOrdersTab({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <label className="text-sm font-medium text-muted-foreground">Status</label>
+          <label className="text-sm font-medium text-muted-foreground">{t('status')}</label>
           <Select
             value={status}
             onChange={(e) => setStatus(e.target.value as ClosedOrderStatusFilter | '')}
             className="w-40"
           >
-            <option value="">All</option>
-            <option value="paid">Paid</option>
-            <option value="cancelled">Cancelled</option>
-            <option value="other">Other</option>
+            <option value="">{t('statusAll')}</option>
+            <option value="paid">{tOrders('status.paid')}</option>
+            <option value="cancelled">{tOrders('status.cancelled')}</option>
+            <option value="other">{t('statusOther')}</option>
           </Select>
         </div>
         <CsvExportButton
@@ -337,6 +322,7 @@ function ClosedOrdersTab({
 }
 
 function DetailedReportsSection({ locationId }: { locationId: string }) {
+  const t = useTranslations('reports')
   const [tab, setTab] = useState<ReportTab>('sales')
   const [startDate, setStartDate] = useState(isoDate(6))
   const [endDate, setEndDate] = useState(isoDate(0))
@@ -344,7 +330,7 @@ function DetailedReportsSection({ locationId }: { locationId: string }) {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-lg font-semibold">Detailed Reports</h2>
+        <h2 className="text-lg font-semibold">{t('detailedReports')}</h2>
         <DateRangeFields
           startDate={startDate}
           endDate={endDate}
@@ -354,15 +340,15 @@ function DetailedReportsSection({ locationId }: { locationId: string }) {
       </div>
 
       <div className="flex gap-1 rounded-lg border p-1 bg-muted w-fit">
-        {TABS.map((t) => (
+        {TABS.map((tabValue) => (
           <button
-            key={t.value}
-            onClick={() => setTab(t.value)}
+            key={tabValue}
+            onClick={() => setTab(tabValue)}
             className={`px-3 py-1 rounded-md text-sm transition-colors ${
-              tab === t.value ? 'bg-background shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'
+              tab === tabValue ? 'bg-background shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            {t.label}
+            {t(TAB_KEY[tabValue])}
           </button>
         ))}
       </div>
@@ -385,11 +371,12 @@ function DetailedReportsSection({ locationId }: { locationId: string }) {
 }
 
 export default function ReportsPage() {
+  const t = useTranslations('reports')
   const locationId = useAuthStore((s) => s.activeLocationId)
 
   return (
     <div className="p-6 space-y-10">
-      <h1 className="text-2xl font-bold">Reports</h1>
+      <h1 className="text-2xl font-bold">{t('title')}</h1>
       <OverviewSection />
       {locationId && <DetailedReportsSection locationId={locationId} />}
     </div>

@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 import { apiClient } from '@/lib/api'
 import type { ItemSelection } from '@smartserve/api-client'
 import type { Order, OrderItem } from '@smartserve/types'
@@ -25,12 +26,13 @@ export function useOrder(orderId: string | null) {
 
 export function useCreateOrder() {
   const qc = useQueryClient()
+  const t = useTranslations('orders')
   return useMutation({
     mutationFn: (data: Pick<Order, 'locationId' | 'tableId' | 'channel'> & Partial<Pick<Order, 'guestCount'>>) =>
       apiClient.orders.create(data),
     onSuccess: (o) => {
       qc.invalidateQueries({ queryKey: ['orders', o.locationId] })
-      toast.success('Order created')
+      toast.success(t('toastCreated'))
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -61,13 +63,14 @@ export function useAddOrderItem() {
 
 export function useSubmitOrder() {
   const qc = useQueryClient()
+  const t = useTranslations('orders')
   return useMutation({
     mutationFn: ({ orderId }: { orderId: string; locationId: string }) =>
       apiClient.orders.submit(orderId),
     onSuccess: (o) => {
       qc.invalidateQueries({ queryKey: ['order', o.id] })
       qc.invalidateQueries({ queryKey: ['orders', o.locationId] })
-      toast.success('Order submitted to kitchen')
+      toast.success(t('toastSubmitted'))
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -158,13 +161,14 @@ export function useRemoveOrderItem() {
 
 export function useCancelOrder() {
   const qc = useQueryClient()
+  const t = useTranslations('orders')
   return useMutation({
     mutationFn: ({ orderId }: { orderId: string; locationId: string }) =>
       apiClient.orders.cancel(orderId),
     onSuccess: (o) => {
       qc.invalidateQueries({ queryKey: ['order', o.id] })
       qc.invalidateQueries({ queryKey: ['orders', o.locationId] })
-      toast.success('Order cancelled')
+      toast.success(t('toastCancelled'))
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -172,13 +176,14 @@ export function useCancelOrder() {
 
 export function useFireCourse() {
   const qc = useQueryClient()
+  const t = useTranslations('orders')
   return useMutation({
     mutationFn: ({ orderId, course }: { orderId: string; course: number }) =>
       apiClient.orders.fireCourse(orderId, course),
     onSuccess: (o) => {
       qc.invalidateQueries({ queryKey: ['order', o.id] })
       qc.invalidateQueries({ queryKey: ['orders', o.locationId] })
-      toast.success('Course fired to kitchen')
+      toast.success(t('toastCourseFired'))
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -203,6 +208,7 @@ export function useAssignGuests() {
 
 export function useApplyItemDiscount() {
   const qc = useQueryClient()
+  const t = useTranslations('orders')
   return useMutation({
     mutationFn: ({
       orderId,
@@ -217,7 +223,7 @@ export function useApplyItemDiscount() {
     }) => apiClient.orders.applyItemDiscount(orderId, items, discountType, discountValue),
     onSuccess: (o) => {
       qc.invalidateQueries({ queryKey: ['order', o.id] })
-      toast.success('Discount applied')
+      toast.success(t('toastDiscountApplied'))
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -225,12 +231,13 @@ export function useApplyItemDiscount() {
 
 export function useSetItemComp() {
   const qc = useQueryClient()
+  const t = useTranslations('orders')
   return useMutation({
     mutationFn: ({ orderId, items, comped }: { orderId: string; items: ItemSelection[]; comped: boolean }) =>
       apiClient.orders.setItemComp(orderId, items, comped),
     onSuccess: (o, { comped }) => {
       qc.invalidateQueries({ queryKey: ['order', o.id] })
-      toast.success(comped ? 'Marked on the house' : 'Comp removed')
+      toast.success(comped ? t('toastComped') : t('toastCompRemoved'))
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -238,6 +245,7 @@ export function useSetItemComp() {
 
 export function useDeleteOrderItems() {
   const qc = useQueryClient()
+  const t = useTranslations('orders')
   return useMutation({
     mutationFn: ({
       orderId,
@@ -250,7 +258,7 @@ export function useDeleteOrderItems() {
     }) => apiClient.orders.deleteItems(orderId, items, override),
     onSuccess: (o) => {
       qc.invalidateQueries({ queryKey: ['order', o.id] })
-      toast.success('Item deleted')
+      toast.success(t('toastItemDeleted'))
     },
     onError: (e: Error) => toast.error(e.message),
   })

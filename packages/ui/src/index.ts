@@ -9,3 +9,5 @@ export * from './select'
 export * from './spinner'
 export * from './dialog'
 export * from './checkbox'
+export * from './language-switcher'
+

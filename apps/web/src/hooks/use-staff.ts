@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 import { apiClient } from '@/lib/api'
 import type { User } from '@smartserve/types'
 
@@ -15,12 +16,13 @@ export function useStaff(businessId: string | null) {
 
 export function useCreateStaff() {
   const qc = useQueryClient()
+  const t = useTranslations('staff')
   return useMutation({
     mutationFn: (data: Omit<User, 'id'> & { password?: string; pin?: string }) =>
       apiClient.staff.create(data),
     onSuccess: (u) => {
       qc.invalidateQueries({ queryKey: ['staff', u.businessId] })
-      toast.success('Staff member added')
+      toast.success(t('toastAdded'))
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -28,12 +30,13 @@ export function useCreateStaff() {
 
 export function useUpdateStaff() {
   const qc = useQueryClient()
+  const t = useTranslations('staff')
   return useMutation({
     mutationFn: ({ id, data }: { id: string; businessId: string; data: Partial<User> & { pin?: string } }) =>
       apiClient.staff.update(id, data),
     onSuccess: (u) => {
       qc.invalidateQueries({ queryKey: ['staff', u.businessId] })
-      toast.success('Staff member updated')
+      toast.success(t('toastUpdated'))
     },
     onError: (e: Error) => toast.error(e.message),
   })

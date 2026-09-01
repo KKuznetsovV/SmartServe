@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 import { useAuthStore } from '@/lib/auth-store'
 import { apiClient } from '@/lib/api'
 import { Button } from '@/components/ui/button'
@@ -34,6 +35,7 @@ const CURRENCIES = ['ILS', 'USD', 'EUR', 'GBP']
 const TIMEZONES = ['Asia/Jerusalem', 'Europe/London', 'America/New_York', 'America/Los_Angeles', 'Europe/Paris']
 
 export default function SettingsPage() {
+  const t = useTranslations('settings')
   const qc = useQueryClient()
   const activeBusinessId = useAuthStore((s) => s.activeBusinessId)
   const activeLocationId = useAuthStore((s) => s.activeLocationId)
@@ -54,7 +56,7 @@ export default function SettingsPage() {
     mutationFn: (data: BizForm) => apiClient.businesses.update(activeBusinessId!, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['business', activeBusinessId] })
-      toast.success('Business settings saved')
+      toast.success(t('businessSaved'))
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -63,7 +65,7 @@ export default function SettingsPage() {
     mutationFn: (data: LocForm) => apiClient.locations.update(activeLocationId!, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['location', activeLocationId] })
-      toast.success('Location settings saved')
+      toast.success(t('locationSaved'))
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -87,37 +89,37 @@ export default function SettingsPage() {
 
   return (
     <div className="p-6 space-y-8 max-w-xl">
-      <h1 className="text-2xl font-bold">Settings</h1>
+      <h1 className="text-2xl font-bold">{t('title')}</h1>
 
       {/* Business */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Business</CardTitle>
+          <CardTitle className="text-base">{t('business')}</CardTitle>
         </CardHeader>
         <CardContent>
           {bizLoading && <Spinner />}
           {!bizLoading && (
             <form onSubmit={bizForm.handleSubmit((v) => updateBiz.mutate(v))} className="space-y-4">
               <div className="space-y-1">
-                <Label>Business name</Label>
+                <Label>{t('businessName')}</Label>
                 <Input {...bizForm.register('name')} />
                 {bizForm.formState.errors.name && (
                   <p className="text-xs text-destructive">{bizForm.formState.errors.name.message}</p>
                 )}
               </div>
               <div className="space-y-1">
-                <Label>Tax ID (optional)</Label>
+                <Label>{t('taxIdOptional')}</Label>
                 <Input {...bizForm.register('taxId')} placeholder="e.g. 512345678" />
               </div>
               <div className="space-y-1">
-                <Label>Currency</Label>
+                <Label>{t('currency')}</Label>
                 <Select {...bizForm.register('currency')}>
                   {CURRENCIES.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </Select>
               </div>
-              <Button type="submit" disabled={updateBiz.isPending}>Save Business</Button>
+              <Button type="submit" disabled={updateBiz.isPending}>{t('saveBusiness')}</Button>
             </form>
           )}
         </CardContent>
@@ -126,26 +128,26 @@ export default function SettingsPage() {
       {/* Location */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Location</CardTitle>
+          <CardTitle className="text-base">{t('location')}</CardTitle>
         </CardHeader>
         <CardContent>
           {locLoading && <Spinner />}
           {!locLoading && (
             <form onSubmit={locForm.handleSubmit((v) => updateLoc.mutate(v))} className="space-y-4">
               <div className="space-y-1">
-                <Label>Location name</Label>
+                <Label>{t('locationName')}</Label>
                 <Input {...locForm.register('name')} />
                 {locForm.formState.errors.name && (
                   <p className="text-xs text-destructive">{locForm.formState.errors.name.message}</p>
                 )}
               </div>
               <div className="space-y-1">
-                <Label>Address (optional)</Label>
-                <Input {...locForm.register('address')} placeholder="Street, City" />
+                <Label>{t('addressOptional')}</Label>
+                <Input {...locForm.register('address')} placeholder={t('addressPlaceholder')} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label>Timezone</Label>
+                  <Label>{t('timezone')}</Label>
                   <Select {...locForm.register('timezone')}>
                     {TIMEZONES.map((tz) => (
                       <option key={tz} value={tz}>{tz}</option>
@@ -153,14 +155,15 @@ export default function SettingsPage() {
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label>Language</Label>
+                  <Label>{t('defaultLanguage')}</Label>
                   <Select {...locForm.register('language')}>
                     <option value="he">עברית</option>
                     <option value="en">English</option>
                   </Select>
                 </div>
               </div>
-              <Button type="submit" disabled={updateLoc.isPending}>Save Location</Button>
+              <p className="text-xs text-muted-foreground">{t('defaultLanguageHint')}</p>
+              <Button type="submit" disabled={updateLoc.isPending}>{t('saveLocation')}</Button>
             </form>
           )}
         </CardContent>

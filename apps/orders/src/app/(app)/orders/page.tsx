@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { useOrders, useCreateOrder } from '@/hooks/use-orders'
 import { useLocationWs } from '@/hooks/use-ws'
 import { useTables } from '@/hooks/use-tables'
@@ -14,16 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import type { OrderStatus, OrderChannel } from '@smartserve/types'
 
-const STATUS_OPTIONS: { value: string; label: string }[] = [
-  { value: '', label: 'All' },
-  { value: 'open', label: 'Open' },
-  { value: 'submitted', label: 'Submitted' },
-  { value: 'preparing', label: 'Preparing' },
-  { value: 'ready', label: 'Ready' },
-  { value: 'served', label: 'Served' },
-  { value: 'paid', label: 'Paid' },
-  { value: 'cancelled', label: 'Cancelled' },
-]
+const STATUS_VALUES = ['', 'open', 'submitted', 'preparing', 'ready', 'served', 'paid', 'cancelled'] as const
 
 const STATUS_VARIANT: Record<OrderStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   open: 'outline',
@@ -36,14 +28,11 @@ const STATUS_VARIANT: Record<OrderStatus, 'default' | 'secondary' | 'destructive
   cancelled: 'destructive',
 }
 
-const CHANNEL_LABELS: Record<OrderChannel, string> = {
-  dine_in: 'Dine In',
-  takeaway: 'Takeaway',
-  delivery: 'Delivery',
-  online: 'Online',
-}
+const CHANNELS: OrderChannel[] = ['dine_in', 'takeaway', 'delivery', 'online']
 
 export default function OrdersPage() {
+  const t = useTranslations('orders')
+  const tCommon = useTranslations('common')
   const locationId = useAuthStore((s) => s.activeLocationId)
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [showCreate, setShowCreate] = useState(false)
@@ -79,49 +68,48 @@ export default function OrdersPage() {
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Orders</h1>
-        <Button onClick={() => setShowCreate((v) => !v)}>+ New Order</Button>
+        <h1 className="text-2xl font-bold">{t('title')}</h1>
+        <Button onClick={() => setShowCreate((v) => !v)}>+ {t('newOrder')}</Button>
       </div>
 
       {showCreate && (
         <Card className="p-4 space-y-3 max-w-sm">
-          <p className="font-medium text-sm">New Order</p>
+          <p className="font-medium text-sm">{t('newOrder')}</p>
           <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">Table (optional)</label>
+            <label className="text-xs text-muted-foreground">{t('tableOptional')}</label>
             <Select value={selectedTableId} onChange={(e) => setSelectedTableId(e.target.value)}>
-              <option value="">No table</option>
+              <option value="">{t('noTableOption')}</option>
               {tables?.map((t) => (
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
             </Select>
           </div>
           <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">Channel</label>
+            <label className="text-xs text-muted-foreground">{t('channelLabel')}</label>
             <Select value={channel} onChange={(e) => setChannel(e.target.value as OrderChannel)}>
-              <option value="dine_in">Dine In</option>
-              <option value="takeaway">Takeaway</option>
-              <option value="delivery">Delivery</option>
-              <option value="online">Online</option>
+              {CHANNELS.map((c) => (
+                <option key={c} value={c}>{t(`channel.${c}`)}</option>
+              ))}
             </Select>
           </div>
           {guestCountRequired && (
             <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Number of Guests</label>
+              <label className="text-xs text-muted-foreground">{t('guestCountLabel')}</label>
               <Input
                 type="number"
                 min={1}
                 value={guestCount}
                 onChange={(e) => setGuestCount(e.target.value)}
-                placeholder="e.g. 4"
+                placeholder={t('guestCountPlaceholder')}
               />
             </div>
           )}
           <div className="flex gap-2">
             <Button size="sm" onClick={handleCreateOrder} disabled={createOrder.isPending || guestCountInvalid}>
-              Create
+              {tCommon('create')}
             </Button>
             <Button size="sm" variant="outline" onClick={() => setShowCreate(false)}>
-              Cancel
+              {tCommon('cancel')}
             </Button>
           </div>
         </Card>
@@ -129,17 +117,17 @@ export default function OrdersPage() {
 
       {/* Status filter */}
       <div className="flex flex-wrap gap-2">
-        {STATUS_OPTIONS.map((opt) => (
+        {STATUS_VALUES.map((value) => (
           <button
-            key={opt.value}
-            onClick={() => setStatusFilter(opt.value)}
+            key={value}
+            onClick={() => setStatusFilter(value)}
             className={`px-3 py-1 rounded-full text-sm border transition-colors ${
-              statusFilter === opt.value
+              statusFilter === value
                 ? 'bg-primary text-primary-foreground border-primary'
                 : 'bg-background border-border hover:bg-muted'
             }`}
           >
-            {opt.label}
+            {value === '' ? t('allStatuses') : t(`status.${value}`)}
           </button>
         ))}
       </div>
@@ -147,7 +135,7 @@ export default function OrdersPage() {
       {isLoading && <Spinner />}
 
       {!isLoading && orders?.length === 0 && (
-        <p className="text-muted-foreground">No orders found.</p>
+        <p className="text-muted-foreground">{t('noOrders')}</p>
       )}
 
       <div className="space-y-2">
@@ -164,18 +152,18 @@ export default function OrdersPage() {
                       <span className="text-sm text-muted-foreground">{order.tableName}</span>
                     )}
                     <span className="text-xs text-muted-foreground">
-                      {CHANNEL_LABELS[order.channel]}
+                      {t(`channel.${order.channel}`)}
                     </span>
                     {order.guestCount != null && (
                       <span className="text-xs text-muted-foreground">
-                        {order.guestCount} guest{order.guestCount !== 1 ? 's' : ''}
+                        {t('guestCount', { count: order.guestCount })}
                       </span>
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {new Date(order.createdAt).toLocaleTimeString('he-IL')}
                     {' · '}
-                    {order.items.length} item{order.items.length !== 1 ? 's' : ''}
+                    {t('itemCount', { count: order.items.length })}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -183,7 +171,7 @@ export default function OrdersPage() {
                     ₪{order.total.toFixed(2)}
                   </span>
                   <Badge variant={STATUS_VARIANT[order.status as OrderStatus]}>
-                    {order.status}
+                    {t(`status.${order.status}`)}
                   </Badge>
                 </div>
               </CardContent>

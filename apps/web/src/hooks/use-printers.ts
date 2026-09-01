@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 import { apiClient } from '@/lib/api'
 import type { Printer } from '@smartserve/types'
 
@@ -23,11 +24,12 @@ export function usePrinterRoutes(locationId: string | null) {
 
 export function useCreatePrinter() {
   const qc = useQueryClient()
+  const t = useTranslations('printers')
   return useMutation({
     mutationFn: (data: Omit<Printer, 'id'>) => apiClient.printers.create(data),
     onSuccess: (p) => {
       qc.invalidateQueries({ queryKey: ['printers', p.locationId] })
-      toast.success('Printer added')
+      toast.success(t('toastAdded'))
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -35,12 +37,13 @@ export function useCreatePrinter() {
 
 export function useUpdatePrinter() {
   const qc = useQueryClient()
+  const t = useTranslations('printers')
   return useMutation({
     mutationFn: ({ id, locationId, data }: { id: string; locationId: string; data: Partial<Printer> }) =>
       apiClient.printers.update(id, data),
     onSuccess: (_, { locationId }) => {
       qc.invalidateQueries({ queryKey: ['printers', locationId] })
-      toast.success('Printer updated')
+      toast.success(t('toastUpdated'))
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -48,11 +51,12 @@ export function useUpdatePrinter() {
 
 export function useDeletePrinter() {
   const qc = useQueryClient()
+  const t = useTranslations('printers')
   return useMutation({
     mutationFn: ({ id }: { id: string; locationId: string }) => apiClient.printers.delete(id),
     onSuccess: (_, { locationId }) => {
       qc.invalidateQueries({ queryKey: ['printers', locationId] })
-      toast.success('Printer removed')
+      toast.success(t('toastRemoved'))
     },
     onError: (e: Error) => toast.error(e.message),
   })

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Plus } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useMenuItems } from '@/hooks/use-menu'
@@ -13,6 +14,7 @@ import type { MenuItem } from '@smartserve/types'
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function CategoryItemsPage() {
+  const t = useTranslations('menu')
   const params = useParams()
   const router = useRouter()
   const categoryId = params.categoryId as string
@@ -37,17 +39,17 @@ export default function CategoryItemsPage() {
       {/* Header */}
       <div className="mb-6 flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => router.push('/menu')}>
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-5 w-5 rtl:-scale-x-100" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">Menu Items</h1>
+          <h1 className="text-2xl font-bold">{t('itemsTitle')}</h1>
           <p className="text-sm text-muted-foreground">
-            {items.length} item{items.length !== 1 ? 's' : ''}
+            {t('itemsCount', { count: items.length })}
           </p>
         </div>
         <Button onClick={openCreate}>
-          <Plus className="mr-1 h-4 w-4" />
-          Add Item
+          <Plus className="me-1 h-4 w-4" />
+          {t('addItem')}
         </Button>
       </div>
 
@@ -58,10 +60,10 @@ export default function CategoryItemsPage() {
         </div>
       ) : items.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
-          <p className="mb-4 text-muted-foreground">No items in this category yet</p>
+          <p className="mb-4 text-muted-foreground">{t('noItemsInCategory')}</p>
           <Button variant="outline" onClick={openCreate}>
-            <Plus className="mr-1 h-4 w-4" />
-            Add first item
+            <Plus className="me-1 h-4 w-4" />
+            {t('addFirstItem')}
           </Button>
         </div>
       ) : (

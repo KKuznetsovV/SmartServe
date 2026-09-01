@@ -1,10 +1,12 @@
 'use client'
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { useTranslations } from 'next-intl'
 import { formatPrice } from '@/lib/utils'
 import type { SalesReport } from '@smartserve/types'
 
 export function SalesReportView({ report }: { report: SalesReport }) {
+  const t = useTranslations('reports')
   const chartData = report.rows
     .slice()
     .sort((a, b) => b.revenue - a.revenue)
@@ -15,10 +17,10 @@ export function SalesReportView({ report }: { report: SalesReport }) {
     <div className="space-y-4">
       <div className="flex gap-6 text-sm">
         <p>
-          Total qty: <span className="font-medium tabular-nums">{report.totalQty}</span>
+          {t('totalQty')}: <span className="font-medium tabular-nums">{report.totalQty}</span>
         </p>
         <p>
-          Total revenue: <span className="font-medium tabular-nums">{formatPrice(report.totalRevenue)}</span>
+          {t('totalRevenue')}: <span className="font-medium tabular-nums">{formatPrice(report.totalRevenue)}</span>
         </p>
       </div>
 
@@ -39,26 +41,26 @@ export function SalesReportView({ report }: { report: SalesReport }) {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b">
-            <th className="pb-2 text-left font-medium text-muted-foreground">
-              {report.groupBy === 'item' ? 'Item' : report.groupBy === 'category' ? 'Category' : 'Menu'}
+            <th className="pb-2 text-start font-medium text-muted-foreground">
+              {report.groupBy === 'item' ? t('groupBy_item') : report.groupBy === 'category' ? t('groupBy_category') : t('groupBy_menu')}
             </th>
-            <th className="pb-2 text-right font-medium text-muted-foreground">Qty</th>
-            <th className="pb-2 text-right font-medium text-muted-foreground">Revenue</th>
+            <th className="pb-2 text-end font-medium text-muted-foreground">{t('qty')}</th>
+            <th className="pb-2 text-end font-medium text-muted-foreground">{t('revenueCol')}</th>
           </tr>
         </thead>
         <tbody>
           {report.rows.length === 0 && (
             <tr>
               <td colSpan={3} className="py-4 text-center text-muted-foreground">
-                No sales in this range
+                {t('noSalesInRange')}
               </td>
             </tr>
           )}
           {report.rows.map((row, i) => (
             <tr key={row.groupId ?? i} className="border-b last:border-0">
               <td className="py-2">{row.groupLabel}</td>
-              <td className="py-2 text-right tabular-nums">{row.qty}</td>
-              <td className="py-2 text-right font-medium tabular-nums">{formatPrice(row.revenue)}</td>
+              <td className="py-2 text-end tabular-nums">{row.qty}</td>
+              <td className="py-2 text-end font-medium tabular-nums">{formatPrice(row.revenue)}</td>
             </tr>
           ))}
         </tbody>

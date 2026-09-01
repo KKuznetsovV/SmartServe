@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Sparkles } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -12,12 +13,6 @@ import type { AiCommandResponse } from '@smartserve/types'
 import { ClosedOrdersReportView } from './closed-orders-report-view'
 import { SalesReportView } from './sales-report-view'
 import { ServerSalesReportView } from './server-sales-report-view'
-
-const EXAMPLES = [
-  'What were my best-selling items last week?',
-  'Who sold the most burgers this month?',
-  'List all cancelled orders from yesterday',
-]
 
 function ReportResult({ response }: { response: AiCommandResponse }) {
   const { report } = response
@@ -32,6 +27,8 @@ function ReportResult({ response }: { response: AiCommandResponse }) {
  * filters below — reuses the same read-only 'report.query' AI intent, which
  * returns its result inline (no /confirm step, since it never mutates data). */
 export function AiReportQuery() {
+  const t = useTranslations('reports')
+  const examples = t.raw('examples') as string[]
   const locationId = useAuthStore((s) => s.activeLocationId)
   const [message, setMessage] = useState('')
   const [response, setResponse] = useState<AiCommandResponse | null>(null)
@@ -49,12 +46,12 @@ export function AiReportQuery() {
         context: { locationId, currentScreen: 'reports' },
       })
       if (result.intent !== 'report.query' || !result.report) {
-        setError("That didn't look like a report request. Try rephrasing, e.g. one of the examples below.")
+        setError(t('notAReportRequest'))
         return
       }
       setResponse(result)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to run that report')
+      setError(err instanceof Error ? err.message : t('reportFailed'))
     }
   }
 
@@ -63,7 +60,7 @@ export function AiReportQuery() {
       <CardContent className="space-y-4 p-4">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
-          <p className="text-sm font-medium">Ask AI for a report</p>
+          <p className="text-sm font-medium">{t('askAiTitle')}</p>
         </div>
 
         <div className="flex gap-2">
@@ -71,16 +68,16 @@ export function AiReportQuery() {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleAsk()}
-            placeholder="e.g. Show sales by category for March 1 to March 15"
+            placeholder={t('askPlaceholder')}
             dir="auto"
           />
           <Button onClick={handleAsk} disabled={aiCommand.isPending || !message.trim()}>
-            {aiCommand.isPending ? <Spinner className="h-4 w-4" /> : 'Ask'}
+            {aiCommand.isPending ? <Spinner className="h-4 w-4" /> : t('ask')}
           </Button>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {EXAMPLES.map((example) => (
+          {examples.map((example) => (
             <button
               key={example}
               onClick={() => setMessage(example)}

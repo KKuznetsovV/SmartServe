@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { ChevronRight, ChevronDown, Pencil, Trash2, Plus, GripVertical } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -34,6 +35,7 @@ export function CategoryNode({
   onAddItem: (categoryId: string) => void
   onEditItem: (item: MenuItem) => void
 }) {
+  const t = useTranslations('menu')
   const [expanded, setExpanded] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const children = categories.filter((c) => c.parentId === category.id)
@@ -91,14 +93,14 @@ export function CategoryNode({
             {expanded ? (
               <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
             ) : (
-              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground rtl:-scale-x-100" />
             )}
             <span className="font-medium truncate">{category.name}</span>
             {category.nameHe && (
               <span className="text-sm text-muted-foreground dir-rtl">{category.nameHe}</span>
             )}
             <Badge variant={category.active ? 'success' : 'secondary'}>
-              {category.active ? 'Active' : 'Hidden'}
+              {category.active ? t('active') : t('hidden')}
             </Badge>
           </div>
           <div className="flex shrink-0 items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -126,7 +128,7 @@ export function CategoryNode({
       </Card>
 
       {expanded && (
-        <div className="ml-6 mt-2 space-y-2 border-l-2 pl-4">
+        <div className="ms-6 mt-2 space-y-2 border-s-2 ps-4">
           {children.length > 0 && (
             <div className="space-y-2">
               {children.map((child) => (
@@ -165,7 +167,7 @@ export function CategoryNode({
                       e.dataTransfer.effectAllowed = 'move'
                     }}
                     className="mt-2 shrink-0 cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
-                    title="Drag to reorder, or drop onto another category to move it there"
+                    title={t('dragToReorderHint')}
                   >
                     <GripVertical className="h-4 w-4" />
                   </div>
@@ -182,8 +184,8 @@ export function CategoryNode({
             size="sm"
             onClick={(e) => { e.stopPropagation(); onAddItem(category.id) }}
           >
-            <Plus className="mr-1 h-3 w-3" />
-            Add Item
+            <Plus className="me-1 h-3 w-3" />
+            {t('addItem')}
           </Button>
         </div>
       )}

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useTranslations } from 'next-intl'
 import {
   usePrinters,
   usePrinterRoutes,
@@ -26,12 +27,6 @@ import { Select } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import type { Printer, PrinterType } from '@smartserve/types'
 
-const TYPE_LABELS: Record<PrinterType, string> = {
-  receipt: 'Receipt',
-  kitchen: 'Kitchen',
-  label: 'Label',
-}
-
 const TYPE_VARIANT: Record<PrinterType, 'default' | 'secondary' | 'outline'> = {
   receipt: 'default',
   kitchen: 'secondary',
@@ -47,6 +42,8 @@ const printerSchema = z.object({
 type PrinterForm = z.infer<typeof printerSchema>
 
 export default function PrintersPage() {
+  const t = useTranslations('printers')
+  const tCommon = useTranslations('common')
   const locationId = useAuthStore((s) => s.activeLocationId)
   const { data: printers, isLoading } = usePrinters(locationId)
   const { data: routes } = usePrinterRoutes(locationId)
@@ -89,7 +86,7 @@ export default function PrintersPage() {
   }
 
   async function handleDelete(p: Printer) {
-    if (!confirm(`Delete printer "${p.name}"?`)) return
+    if (!confirm(t('confirmDelete', { name: p.name }))) return
     await deletePrinter.mutateAsync({ id: p.id, locationId: p.locationId })
   }
 
@@ -118,14 +115,14 @@ export default function PrintersPage() {
   return (
     <div className="p-6 space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Printers</h1>
-        <Button onClick={openCreate}>+ Add Printer</Button>
+        <h1 className="text-2xl font-bold">{t('title')}</h1>
+        <Button onClick={openCreate}>+ {t('addPrinter')}</Button>
       </div>
 
       {isLoading && <Spinner />}
 
       {!isLoading && printers?.length === 0 && (
-        <p className="text-muted-foreground">No printers configured yet.</p>
+        <p className="text-muted-foreground">{t('noPrinters')}</p>
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -135,17 +132,17 @@ export default function PrintersPage() {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">{p.name}</CardTitle>
                 <Badge variant={TYPE_VARIANT[p.type as PrinterType]} className="text-xs">
-                  {TYPE_LABELS[p.type as PrinterType]}
+                  {t(`type_${p.type}` as 'type_receipt' | 'type_kitchen' | 'type_label')}
                 </Badge>
               </div>
             </CardHeader>
             <CardContent className="space-y-2">
               <p className="text-sm text-muted-foreground">
-                {p.ip ? `${p.ip}:${p.port}` : `Port ${p.port}`}
+                {p.ip ? `${p.ip}:${p.port}` : `${t('port')} ${p.port}`}
               </p>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openEdit(p)}>
-                  Edit
+                  {tCommon('edit')}
                 </Button>
                 <Button
                   variant="outline"
@@ -153,7 +150,7 @@ export default function PrintersPage() {
                   className="h-7 text-xs text-destructive hover:text-destructive"
                   onClick={() => handleDelete(p)}
                 >
-                  Delete
+                  {tCommon('delete')}
                 </Button>
               </div>
             </CardContent>
@@ -164,10 +161,9 @@ export default function PrintersPage() {
       {/* Routing section */}
       {(items?.length ?? 0) > 0 && (printers?.length ?? 0) > 0 && (
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold">Print Routing</h2>
+          <h2 className="text-lg font-semibold">{t('routingTitle')}</h2>
           <p className="text-sm text-muted-foreground">
-            Choose which printer(s) each item&apos;s tickets print to — an item can be routed to several printers
-            at once (e.g. kitchen + receipt).
+            {t('routingHint')}
           </p>
           <Card>
             <CardContent className="p-4 space-y-6">
@@ -179,8 +175,8 @@ export default function PrintersPage() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="text-left text-xs text-muted-foreground">
-                            <th className="py-1 pr-4 font-medium">Item</th>
+                          <tr className="text-start text-xs text-muted-foreground">
+                            <th className="py-1 pe-4 font-medium">{t('item')}</th>
                             {printers?.map((p) => (
                               <th key={p.id} className="py-1 px-2 font-medium text-center whitespace-nowrap">
                                 {p.name}
@@ -191,7 +187,7 @@ export default function PrintersPage() {
                         <tbody>
                           {itemsByCategory.get(cat.id)?.map((item) => (
                             <tr key={item.id} className="border-t">
-                              <td className="py-1.5 pr-4">{item.name}</td>
+                              <td className="py-1.5 pe-4">{item.name}</td>
                               {printers?.map((p) => (
                                 <td key={p.id} className="py-1.5 px-2 text-center">
                                   <input
@@ -217,37 +213,37 @@ export default function PrintersPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{editing ? 'Edit Printer' : 'Add Printer'}</DialogTitle>
+            <DialogTitle>{editing ? t('editPrinter') : t('addPrinter')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-1">
-              <Label>Name</Label>
+              <Label>{t('name')}</Label>
               <Input {...register('name')} placeholder="e.g. Kitchen Printer" />
               {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
             </div>
             <div className="space-y-1">
-              <Label>Type</Label>
+              <Label>{t('type')}</Label>
               <Select {...register('type')}>
-                <option value="receipt">Receipt</option>
-                <option value="kitchen">Kitchen</option>
-                <option value="label">Label</option>
+                <option value="receipt">{t('type_receipt')}</option>
+                <option value="kitchen">{t('type_kitchen')}</option>
+                <option value="label">{t('type_label')}</option>
               </Select>
             </div>
             <div className="space-y-1">
-              <Label>IP Address (optional)</Label>
+              <Label>{t('ipAddressOptional')}</Label>
               <Input {...register('ip')} placeholder="192.168.1.100" />
             </div>
             <div className="space-y-1">
-              <Label>Port</Label>
+              <Label>{t('port')}</Label>
               <Input type="number" {...register('port')} />
               {errors.port && <p className="text-xs text-destructive">{errors.port.message}</p>}
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                Cancel
+                {tCommon('cancel')}
               </Button>
               <Button type="submit" disabled={createPrinter.isPending || updatePrinter.isPending}>
-                {editing ? 'Save' : 'Add'}
+                {editing ? tCommon('save') : tCommon('add')}
               </Button>
             </div>
           </form>

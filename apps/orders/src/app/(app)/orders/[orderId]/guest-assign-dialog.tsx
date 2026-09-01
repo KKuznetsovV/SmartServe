@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useAssignGuests } from '@/hooks/use-orders'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -19,6 +20,8 @@ interface Props {
  * This is purely organizational (e.g. so a table can later be paid per-guest); it is
  * entirely optional and only some items on an order need to be tagged. */
 export function GuestAssignDialog({ open, onOpenChange, orderId, items, guestCount, onDone }: Props) {
+  const t = useTranslations('guestAssignDialog')
+  const tCommon = useTranslations('common')
   const [guestNumber, setGuestNumber] = useState<number | null>(1)
   const assignGuests = useAssignGuests()
   const guestOptions = Array.from({ length: Math.max(guestCount, 2) }, (_, i) => i + 1)
@@ -36,13 +39,10 @@ export function GuestAssignDialog({ open, onOpenChange, orderId, items, guestCou
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Assign to Guest</DialogTitle>
+          <DialogTitle>{t('title')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Tag {items.length} item{items.length === 1 ? '' : 's'} with a guest number, or clear the tag
-            to share it across the table again.
-          </p>
+          <p className="text-sm text-muted-foreground">{t('tagHint', { count: items.length })}</p>
           <div className="flex flex-wrap gap-2">
             {guestOptions.map((g) => (
               <Button
@@ -52,7 +52,7 @@ export function GuestAssignDialog({ open, onOpenChange, orderId, items, guestCou
                 size="sm"
                 onClick={() => setGuestNumber(g)}
               >
-                Guest {g}
+                {t('guest', { number: g })}
               </Button>
             ))}
             <Button
@@ -61,15 +61,15 @@ export function GuestAssignDialog({ open, onOpenChange, orderId, items, guestCou
               size="sm"
               onClick={() => setGuestNumber(null)}
             >
-              Shared / Clear
+              {t('sharedClear')}
             </Button>
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {tCommon('cancel')}
             </Button>
             <Button onClick={handleConfirm} disabled={assignGuests.isPending}>
-              Apply
+              {tCommon('apply')}
             </Button>
           </div>
         </div>

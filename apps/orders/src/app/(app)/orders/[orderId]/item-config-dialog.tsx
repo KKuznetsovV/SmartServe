@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -48,6 +49,8 @@ export function ItemConfigDialog({
   title,
   confirmLabel,
 }: Props) {
+  const t = useTranslations('itemConfigDialog')
+  const tCommon = useTranslations('common')
   const [qty, setQty] = useState(1)
   const [notes, setNotes] = useState('')
   const [selectedModifiers, setSelectedModifiers] = useState<Record<string, string[]>>({})
@@ -125,8 +128,8 @@ export function ItemConfigDialog({
                 <Label>
                   {group.name}
                   {group.required && <span className="text-destructive"> *</span>}
-                  <span className="ml-1 text-xs text-muted-foreground">
-                    {group.maxSelect > 1 ? `up to ${group.maxSelect}` : 'choose one'}
+                  <span className="ms-1 text-xs text-muted-foreground">
+                    {group.maxSelect > 1 ? t('upTo', { max: group.maxSelect }) : t('chooseOne')}
                   </span>
                 </Label>
                 <div className="flex flex-wrap gap-2">
@@ -157,7 +160,7 @@ export function ItemConfigDialog({
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label>Quantity</Label>
+                <Label>{t('quantity')}</Label>
                 <div className="flex items-center gap-2">
                   <Button
                     type="button"
@@ -174,17 +177,17 @@ export function ItemConfigDialog({
                 </div>
               </div>
               <div className="space-y-1">
-                <Label>Notes (optional)</Label>
-                <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. no ice" />
+                <Label>{t('notesOptional')}</Label>
+                <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t('notesPlaceholder')} />
               </div>
             </div>
 
             <div className="space-y-1">
-              <Label>Fire Course</Label>
+              <Label>{t('fireCourse')}</Label>
               <Select value={fireCourse} onChange={(e) => setFireCourse(Number(e.target.value))}>
                 {[1, 2, 3, 4, 5].map((course) => (
                   <option key={course} value={course}>
-                    {course === 1 ? '1 (fires immediately)' : course}
+                    {course === 1 ? t('firesImmediately') : course}
                   </option>
                 ))}
               </Select>
@@ -192,11 +195,11 @@ export function ItemConfigDialog({
 
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {tCommon('cancel')}
               </Button>
               <Button type="button" onClick={handleConfirm} disabled={!canSubmit || pending}>
-                {pending && <Spinner className="mr-2 h-4 w-4" />}
-                {confirmLabel ?? 'Add to Order'}
+                {pending && <Spinner className="me-2 h-4 w-4" />}
+                {confirmLabel ?? t('addToOrder')}
               </Button>
             </div>
           </div>

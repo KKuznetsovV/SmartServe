@@ -12,7 +12,10 @@
     "search": "חיפוש",
     "back": "חזור",
     "yes": "כן",
-    "no": "לא"
+    "no": "לא",
+    "language": "שפה",
+    "apply": "החל",
+    "create": "צור"
   },
   "nav": {
     "dashboard": "לוח בקרה",
@@ -26,7 +29,9 @@
     "ai": "עוזר AI",
     "discounts": "הנחות",
     "stock": "מלאי",
-    "shifts": "משמרות"
+    "shifts": "משמרות",
+    "kitchenDisplay": "תצוגת מטבח",
+    "customerDisplay": "תצוגת לקוחות"
   },
   "auth": {
     "login": "כניסה",
@@ -34,7 +39,24 @@
     "email": "אימייל",
     "password": "סיסמה",
     "loginButton": "כניסה למערכת",
-    "invalidCredentials": "אימייל או סיסמה שגויים"
+    "invalidCredentials": "אימייל או סיסמה שגויים",
+    "changeLocation": "החלף מיקום",
+    "noStaffFound": "לא נמצא צוות עבור מיקום זה.",
+    "invalidPin": "קוד PIN שגוי",
+    "failedLoadStaff": "טעינת רשימת הצוות נכשלה"
+  },
+  "roles": {
+    "owner": "בעלים",
+    "manager": "מנהל",
+    "cashier": "קופאי",
+    "waiter": "מלצר",
+    "kitchen": "מטבח"
+  },
+  "setup": {
+    "title": "הגדרת מכשיר זה",
+    "description": "בקש/י ממנהל את מזהה המיקום (ניתן למצוא בפורטל הניהול).",
+    "locationIdLabel": "מזהה מיקום",
+    "saveContinue": "שמור והמשך"
   },
   "menu": {
     "categories": "קטגוריות",
@@ -46,7 +68,24 @@
     "available": "זמין",
     "unavailable": "לא זמין",
     "modifiers": "תוספות",
-    "taxRate": "מע\"מ"
+    "taxRate": "מע\"מ",
+    "toastCategoryCreated": "הקטגוריה נוצרה",
+    "toastCategoryUpdated": "הקטגוריה עודכנה",
+    "toastCategoryDeleted": "הקטגוריה נמחקה",
+    "toastItemCreated": "הפריט נוצר",
+    "toastItemUpdated": "הפריט עודכן",
+    "toastItemDeleted": "הפריט נמחק",
+    "toastModifierGroupCreated": "קבוצת התוספות נוצרה",
+    "toastModifierGroupDeleted": "קבוצת התוספות נמחקה"
+  },
+  "discounts": {
+    "toastCreated": "ההנחה נוצרה",
+    "toastUpdated": "ההנחה עודכנה",
+    "toastDeleted": "ההנחה נמחקה",
+    "toastApplied": "ההנחה הוחלה"
+  },
+  "payments": {
+    "toastRecorded": "התשלום נרשם"
   },
   "orders": {
     "newOrder": "הזמנה חדשה",
@@ -58,8 +97,190 @@
       "ready": "מוכן",
       "served": "הוגש",
       "paid": "שולם",
+      "split": "מפוצל",
       "cancelled": "בוטל"
-    }
+    },
+    "title": "הזמנות",
+    "allStatuses": "הכל",
+    "channel": {
+      "dine_in": "בישיבה",
+      "takeaway": "איסוף עצמי",
+      "delivery": "משלוח",
+      "online": "אונליין"
+    },
+    "tableOptional": "שולחן (אופציונלי)",
+    "noTableOption": "ללא שולחן",
+    "channelLabel": "ערוץ",
+    "guestCountLabel": "מספר אורחים",
+    "guestCountPlaceholder": "לדוגמה, 4",
+    "noOrders": "לא נמצאו הזמנות.",
+    "guestCount": "{count, plural, one {אורח אחד} other {# אורחים}}",
+    "itemCount": "{count, plural, one {פריט אחד} other {# פריטים}}",
+    "toastCreated": "ההזמנה נוצרה",
+    "toastSubmitted": "ההזמנה נשלחה למטבח",
+    "toastCancelled": "ההזמנה בוטלה",
+    "toastCourseFired": "המנה נשלחה למטבח",
+    "toastDiscountApplied": "ההנחה הוחלה",
+    "toastComped": "סומן כעל חשבון הבית",
+    "toastCompRemoved": "ההטבה הוסרה",
+    "toastItemDeleted": "הפריט נמחק"
+  },
+  "orderDetail": {
+    "back": "הזמנות",
+    "orderNumber": "הזמנה",
+    "itemsCount": "פריטים ({count})",
+    "select": "בחר",
+    "done": "סיום",
+    "noItemsYet": "עדיין אין פריטים.",
+    "tapOrDragHint": "הקש/י או גרר/י פריט מהתפריט כדי להוסיף אותו.",
+    "selectedCount": "{count} נבחרו",
+    "assignToGuest": "שיוך לאורח",
+    "discount": "הנחה",
+    "onTheHouse": "על חשבון הבית",
+    "removeComp": "הסר פטור",
+    "subtotal": "סך ביניים",
+    "tax": "מע\"מ ({rate}%)",
+    "total": "סה\"כ",
+    "paid": "שולם",
+    "remaining": "נותר לתשלום",
+    "discountCodePlaceholder": "קוד הנחה",
+    "payments": "תשלומים",
+    "notes": "הערות:",
+    "submitToKitchen": "שלח למטבח",
+    "collectPayment": "גביית תשלום",
+    "fireCourse": "שלח מנה {course}",
+    "cancelOrder": "בטל הזמנה",
+    "orderNotFound": "ההזמנה לא נמצאה.",
+    "cancelOrderConfirm": "בטל את ההזמנה הזאת?",
+    "deleteItemsConfirm": "{count, plural, one {האם למחוק פריט אחד?} other {האם למחוק # פריטים?}}"
+  },
+  "paymentMethod": {
+    "cash": "מזומן",
+    "card": "כרטיס אשראי",
+    "tap": "הקשה לתשלום",
+    "mobile": "תשלום סלולרי",
+    "voucher": "שובר"
+  },
+  "paymentDialog": {
+    "title": "גביית תשלום",
+    "howToSplit": "אופן חלוקה",
+    "full": "מלא",
+    "splitEqually": "חלוקה שווה",
+    "perGuest": "לפי אורח",
+    "splitInto": "חלוקה ל־",
+    "ways": "חלקים",
+    "share": "חלק {number}",
+    "guest": "אורח {number}",
+    "paid": "שולם",
+    "due": "{amount} לתשלום",
+    "dueEstimate": "{amount} לתשלום (משוער)",
+    "paymentMethodLabel": "אמצעי תשלום",
+    "amount": "סכום (\u20aa)",
+    "balanceDue": "יתרה לתשלום: \u20aa{amount}",
+    "tip": "טיפ",
+    "noTip": "ללא טיפ",
+    "customAmount": "סכום",
+    "totalInclTip": "סך כולל טיפ",
+    "tipAmountPlaceholder": "סכום טיפ (\u20aa)",
+    "tipTotalPlaceholder": "הסך שהאורח ישלם, כולל טיפ (\u20aa)",
+    "tipSummary": "טיפ: {tip} \u00b7 חיוב בסך {total}",
+    "confirmPayment": "אשר תשלום"
+  },
+  "guestAssignDialog": {
+    "title": "שיוך לאורח",
+    "tagHint": "{count, plural, one {תיוג פריט אחד} other {תיוג # פריטים}} עם מספר אורח, או נקה את התיוג כדי לחלוק אותו שוב בין כל השולחן.",
+    "guest": "אורח {number}",
+    "sharedClear": "משותף / נקה"
+  },
+  "itemDiscountDialog": {
+    "title": "{count, plural, one {הנחה על פריט} other {הנחה על פריטים}}",
+    "appliesHint": "{count, plural, one {חל על פריט נבחר אחד.} other {חל על # פריטים נבחרים.}}",
+    "percent": "אחוזים %",
+    "fixed": "קבוע \u20aa",
+    "percentPlaceholder": "לדוגמה, 10 (%)",
+    "fixedPlaceholder": "לדוגמה, 20 (\u20aa)",
+    "clearDiscount": "נקה הנחה"
+  },
+  "managerOverrideDialog": {
+    "defaultTitle": "נדרש אישור מנהל",
+    "defaultDescription": "ההזמנה כבר נשלחה. נדרש אישור מנהל לשינוי זה.",
+    "noManagerFound": "לא נמצא מנהל/בעלים עם קוד PIN עבור מיקום זה.",
+    "pinPlaceholder": "קוד PIN של מנהל",
+    "reasonPlaceholder": "סיבה לשינוי הזה"
+  },
+  "quantitySelectDialog": {
+    "title": "כמה יחידות?",
+    "description": "לאחד או יותר מהפריטים הנבחרים יש יותר מיחידה אחת. בחר/י כמה יחידות מכל פריט להחיל עליהן את הפעולה — שאר היחידות יישארו בהזמנה ללא שינוי.",
+    "onOrder": "בהזמנה",
+    "each": "ליחידה",
+    "continue": "המשך"
+  },
+  "cancelDropZone": {
+    "dropToRemove": "שחרר/י כאן כדי להסיר פריט",
+    "dropToCancel": "שחרר/י כאן כדי לבטל פריט"
+  },
+  "menuPanel": {
+    "noCategories": "עדיין אין קטגוריות תפריט.",
+    "noAvailableItems": "אין פריטים זמינים",
+    "customizable": "ניתן להתאמה אישית"
+  },
+  "orderItemRow": {
+    "selectItem": "בחר פריט",
+    "dragToReorder": "גרור כדי לסדר מחדש או להסיר",
+    "editItem": "ערוך פריט",
+    "course": "מנה {n}",
+    "guest": "אורח {n}",
+    "onTheHouse": "על חשבון הבית",
+    "discount": "הנחה \u2212{amount}"
+  },
+  "itemConfigDialog": {
+    "quantity": "כמות",
+    "notesOptional": "הערות (אופציונלי)",
+    "notesPlaceholder": "לדוגמה, ללא קרח",
+    "fireCourse": "שלח מנה",
+    "chooseOne": "בחר/י אחד",
+    "upTo": "עד {max}",
+    "firesImmediately": "1 (נשלח מידית)",
+    "addToOrder": "הוסף להזמנה"
+  },
+  "itemStatus": {
+    "held": "מוקפא",
+    "pending": "בהמתנה",
+    "preparing": "בהכנה",
+    "ready": "מוכן",
+    "served": "הוגש",
+    "cancelled": "בוטל"
+  },
+  "tables": {
+    "title": "תכנית שולחנות",
+    "addTable": "הוסף שולחן",
+    "noTables": "עדיין אין שולחנות. הוסיף/י את השולחן הראשון שלך.",
+    "seats": "{count, plural, one {מקום אחד} other {# מקומות}}",
+    "del": "מחק",
+    "editTable": "עריכת שולחן",
+    "addTableTitle": "הוספת שולחן",
+    "nameLabel": "שם",
+    "capacityLabel": "קיבולת (מקומות)",
+    "sectionLabel": "אזור (אופציונלי)",
+    "deleteConfirm": "למחוק את השולחן \"{name}\"?",
+    "toastCreated": "השולחן נוצר",
+    "toastUpdated": "השולחן עודכן",
+    "toastDeleted": "השולחן נמחק"
+  },
+  "kitchen": {
+    "title": "תצוגת מטבח",
+    "activeOrders": "{count, plural, one {הזמנה פעילה אחת} other {# הזמנות פעילות}}",
+    "allCaughtUp": "הכל בוצע",
+    "allReady": "הכל מוכן \u2713",
+    "ready": "\u2713 מוכן"
+  },
+  "display": {
+    "title": "סטטוס הזמנה",
+    "updated": "עודכן {time}",
+    "noActiveOrders": "אין הזמנות פעילות",
+    "received": "התקבלה",
+    "preparing": "בהכנה",
+    "ready": "מוכן \u2713"
   },
   "ai": {
     "placeholder": "מה תרצה לעשות? למשל: 'הוסף פיצה מרגריטה ב-58 ₪'",

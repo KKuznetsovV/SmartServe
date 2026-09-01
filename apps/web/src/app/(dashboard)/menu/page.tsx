@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Plus, Trash2 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -47,6 +48,8 @@ function getDescendantIds(categories: MenuCategory[], id: string): Set<string> {
 }
 
 export default function MenuPage() {
+  const t = useTranslations('menu')
+  const tCommon = useTranslations('common')
   const activeLocationId = useAuthStore((s) => s.activeLocationId)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<MenuCategory | null>(null)
@@ -127,7 +130,7 @@ export default function MenuPage() {
   if (!activeLocationId) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-muted-foreground">No location selected. Please contact your administrator.</p>
+        <p className="text-muted-foreground">{t('noLocationSelected')}</p>
       </div>
     )
   }
@@ -137,17 +140,17 @@ export default function MenuPage() {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Menu Management</h1>
-          <p className="text-sm text-muted-foreground">Manage categories and menu items</p>
+          <h1 className="text-2xl font-bold">{t('title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setTrashDialogOpen(true)}>
-            <Trash2 className="mr-1 h-4 w-4" />
-            View Trash
+            <Trash2 className="me-1 h-4 w-4" />
+            {t('viewTrash')}
           </Button>
           <Button onClick={openCreate}>
-            <Plus className="mr-1 h-4 w-4" />
-            Add Category
+            <Plus className="me-1 h-4 w-4" />
+            {t('addCategory')}
           </Button>
         </div>
       </div>
@@ -159,10 +162,10 @@ export default function MenuPage() {
         </div>
       ) : categories.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
-          <p className="mb-4 text-muted-foreground">No categories yet</p>
+          <p className="mb-4 text-muted-foreground">{t('noCategories')}</p>
           <Button variant="outline" onClick={openCreate}>
-            <Plus className="mr-1 h-4 w-4" />
-            Create your first category
+            <Plus className="me-1 h-4 w-4" />
+            {t('createFirstCategory')}
           </Button>
         </div>
       ) : (
@@ -186,23 +189,23 @@ export default function MenuPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? 'Edit Category' : 'New Category'}</DialogTitle>
+            <DialogTitle>{editing ? t('editCategory') : t('newCategory')}</DialogTitle>
             <DialogClose onClose={() => setDialogOpen(false)} />
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-1">
-              <Label htmlFor="name">Name (English)</Label>
+              <Label htmlFor="name">{t('nameEnglish')}</Label>
               <Input id="name" {...register('name')} placeholder="e.g. Starters" />
               {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
             </div>
             <div className="space-y-1">
-              <Label htmlFor="nameHe">Name (Hebrew)</Label>
+              <Label htmlFor="nameHe">{t('nameHebrew')}</Label>
               <Input id="nameHe" {...register('nameHe')} placeholder="e.g. מנות ראשונות" dir="rtl" />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="parentId">Parent category (optional)</Label>
+              <Label htmlFor="parentId">{t('parentCategory')}</Label>
               <Select id="parentId" {...register('parentId')}>
-                <option value="">None (top-level category)</option>
+                <option value="">{t('noneTopLevel')}</option>
                 {categories
                   .filter((c) => !excludedParentIds.has(c.id))
                   .map((c) => (
@@ -214,16 +217,16 @@ export default function MenuPage() {
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                Cancel
+                {tCommon('cancel')}
               </Button>
               <Button
                 type="submit"
                 disabled={createCategory.isPending || updateCategory.isPending}
               >
                 {(createCategory.isPending || updateCategory.isPending) && (
-                  <Spinner className="mr-2 h-4 w-4" />
+                  <Spinner className="me-2 h-4 w-4" />
                 )}
-                {editing ? 'Save Changes' : 'Create'}
+                {editing ? t('saveChanges') : t('create')}
               </Button>
             </div>
           </form>

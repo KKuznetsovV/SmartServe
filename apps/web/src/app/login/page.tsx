@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { ChefHat } from 'lucide-react'
 import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { apiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
+import { LocaleToggle } from '@/components/layout/locale-toggle'
 
 const schema = z.object({
   email: z.string().email('Invalid email'),
@@ -22,6 +24,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 export default function LoginPage() {
+  const t = useTranslations('auth')
   const router = useRouter()
   const setAuth = useAuthStore((s) => s.setAuth)
   const setTokens = useAuthStore((s) => s.setTokens)
@@ -53,7 +56,7 @@ export default function LoginPage() {
 
       router.push('/menu')
     } catch (e) {
-      toast.error((e as Error).message ?? 'Invalid credentials')
+      toast.error((e as Error).message ?? t('invalidCredentials'))
     } finally {
       setLoading(false)
     }
@@ -61,18 +64,21 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+      <div className="absolute end-4 top-4">
+        <LocaleToggle />
+      </div>
       <Card className="w-full max-w-sm">
         <CardHeader className="items-center text-center">
           <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <ChefHat className="h-6 w-6 text-primary" />
           </div>
           <CardTitle className="text-2xl">SmartServe</CardTitle>
-          <p className="text-sm text-muted-foreground">Manager Portal</p>
+          <p className="text-sm text-muted-foreground">{t('managerPortal')}</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-1">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('email')}</Label>
               <Input
                 id="email"
                 type="email"
@@ -85,7 +91,7 @@ export default function LoginPage() {
               )}
             </div>
             <div className="space-y-1">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t('password')}</Label>
               <Input
                 id="password"
                 type="password"
@@ -97,8 +103,8 @@ export default function LoginPage() {
               )}
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? <Spinner className="mr-2" /> : null}
-              Sign In
+              {loading ? <Spinner className="me-2" /> : null}
+              {t('loginButton')}
             </Button>
           </form>
         </CardContent>

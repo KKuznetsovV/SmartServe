@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useTranslations } from 'next-intl'
 import { useTables, useCreateTable, useUpdateTable, useDeleteTable } from '@/hooks/use-tables'
 import { useAuthStore } from '@/lib/auth-store'
 import { Button } from '@/components/ui/button'
@@ -33,6 +34,8 @@ function sectionColor(section?: string) {
 }
 
 export default function TablesPage() {
+  const t = useTranslations('tables')
+  const tCommon = useTranslations('common')
   const locationId = useAuthStore((s) => s.activeLocationId)
   const { data: tables, isLoading } = useTables(locationId)
   const createTable = useCreateTable()
@@ -72,9 +75,9 @@ export default function TablesPage() {
     setDialogOpen(false)
   }
 
-  async function handleDelete(t: Table) {
-    if (!confirm(`Delete table "${t.name}"?`)) return
-    await deleteTable.mutateAsync({ id: t.id, locationId: t.locationId })
+  async function handleDelete(tbl: Table) {
+    if (!confirm(t('deleteConfirm', { name: tbl.name }))) return
+    await deleteTable.mutateAsync({ id: tbl.id, locationId: tbl.locationId })
   }
 
   const grouped = (tables ?? []).reduce<Record<string, Table[]>>((acc, t) => {
@@ -86,14 +89,14 @@ export default function TablesPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Floor Plan</h1>
-        <Button onClick={openCreate}>+ Add Table</Button>
+        <h1 className="text-2xl font-bold">{t('title')}</h1>
+        <Button onClick={openCreate}>+ {t('addTable')}</Button>
       </div>
 
       {isLoading && <Spinner />}
 
       {!isLoading && tables?.length === 0 && (
-        <p className="text-muted-foreground">No tables yet. Add your first table.</p>
+        <p className="text-muted-foreground">{t('noTables')}</p>
       )}
 
       {Object.entries(grouped).map(([section, sectionTables]) => (
@@ -102,27 +105,27 @@ export default function TablesPage() {
             {section}
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {sectionTables.map((t) => (
+            {sectionTables.map((tbl) => (
               <Card
-                key={t.id}
-                className={`border-2 cursor-default ${sectionColor(t.section)} ${!t.active ? 'opacity-50' : ''}`}
+                key={tbl.id}
+                className={`border-2 cursor-default ${sectionColor(tbl.section)} ${!tbl.active ? 'opacity-50' : ''}`}
               >
                 <CardHeader className="p-3 pb-0">
-                  <CardTitle className="text-base">{t.name}</CardTitle>
+                  <CardTitle className="text-base">{tbl.name}</CardTitle>
                 </CardHeader>
                 <CardContent className="p-3 pt-1">
-                  <p className="text-xs text-muted-foreground">{t.capacity} seats</p>
+                  <p className="text-xs text-muted-foreground">{t('seats', { count: tbl.capacity })}</p>
                   <div className="flex gap-1 mt-2">
-                    <Button variant="outline" size="sm" className="h-6 text-xs px-2" onClick={() => openEdit(t)}>
-                      Edit
+                    <Button variant="outline" size="sm" className="h-6 text-xs px-2" onClick={() => openEdit(tbl)}>
+                      {tCommon('edit')}
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       className="h-6 text-xs px-2 text-destructive hover:text-destructive"
-                      onClick={() => handleDelete(t)}
+                      onClick={() => handleDelete(tbl)}
                     >
-                      Del
+                      {t('del')}
                     </Button>
                   </div>
                 </CardContent>
@@ -135,29 +138,29 @@ export default function TablesPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{editing ? 'Edit Table' : 'Add Table'}</DialogTitle>
+            <DialogTitle>{editing ? t('editTable') : t('addTableTitle')}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-1">
-              <Label>Name</Label>
+              <Label>{t('nameLabel')}</Label>
               <Input {...register('name')} placeholder="e.g. T1" />
               {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
             </div>
             <div className="space-y-1">
-              <Label>Capacity (seats)</Label>
+              <Label>{t('capacityLabel')}</Label>
               <Input type="number" min={1} {...register('capacity')} />
               {errors.capacity && <p className="text-xs text-destructive">{errors.capacity.message}</p>}
             </div>
             <div className="space-y-1">
-              <Label>Section (optional)</Label>
+              <Label>{t('sectionLabel')}</Label>
               <Input {...register('section')} placeholder="e.g. Main, Bar, Terrace" />
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                Cancel
+                {tCommon('cancel')}
               </Button>
               <Button type="submit" disabled={createTable.isPending || updateTable.isPending}>
-                {editing ? 'Save' : 'Create'}
+                {editing ? tCommon('save') : tCommon('create')}
               </Button>
             </div>
           </form>

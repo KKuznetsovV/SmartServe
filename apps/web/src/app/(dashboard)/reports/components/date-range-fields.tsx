@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { Label } from '@/components/ui/label'
 
 interface DateRangeFieldsProps {
@@ -18,10 +19,11 @@ export function DateRangeFields({
   onStartDateChange,
   onEndDateChange,
 }: DateRangeFieldsProps) {
+  const t = useTranslations('reports')
   return (
     <div className="flex items-end gap-3">
       <div className="space-y-1">
-        <Label htmlFor="report-start-date">From</Label>
+        <Label htmlFor="report-start-date">{t('from')}</Label>
         <input
           id="report-start-date"
           type="date"
@@ -32,7 +34,7 @@ export function DateRangeFields({
         />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="report-end-date">To</Label>
+        <Label htmlFor="report-end-date">{t('to')}</Label>
         <input
           id="report-end-date"
           type="date"

@@ -12,7 +12,10 @@
     "search": "Search",
     "back": "Back",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "language": "Language",
+    "apply": "Apply",
+    "create": "Create"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -26,7 +29,9 @@
     "ai": "AI Assistant",
     "discounts": "Discounts",
     "stock": "Stock",
-    "shifts": "Shifts"
+    "shifts": "Shifts",
+    "kitchenDisplay": "Kitchen Display",
+    "customerDisplay": "Customer Display"
   },
   "auth": {
     "login": "Login",
@@ -34,7 +39,24 @@
     "email": "Email",
     "password": "Password",
     "loginButton": "Sign In",
-    "invalidCredentials": "Invalid email or password"
+    "invalidCredentials": "Invalid email or password",
+    "changeLocation": "Change location",
+    "noStaffFound": "No staff found for this location.",
+    "invalidPin": "Invalid PIN",
+    "failedLoadStaff": "Failed to load staff list"
+  },
+  "roles": {
+    "owner": "Owner",
+    "manager": "Manager",
+    "cashier": "Cashier",
+    "waiter": "Waiter",
+    "kitchen": "Kitchen"
+  },
+  "setup": {
+    "title": "Set Up This Device",
+    "description": "Ask a manager for this location's ID (found in the manager portal).",
+    "locationIdLabel": "Location ID",
+    "saveContinue": "Save & Continue"
   },
   "menu": {
     "categories": "Categories",
@@ -46,7 +68,24 @@
     "available": "Available",
     "unavailable": "Unavailable",
     "modifiers": "Modifiers",
-    "taxRate": "Tax Rate"
+    "taxRate": "Tax Rate",
+    "toastCategoryCreated": "Category created",
+    "toastCategoryUpdated": "Category updated",
+    "toastCategoryDeleted": "Category deleted",
+    "toastItemCreated": "Item created",
+    "toastItemUpdated": "Item updated",
+    "toastItemDeleted": "Item deleted",
+    "toastModifierGroupCreated": "Modifier group created",
+    "toastModifierGroupDeleted": "Modifier group deleted"
+  },
+  "discounts": {
+    "toastCreated": "Discount created",
+    "toastUpdated": "Discount updated",
+    "toastDeleted": "Discount deleted",
+    "toastApplied": "Discount applied"
+  },
+  "payments": {
+    "toastRecorded": "Payment recorded"
   },
   "orders": {
     "newOrder": "New Order",
@@ -58,8 +97,190 @@
       "ready": "Ready",
       "served": "Served",
       "paid": "Paid",
+      "split": "Split",
       "cancelled": "Cancelled"
-    }
+    },
+    "title": "Orders",
+    "allStatuses": "All",
+    "channel": {
+      "dine_in": "Dine In",
+      "takeaway": "Takeaway",
+      "delivery": "Delivery",
+      "online": "Online"
+    },
+    "tableOptional": "Table (optional)",
+    "noTableOption": "No table",
+    "channelLabel": "Channel",
+    "guestCountLabel": "Number of Guests",
+    "guestCountPlaceholder": "e.g. 4",
+    "noOrders": "No orders found.",
+    "guestCount": "{count, plural, one {# guest} other {# guests}}",
+    "itemCount": "{count, plural, one {# item} other {# items}}",
+    "toastCreated": "Order created",
+    "toastSubmitted": "Order submitted to kitchen",
+    "toastCancelled": "Order cancelled",
+    "toastCourseFired": "Course fired to kitchen",
+    "toastDiscountApplied": "Discount applied",
+    "toastComped": "Marked on the house",
+    "toastCompRemoved": "Comp removed",
+    "toastItemDeleted": "Item deleted"
+  },
+  "orderDetail": {
+    "back": "Orders",
+    "orderNumber": "Order",
+    "itemsCount": "Items ({count})",
+    "select": "Select",
+    "done": "Done",
+    "noItemsYet": "No items yet.",
+    "tapOrDragHint": "Tap or drag an item from the menu to add it.",
+    "selectedCount": "{count} selected",
+    "assignToGuest": "Assign to Guest",
+    "discount": "Discount",
+    "onTheHouse": "On the House",
+    "removeComp": "Remove Comp",
+    "subtotal": "Subtotal",
+    "tax": "Tax ({rate}%)",
+    "total": "Total",
+    "paid": "Paid",
+    "remaining": "Remaining",
+    "discountCodePlaceholder": "Discount code",
+    "payments": "Payments",
+    "notes": "Notes:",
+    "submitToKitchen": "Submit to Kitchen",
+    "collectPayment": "Collect Payment",
+    "fireCourse": "Fire Course {course}",
+    "cancelOrder": "Cancel Order",
+    "orderNotFound": "Order not found.",
+    "cancelOrderConfirm": "Cancel this order?",
+    "deleteItemsConfirm": "{count, plural, one {Delete # item?} other {Delete # items?}}"
+  },
+  "paymentMethod": {
+    "cash": "Cash",
+    "card": "Credit Card",
+    "tap": "Tap to Pay",
+    "mobile": "Mobile Pay",
+    "voucher": "Voucher"
+  },
+  "paymentDialog": {
+    "title": "Collect Payment",
+    "howToSplit": "How to split",
+    "full": "Full",
+    "splitEqually": "Split Equally",
+    "perGuest": "Per Guest",
+    "splitInto": "Split into",
+    "ways": "ways",
+    "share": "Share {number}",
+    "guest": "Guest {number}",
+    "paid": "Paid",
+    "due": "{amount} due",
+    "dueEstimate": "{amount} due (est.)",
+    "paymentMethodLabel": "Payment method",
+    "amount": "Amount (\u20aa)",
+    "balanceDue": "Balance due: \u20aa{amount}",
+    "tip": "Tip",
+    "noTip": "No tip",
+    "customAmount": "Amount",
+    "totalInclTip": "Total incl. tip",
+    "tipAmountPlaceholder": "Tip amount (\u20aa)",
+    "tipTotalPlaceholder": "Total the guest will pay, incl. tip (\u20aa)",
+    "tipSummary": "Tip: {tip} \u00b7 Charging {total} total",
+    "confirmPayment": "Confirm Payment"
+  },
+  "guestAssignDialog": {
+    "title": "Assign to Guest",
+    "tagHint": "{count, plural, one {Tag # item} other {Tag # items}} with a guest number, or clear the tag to share it across the table again.",
+    "guest": "Guest {number}",
+    "sharedClear": "Shared / Clear"
+  },
+  "itemDiscountDialog": {
+    "title": "{count, plural, one {Discount Item} other {Discount Items}}",
+    "appliesHint": "{count, plural, one {Applies to # selected item.} other {Applies to # selected items.}}",
+    "percent": "Percent %",
+    "fixed": "Fixed \u20aa",
+    "percentPlaceholder": "e.g. 10 (%)",
+    "fixedPlaceholder": "e.g. 20 (\u20aa)",
+    "clearDiscount": "Clear Discount"
+  },
+  "managerOverrideDialog": {
+    "defaultTitle": "Manager Approval Required",
+    "defaultDescription": "This order has already been submitted. A manager must approve this change.",
+    "noManagerFound": "No manager/owner with a PIN found for this location.",
+    "pinPlaceholder": "Manager PIN",
+    "reasonPlaceholder": "Reason for this change"
+  },
+  "quantitySelectDialog": {
+    "title": "How many units?",
+    "description": "One or more selected items have more than one unit. Choose how many units of each to apply this action to \u2014 the remaining units stay on the order untouched.",
+    "onOrder": "on order",
+    "each": "each",
+    "continue": "Continue"
+  },
+  "cancelDropZone": {
+    "dropToRemove": "Drop here to remove item",
+    "dropToCancel": "Drop here to cancel item"
+  },
+  "menuPanel": {
+    "noCategories": "No menu categories yet.",
+    "noAvailableItems": "No available items",
+    "customizable": "Customizable"
+  },
+  "orderItemRow": {
+    "selectItem": "Select item",
+    "dragToReorder": "Drag to reorder or remove",
+    "editItem": "Edit item",
+    "course": "Course {n}",
+    "guest": "Guest {n}",
+    "onTheHouse": "On the house",
+    "discount": "Discount \u2212{amount}"
+  },
+  "itemConfigDialog": {
+    "quantity": "Quantity",
+    "notesOptional": "Notes (optional)",
+    "notesPlaceholder": "e.g. no ice",
+    "fireCourse": "Fire Course",
+    "chooseOne": "choose one",
+    "upTo": "up to {max}",
+    "firesImmediately": "1 (fires immediately)",
+    "addToOrder": "Add to Order"
+  },
+  "itemStatus": {
+    "held": "Held",
+    "pending": "Pending",
+    "preparing": "Preparing",
+    "ready": "Ready",
+    "served": "Served",
+    "cancelled": "Cancelled"
+  },
+  "tables": {
+    "title": "Floor Plan",
+    "addTable": "Add Table",
+    "noTables": "No tables yet. Add your first table.",
+    "seats": "{count, plural, one {# seat} other {# seats}}",
+    "del": "Del",
+    "editTable": "Edit Table",
+    "addTableTitle": "Add Table",
+    "nameLabel": "Name",
+    "capacityLabel": "Capacity (seats)",
+    "sectionLabel": "Section (optional)",
+    "deleteConfirm": "Delete table \"{name}\"?",
+    "toastCreated": "Table created",
+    "toastUpdated": "Table updated",
+    "toastDeleted": "Table deleted"
+  },
+  "kitchen": {
+    "title": "Kitchen Display",
+    "activeOrders": "{count, plural, one {# active order} other {# active orders}}",
+    "allCaughtUp": "All caught up",
+    "allReady": "All Ready \u2713",
+    "ready": "\u2713 Ready"
+  },
+  "display": {
+    "title": "Order Status",
+    "updated": "Updated {time}",
+    "noActiveOrders": "No active orders",
+    "received": "Received",
+    "preparing": "Preparing",
+    "ready": "Ready \u2713"
   },
   "ai": {
     "placeholder": "What would you like to do? e.g. 'Add margherita pizza for 58 NIS'",

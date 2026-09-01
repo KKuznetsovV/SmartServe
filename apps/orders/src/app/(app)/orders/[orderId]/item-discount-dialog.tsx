@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { useApplyItemDiscount } from '@/hooks/use-orders'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -18,6 +19,8 @@ interface Props {
 /** Applies (or clears) a manual per-item discount — distinct from the order-level discount
  * code feature; this is a manager/waiter-entered %/fixed reduction on specific line items. */
 export function ItemDiscountDialog({ open, onOpenChange, orderId, items, onDone }: Props) {
+  const t = useTranslations('itemDiscountDialog')
+  const tCommon = useTranslations('common')
   const [discountType, setDiscountType] = useState<'percent' | 'fixed'>('percent')
   const [value, setValue] = useState('')
   const applyItemDiscount = useApplyItemDiscount()
@@ -42,12 +45,10 @@ export function ItemDiscountDialog({ open, onOpenChange, orderId, items, onDone 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Discount Item{items.length === 1 ? '' : 's'}</DialogTitle>
+          <DialogTitle>{t('title', { count: items.length })}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Applies to {items.length} selected item{items.length === 1 ? '' : 's'}.
-          </p>
+          <p className="text-sm text-muted-foreground">{t('appliesHint', { count: items.length })}</p>
           <div className="flex gap-2">
             <Button
               type="button"
@@ -55,7 +56,7 @@ export function ItemDiscountDialog({ open, onOpenChange, orderId, items, onDone 
               size="sm"
               onClick={() => setDiscountType('percent')}
             >
-              Percent %
+              {t('percent')}
             </Button>
             <Button
               type="button"
@@ -63,26 +64,26 @@ export function ItemDiscountDialog({ open, onOpenChange, orderId, items, onDone 
               size="sm"
               onClick={() => setDiscountType('fixed')}
             >
-              Fixed ₪
+              {t('fixed')}
             </Button>
           </div>
           <Input
             type="number"
             min={0}
-            placeholder={discountType === 'percent' ? 'e.g. 10 (%)' : 'e.g. 20 (₪)'}
+            placeholder={discountType === 'percent' ? t('percentPlaceholder') : t('fixedPlaceholder')}
             value={value}
             onChange={(e) => setValue(e.target.value)}
           />
           <div className="flex justify-between gap-2 pt-2">
             <Button variant="outline" onClick={handleClear} disabled={applyItemDiscount.isPending}>
-              Clear Discount
+              {t('clearDiscount')}
             </Button>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {tCommon('cancel')}
               </Button>
               <Button onClick={handleApply} disabled={applyItemDiscount.isPending || !value.trim()}>
-                Apply
+                {tCommon('apply')}
               </Button>
             </div>
           </div>
