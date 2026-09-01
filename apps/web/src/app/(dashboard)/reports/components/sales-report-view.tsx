@@ -28,11 +28,27 @@ export function SalesReportView({ report }: { report: SalesReport }) {
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 12 }} interval={0} angle={-20} textAnchor="end" height={50} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip formatter={(value: number) => formatPrice(value)} />
-              <Bar dataKey="revenue" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                interval={0}
+                angle={-20}
+                textAnchor="end"
+                height={50}
+              />
+              <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
+              <Tooltip
+                formatter={(value: number) => formatPrice(value)}
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--card))',
+                  color: 'hsl(var(--card-foreground))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: 'var(--radius)',
+                }}
+                labelStyle={{ color: 'hsl(var(--card-foreground))' }}
+              />
+              <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

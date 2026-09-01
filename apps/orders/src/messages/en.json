@@ -15,7 +15,11 @@
     "no": "No",
     "language": "Language",
     "apply": "Apply",
-    "create": "Create"
+    "create": "Create",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "System"
   },
   "nav": {
     "dashboard": "Dashboard",

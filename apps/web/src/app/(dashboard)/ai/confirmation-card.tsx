@@ -6,9 +6,9 @@ import { Card, CardContent } from '@/components/ui/card'
 import type { AiCommandResponse } from '@smartserve/types'
 
 export function confidenceColor(c: number) {
-  if (c >= 0.85) return 'text-green-600'
-  if (c >= 0.6) return 'text-amber-600'
-  return 'text-red-500'
+  if (c >= 0.85) return 'text-green-600 dark:text-green-400'
+  if (c >= 0.6) return 'text-amber-600 dark:text-amber-400'
+  return 'text-red-500 dark:text-red-400'
 }
 
 export type ConfirmationEntryStatus = 'pending' | 'confirmed' | 'dismissed' | 'error'
@@ -38,9 +38,9 @@ export function AiConfirmationCard({
     <Card
       className={
         status === 'confirmed'
-          ? 'border-green-200 bg-green-50'
+          ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/40'
           : status === 'error'
-            ? 'border-red-200 bg-red-50'
+            ? 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/40'
             : ''
       }
     >
@@ -61,8 +61,8 @@ export function AiConfirmationCard({
           </span>
         </div>
 
-        {status === 'confirmed' && <p className="text-xs text-green-700 font-medium">✓ {resultMessage}</p>}
-        {status === 'error' && <p className="text-xs text-red-600">{resultMessage}</p>}
+        {status === 'confirmed' && <p className="text-xs text-green-700 dark:text-green-400 font-medium">✓ {resultMessage}</p>}
+        {status === 'error' && <p className="text-xs text-red-600 dark:text-red-400">{resultMessage}</p>}
 
         {status === 'pending' && response.requiresConfirmation && (
           <div className="flex gap-2">

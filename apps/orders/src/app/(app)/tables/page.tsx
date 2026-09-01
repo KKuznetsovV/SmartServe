@@ -23,14 +23,14 @@ const tableSchema = z.object({
 type TableForm = z.infer<typeof tableSchema>
 
 const SECTION_COLORS: Record<string, string> = {
-  Main: 'bg-blue-50 border-blue-200',
-  Bar: 'bg-amber-50 border-amber-200',
-  Terrace: 'bg-green-50 border-green-200',
-  Private: 'bg-purple-50 border-purple-200',
+  Main: 'bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:border-blue-900',
+  Bar: 'bg-amber-50 border-amber-200 dark:bg-amber-950/40 dark:border-amber-900',
+  Terrace: 'bg-green-50 border-green-200 dark:bg-green-950/40 dark:border-green-900',
+  Private: 'bg-purple-50 border-purple-200 dark:bg-purple-950/40 dark:border-purple-900',
 }
 
 function sectionColor(section?: string) {
-  return (section && SECTION_COLORS[section]) ?? 'bg-gray-50 border-gray-200'
+  return (section && SECTION_COLORS[section]) ?? 'bg-gray-50 border-gray-200 dark:bg-gray-900/40 dark:border-gray-800'
 }
 
 export default function TablesPage() {

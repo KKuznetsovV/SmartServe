@@ -234,9 +234,9 @@ export function ItemCard({
                 title={item.inStock ? t('markOutOfStock') : t('markInStock')}
               >
                 {item.inStock ? (
-                  <Power className="h-4 w-4 text-emerald-600" />
+                  <Power className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                 ) : (
-                  <PowerOff className="h-4 w-4 text-amber-500" />
+                  <PowerOff className="h-4 w-4 text-amber-500 dark:text-amber-400" />
                 )}
               </Button>
               <Button variant="ghost" size="icon" onClick={() => onEdit(item)}>

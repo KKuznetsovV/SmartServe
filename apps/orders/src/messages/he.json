@@ -15,7 +15,11 @@
     "no": "לא",
     "language": "שפה",
     "apply": "החל",
-    "create": "צור"
+    "create": "צור",
+    "theme": "ערכת נושא",
+    "themeLight": "בהיר",
+    "themeDark": "כהה",
+    "themeSystem": "מערכת"
   },
   "nav": {
     "dashboard": "לוח בקרה",

@@ -84,13 +84,13 @@ export default function DiscountsPage() {
               <div className="space-y-1">
                 <Label>{t('code')}</Label>
                 <Input {...register('code')} placeholder="SUMMER20" className="uppercase" />
-                {errors.code && <p className="text-xs text-red-500">{errors.code.message}</p>}
+                {errors.code && <p className="text-xs text-red-500 dark:text-red-400">{errors.code.message}</p>}
               </div>
 
               <div className="space-y-1">
                 <Label>{t('name')}</Label>
                 <Input {...register('name')} placeholder="Summer Sale" />
-                {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
+                {errors.name && <p className="text-xs text-red-500 dark:text-red-400">{errors.name.message}</p>}
               </div>
 
               <div className="space-y-1">
@@ -107,7 +107,7 @@ export default function DiscountsPage() {
               <div className="space-y-1">
                 <Label>{t('value')} {discountType === 'percent' ? '(%)' : '(amount)'}</Label>
                 <Input {...register('value')} type="number" step="0.01" placeholder={discountType === 'percent' ? '10' : '5.00'} />
-                {errors.value && <p className="text-xs text-red-500">{errors.value.message}</p>}
+                {errors.value && <p className="text-xs text-red-500 dark:text-red-400">{errors.value.message}</p>}
               </div>
 
               <div className="space-y-1">
@@ -169,7 +169,7 @@ export default function DiscountsPage() {
                     updateMutation.mutate({ id: d.id, businessId: d.businessId, data: { active: !d.active } })
                   }
                 >
-                  {d.active ? <ToggleRight className="size-4 text-emerald-500" /> : <ToggleLeft className="size-4" />}
+                  {d.active ? <ToggleRight className="size-4 text-emerald-500 dark:text-emerald-400" /> : <ToggleLeft className="size-4" />}
                 </Button>
                 <Button
                   size="icon"
@@ -177,7 +177,7 @@ export default function DiscountsPage() {
                   title={tCommon('delete')}
                   onClick={() => deleteMutation.mutate({ id: d.id, businessId: d.businessId })}
                 >
-                  <Trash2 className="size-4 text-red-500" />
+                  <Trash2 className="size-4 text-red-500 dark:text-red-400" />
                 </Button>
               </div>
             </CardContent>

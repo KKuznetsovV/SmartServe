@@ -88,7 +88,7 @@ export function AiReportQuery() {
           ))}
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
         {response?.report && (
           <div className="space-y-2 border-t pt-4">

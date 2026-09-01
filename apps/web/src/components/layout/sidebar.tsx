@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/lib/auth-store'
 import { useTranslations } from 'next-intl'
 import { LocaleToggle } from './locale-toggle'
+import { ThemeToggle } from './theme-toggle'
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, key: 'dashboard' },
@@ -49,7 +50,10 @@ export function Sidebar() {
           <ChefHat className="h-6 w-6 text-primary" />
           <span className="font-bold text-lg">SmartServe</span>
         </div>
-        <LocaleToggle />
+        <div className="flex items-center gap-2">
+          <LocaleToggle />
+          <ThemeToggle />
+        </div>
       </div>
 
       {/* Nav */}
