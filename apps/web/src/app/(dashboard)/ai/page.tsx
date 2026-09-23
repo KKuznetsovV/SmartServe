@@ -213,7 +213,7 @@ export default function AiPage() {
                 <div
                   className={
                     entry.status === 'error'
-                      ? 'bg-red-50 text-red-700 rounded-2xl rounded-tl-sm px-4 py-2 max-w-[80%] text-sm'
+                      ? 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400 rounded-2xl rounded-tl-sm px-4 py-2 max-w-[80%] text-sm'
                       : 'bg-accent rounded-2xl rounded-tl-sm px-4 py-2 max-w-[80%] text-sm'
                   }
                 >
@@ -238,9 +238,9 @@ export default function AiPage() {
             )}
 
             {entry.status === 'error' && !entry.response && !entry.isImport && (
-              <Card className="border-red-200 bg-red-50">
+              <Card className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/40">
                 <CardContent className="p-3">
-                  <p className="text-xs text-red-600">{entry.resultMessage}</p>
+                  <p className="text-xs text-red-600 dark:text-red-400">{entry.resultMessage}</p>
                 </CardContent>
               </Card>
             )}

@@ -13,7 +13,10 @@
     "back": "Back",
     "yes": "Yes",
     "no": "No",
-    "language": "Language"
+    "language": "Language",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark"
   },
   "nav": {
     "dashboard": "Dashboard",

@@ -13,7 +13,10 @@
     "back": "חזור",
     "yes": "כן",
     "no": "לא",
-    "language": "שפה"
+    "language": "שפה",
+    "theme": "ערכת נושא",
+    "themeLight": "בהיר",
+    "themeDark": "כהה"
   },
   "nav": {
     "dashboard": "לוח בקרה",

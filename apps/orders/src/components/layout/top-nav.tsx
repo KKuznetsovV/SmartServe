@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/lib/auth-store'
 import { LocaleToggle } from './locale-toggle'
+import { ThemeToggle } from './theme-toggle'
 
 const navItems = [
   { href: '/orders', icon: ClipboardList, key: 'orders' },
@@ -67,6 +68,7 @@ export function TopNav() {
 
       <div className="flex items-center gap-3">
         <LocaleToggle />
+        <ThemeToggle />
         <span className="truncate text-sm font-medium">{user?.name}</span>
         <button
           onClick={clearAuth}

@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useDeviceStore } from '@/lib/device-store'
 import { LocaleToggle } from '@/components/layout/locale-toggle'
+import { ThemeToggle } from '@/components/layout/theme-toggle'
 
 export default function SetupPage() {
   const router = useRouter()
@@ -27,8 +28,9 @@ export default function SetupPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <div className="absolute end-4 top-4">
+      <div className="absolute end-4 top-4 flex items-center gap-2">
         <LocaleToggle />
+        <ThemeToggle />
       </div>
       <Card className="w-full max-w-sm">
         <CardHeader className="items-center text-center">

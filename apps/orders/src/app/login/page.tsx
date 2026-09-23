@@ -13,6 +13,7 @@ import { apiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import { useDeviceStore } from '@/lib/device-store'
 import { LocaleToggle } from '@/components/layout/locale-toggle'
+import { ThemeToggle } from '@/components/layout/theme-toggle'
 
 const PIN_LENGTH = 4
 
@@ -74,8 +75,9 @@ export default function LoginPage() {
   if (!selected) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-muted/40 p-4">
-        <div className="absolute end-4 top-4">
+        <div className="absolute end-4 top-4 flex items-center gap-2">
           <LocaleToggle />
+          <ThemeToggle />
         </div>
         <div className="mb-6 flex items-center gap-2">
           <ChefHat className="h-6 w-6 text-primary" />

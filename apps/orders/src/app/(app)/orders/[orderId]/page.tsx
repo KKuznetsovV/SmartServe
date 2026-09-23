@@ -442,7 +442,7 @@ export default function OrderDetailPage({ params }: Props) {
             <span>₪{order.taxAmount.toFixed(2)}</span>
           </div>
           {order.discountAmount > 0 && (
-            <div className="flex justify-between text-sm text-emerald-600">
+            <div className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400">
               <span>{t('discount')}</span>
               <span>−₪{order.discountAmount.toFixed(2)}</span>
             </div>
@@ -453,7 +453,7 @@ export default function OrderDetailPage({ params }: Props) {
           </div>
           {paidAmount > 0 && (
             <>
-              <div className="flex justify-between text-sm text-green-600">
+              <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
                 <span>{t('paid')}</span>
                 <span>−₪{paidAmount.toFixed(2)}</span>
               </div>
