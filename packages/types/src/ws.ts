@@ -4,6 +4,7 @@ export const WsEventType = z.enum([
   'order.created',
   'order.updated',
   'order.item_status_changed',
+  'order.item_fired',
   'order.paid',
   'menu.item_toggled',
   'menu.item_updated',

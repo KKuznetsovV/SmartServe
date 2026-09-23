@@ -21,6 +21,7 @@ from app.modules.ordering.schemas import (
     OrderWithItemsOut,
 )
 from app.modules.ordering.service import OrderService
+from app.modules.ordering.ws_router import broadcast_event
 
 router = APIRouter()
 
@@ -90,7 +91,20 @@ async def update_item_status(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_staff),
 ):
-    return await OrderService(db).update_item_status(order_id, item_id, data, current_user.business_id)
+    item = await OrderService(db).update_item_status(order_id, item_id, data, current_user.business_id)
+    order = await OrderService(db).get_order(order_id, current_user.business_id)
+    await broadcast_event(
+        order.location_id,
+        "order.item_status_changed",
+        {
+            "orderId": order.id,
+            "itemId": item.id,
+            "status": item.status,
+            "orderStatus": order.status,
+            "locationId": order.location_id,
+        },
+    )
+    return item
 
 
 @router.patch("/orders/{order_id}/items/{item_id}", response_model=OrderItemOut)
@@ -132,11 +146,9 @@ async def submit_order(
     current_user: User = Depends(require_staff),
 ):
     order = await OrderService(db).transition_order(order_id, "submitted", current_user.business_id)
-    await mq.publish(
-        request.app.state.mq_connection,
-        "order.updated",
-        {"orderId": order.id, "locationId": order.location_id, "status": order.status, "total": order.total},
-    )
+    payload = {"orderId": order.id, "locationId": order.location_id, "status": order.status, "total": order.total}
+    await mq.publish(request.app.state.mq_connection, "order.updated", payload)
+    await broadcast_event(order.location_id, "order.updated", payload)
     return order
 
 
@@ -148,11 +160,9 @@ async def cancel_order(
     current_user: User = Depends(require_staff),
 ):
     order = await OrderService(db).transition_order(order_id, "cancelled", current_user.business_id)
-    await mq.publish(
-        request.app.state.mq_connection,
-        "order.updated",
-        {"orderId": order.id, "locationId": order.location_id, "status": order.status, "total": order.total},
-    )
+    payload = {"orderId": order.id, "locationId": order.location_id, "status": order.status, "total": order.total}
+    await mq.publish(request.app.state.mq_connection, "order.updated", payload)
+    await broadcast_event(order.location_id, "order.updated", payload)
     return order
 
 
@@ -231,6 +241,11 @@ async def fire_course(
                 "course": data.course,
             },
         )
+    await broadcast_event(
+        result.location_id,
+        "order.updated",
+        {"orderId": result.id, "locationId": result.location_id, "status": result.status, "total": result.total},
+    )
     return result
 
 
