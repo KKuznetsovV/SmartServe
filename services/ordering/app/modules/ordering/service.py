@@ -298,10 +298,8 @@ class OrderService:
     async def update_item_status(
         self, order_id: str, item_id: str, data: OrderItemStatusUpdate, business_id: str | None = None
     ) -> OrderItem:
-        if business_id is not None:
-            await self.get_order(order_id, business_id)
-        result = await self.db.execute(select(OrderItem).where(OrderItem.id == item_id, OrderItem.order_id == order_id))
-        item = result.scalar_one_or_none()
+        order = await self.get_order(order_id, business_id)
+        item = next((i for i in order.items if i.id == item_id), None)
         if not item:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order item not found")
 
@@ -312,8 +310,42 @@ class OrderService:
             )
 
         item.status = data.status
+        self._sync_kds_order_status(order)
         await self.db.flush()
         return item
+
+    def _sync_kds_order_status(self, order: Order) -> None:
+        """Roll the parent order status to match kitchen progress so customer displays
+        show Received / Preparing / Ready instead of staying on 'submitted' forever.
+
+        Reverse moves (ready → preparing when a later course is fired) are allowed here
+        only — `transition_order` still uses the public one-way graph.
+        """
+        if order.status not in ("submitted", "preparing", "ready"):
+            return
+        active = [i for i in order.items if i.status not in ("cancelled", "held")]
+        if not active:
+            return
+        statuses = {i.status for i in active}
+        if "preparing" in statuses:
+            target = "preparing"
+        elif "pending" in statuses:
+            target = "submitted"
+        elif "ready" in statuses:
+            target = "ready"
+        else:
+            return
+        if target == order.status:
+            return
+        allowed = {
+            "submitted": {"preparing", "ready"},
+            "preparing": {"ready", "submitted"},
+            "ready": {"preparing", "submitted"},
+        }
+        if target not in allowed.get(order.status, set()):
+            return
+        order.status = target
+        order.updated_at = datetime.now(UTC)
 
     async def reorder_items(self, order_id: str, ids: list[str], business_id: str | None = None) -> None:
         if business_id is not None:
@@ -382,6 +414,7 @@ class OrderService:
         if data.course not in order.fired_courses:
             order.fired_courses = [*order.fired_courses, data.course]
         order.updated_at = datetime.now(UTC)
+        self._sync_kds_order_status(order)
         await self.db.flush()
         return await self.get_order(order_id)
 

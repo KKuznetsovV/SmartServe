@@ -175,3 +175,78 @@ async def test_handle_catalog_item_updated_missing_location_id_is_noop():
         await handle_catalog_item_updated("catalog.item_updated", {"itemId": "item-1"})
 
     mock_broadcast.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_submit_order_broadcasts_websocket_event(
+    client: AsyncClient,
+    location: Location,
+    manager_user: tuple[User, str],
+):
+    _, token = manager_user
+    headers = {"Authorization": f"Bearer {token}"}
+    order_id = (
+        await client.post(
+            "/api/v1/orders",
+            json={"locationId": location.id, "channel": "dine_in", "guestCount": 2},
+            headers=headers,
+        )
+    ).json()["id"]
+
+    with patch("app.modules.ordering.router.broadcast_event", new_callable=AsyncMock) as mock_broadcast:
+        resp = await client.post(f"/api/v1/orders/{order_id}/submit", headers=headers)
+
+    assert resp.status_code == 200
+    mock_broadcast.assert_awaited_once()
+    location_id, event_type, payload = mock_broadcast.await_args.args
+    assert location_id == location.id
+    assert event_type == "order.updated"
+    assert payload["orderId"] == order_id
+    assert payload["status"] == "submitted"
+
+
+@pytest.mark.asyncio
+async def test_item_status_change_broadcasts_websocket_event(
+    client: AsyncClient,
+    db: AsyncSession,
+    location: Location,
+    manager_user: tuple[User, str],
+):
+    _, token = manager_user
+    headers = {"Authorization": f"Bearer {token}"}
+    item = MenuItem(category_id="cat-1", name="Cola", price=10.0, tax_rate=0.17)
+    db.add(item)
+    await db.flush()
+
+    order_id = (
+        await client.post(
+            "/api/v1/orders",
+            json={"locationId": location.id, "channel": "dine_in", "guestCount": 2},
+            headers=headers,
+        )
+    ).json()["id"]
+    item_id = (
+        await client.post(
+            f"/api/v1/orders/{order_id}/items",
+            json={"menuItemId": item.id, "qty": 1},
+            headers=headers,
+        )
+    ).json()["id"]
+    await client.post(f"/api/v1/orders/{order_id}/submit", headers=headers)
+
+    with patch("app.modules.ordering.router.broadcast_event", new_callable=AsyncMock) as mock_broadcast:
+        resp = await client.patch(
+            f"/api/v1/orders/{order_id}/items/{item_id}/status",
+            json={"status": "preparing"},
+            headers=headers,
+        )
+
+    assert resp.status_code == 200
+    mock_broadcast.assert_awaited_once()
+    location_id, event_type, payload = mock_broadcast.await_args.args
+    assert location_id == location.id
+    assert event_type == "order.item_status_changed"
+    assert payload["orderId"] == order_id
+    assert payload["itemId"] == item_id
+    assert payload["status"] == "preparing"
+    assert payload["orderStatus"] == "preparing"

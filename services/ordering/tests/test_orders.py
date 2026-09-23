@@ -753,3 +753,51 @@ async def test_trashing_menu_item_does_not_affect_existing_order_item(
 
 # Note: payment-completes-order coverage lives in services/payments/tests, which builds
 # the order fixture directly against its own DB mirror rather than via this service's HTTP API.
+
+
+@pytest.mark.asyncio
+async def test_kitchen_item_status_rolls_up_order_status_for_customer_display(
+    client: AsyncClient,
+    db: AsyncSession,
+    location: Location,
+    manager_user: tuple[User, str],
+    menu_item: MenuItem,
+):
+    _, token = manager_user
+    headers = {"Authorization": f"Bearer {token}"}
+
+    order_id = (
+        await client.post(
+            "/api/v1/orders",
+            json={"locationId": location.id, "channel": "dine_in", "guestCount": 2},
+            headers=headers,
+        )
+    ).json()["id"]
+    item_id = (
+        await client.post(
+            f"/api/v1/orders/{order_id}/items",
+            json={"menuItemId": menu_item.id, "qty": 1},
+            headers=headers,
+        )
+    ).json()["id"]
+    await client.post(f"/api/v1/orders/{order_id}/submit", headers=headers)
+
+    display = (await client.get(f"/api/v1/public/locations/{location.id}/orders")).json()
+    assert display[0]["id"] == order_id
+    assert display[0]["status"] == "submitted"
+
+    await client.patch(
+        f"/api/v1/orders/{order_id}/items/{item_id}/status",
+        json={"status": "preparing"},
+        headers=headers,
+    )
+    display = (await client.get(f"/api/v1/public/locations/{location.id}/orders")).json()
+    assert display[0]["status"] == "preparing"
+
+    await client.patch(
+        f"/api/v1/orders/{order_id}/items/{item_id}/status",
+        json={"status": "ready"},
+        headers=headers,
+    )
+    display = (await client.get(f"/api/v1/public/locations/{location.id}/orders")).json()
+    assert display[0]["status"] == "ready"

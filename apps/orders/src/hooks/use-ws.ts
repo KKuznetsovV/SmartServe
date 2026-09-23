@@ -4,6 +4,11 @@ import { useEffect, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { WsEvent } from '@smartserve/types'
 
+function orderIdFromPayload(payload: WsEvent['payload']): string | undefined {
+  const id = payload?.id ?? payload?.orderId
+  return typeof id === 'string' ? id : undefined
+}
+
 // Connects to the location WebSocket and invalidates order queries on events.
 export function useLocationWs(locationId: string | null) {
   const qc = useQueryClient()
@@ -24,7 +29,7 @@ export function useLocationWs(locationId: string | null) {
         const msg: WsEvent = JSON.parse(event.data as string)
         if (msg.type.startsWith('order.')) {
           qc.invalidateQueries({ queryKey: ['orders', locationId] })
-          const id = msg.payload?.id as string | undefined
+          const id = orderIdFromPayload(msg.payload)
           if (id) qc.invalidateQueries({ queryKey: ['order', id] })
         }
       } catch {

@@ -21,8 +21,6 @@ const ITEM_STATUS_STYLE: Record<OrderItemStatus, string> = {
   cancelled: 'bg-zinc-900 border-zinc-700 text-zinc-500 line-through',
 }
 
-const ACTIVE_STATUSES = ['submitted', 'preparing']
-
 function OrderCard({ orderId }: { orderId: string }) {
   const t = useTranslations('kitchen')
   const tItemStatus = useTranslations('itemStatus')
@@ -124,15 +122,17 @@ export default function KitchenPage() {
   const locationId = useAuthStore((s) => s.activeLocationId)
   const { data: submitted, isLoading: l1 } = useOrders(locationId, 'submitted')
   const { data: preparing, isLoading: l2 } = useOrders(locationId, 'preparing')
+  const { data: ready, isLoading: l3 } = useOrders(locationId, 'ready')
 
   useLocationWs(locationId)
 
   const activeOrders = [
     ...(submitted ?? []),
     ...(preparing ?? []),
+    ...(ready ?? []),
   ].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
 
-  const isLoading = l1 || l2
+  const isLoading = l1 || l2 || l3
 
   return (
     <div className="min-h-screen p-4 space-y-4">

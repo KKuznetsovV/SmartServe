@@ -1,9 +1,10 @@
 'use client'
 
-import { use, useEffect, useState } from 'react'
+import { use } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
 import { apiClient } from '@/lib/api'
-import type { Order } from '@smartserve/types'
+import { useLocationWs } from '@/hooks/use-ws'
 
 const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
   submitted: { bg: 'bg-zinc-800', text: 'text-zinc-100' },
@@ -19,24 +20,15 @@ export default function CustomerDisplayPage({ params }: Props) {
   const { locationId } = use(params)
   const t = useTranslations('display')
   const tOrders = useTranslations('orders')
-  const [orders, setOrders] = useState<Order[]>([])
-  const [lastUpdated, setLastUpdated] = useState(new Date())
+  const { data: orders = [], dataUpdatedAt } = useQuery({
+    queryKey: ['orders', locationId, 'display'],
+    queryFn: () => apiClient.orders.publicActive(locationId),
+    refetchInterval: 15_000,
+  })
 
-  async function refresh() {
-    try {
-      const data = await apiClient.orders.publicActive(locationId)
-      setOrders(data)
-      setLastUpdated(new Date())
-    } catch {
-      // silently retry on next interval
-    }
-  }
+  useLocationWs(locationId)
 
-  useEffect(() => {
-    refresh()
-    const interval = setInterval(refresh, 8_000)
-    return () => clearInterval(interval)
-  }, [locationId])
+  const lastUpdated = dataUpdatedAt ? new Date(dataUpdatedAt) : new Date()
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white p-6">

@@ -24,8 +24,8 @@ export function useLocationWs(locationId: string | null) {
         const msg: WsEvent = JSON.parse(event.data as string)
         if (msg.type.startsWith('order.')) {
           qc.invalidateQueries({ queryKey: ['orders', locationId] })
-          const id = msg.payload?.id as string | undefined
-          if (id) qc.invalidateQueries({ queryKey: ['order', id] })
+          const id = msg.payload?.id ?? msg.payload?.orderId
+          if (typeof id === 'string') qc.invalidateQueries({ queryKey: ['order', id] })
         }
         if (msg.type === 'menu.item_updated') {
           // Item mutations (incl. AI-driven price/stock changes) can come from any open

@@ -6,6 +6,8 @@ courses, status transitions) these events describe.
 """
 
 from collections import defaultdict
+from datetime import UTC, datetime
+from typing import Any
 
 import structlog
 from fastapi import WebSocket, WebSocketDisconnect
@@ -43,3 +45,23 @@ async def broadcast(location_id: str, event: dict) -> None:
             dead.append(ws)
     for ws in dead:
         _connections[location_id].remove(ws)
+
+
+async def broadcast_event(location_id: str, event_type: str, payload: dict[str, Any]) -> None:
+    """Push a typed event to every kitchen/customer display connected for this location.
+
+    Frontends historically read `payload.id`; order endpoints publish `orderId`. Include
+    both so list + detail queries invalidate without each client guessing the shape.
+    """
+    body = dict(payload)
+    if "orderId" in body and "id" not in body:
+        body["id"] = body["orderId"]
+    await broadcast(
+        location_id,
+        {
+            "type": event_type,
+            "locationId": location_id,
+            "payload": body,
+            "timestamp": datetime.now(UTC).isoformat(),
+        },
+    )

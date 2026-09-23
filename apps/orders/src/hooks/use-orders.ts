@@ -83,6 +83,7 @@ export function useUpdateOrderItemStatus() {
       apiClient.orders.updateItemStatus(orderId, itemId, status),
     onSuccess: (item) => {
       qc.invalidateQueries({ queryKey: ['order', item.orderId] })
+      qc.invalidateQueries({ queryKey: ['orders'] })
     },
     onError: (e: Error) => toast.error(e.message),
   })
