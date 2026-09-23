@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Tailwind v4 doesn't scan outside this app's tree by default — without this, utility
+   classes used only inside the shared @smartserve/ui package never compile. */
+@source "../../../../packages/ui/src";
+
 /* Map CSS vars to Tailwind v4 color utilities */
 @theme inline {
   --color-background: hsl(var(--bg));

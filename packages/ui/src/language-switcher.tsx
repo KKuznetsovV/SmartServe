@@ -11,43 +11,32 @@ export interface LanguageSwitcherProps {
   onChange: (locale: AppLocale) => void
   disabled?: boolean
   className?: string
-  /** Accessible group label, translated by the caller (defaults to "Language"). */
+  /** Accessible control label, translated by the caller (defaults to "Language"). */
   ariaLabel?: string
 }
 
-const OPTIONS: { value: AppLocale; label: string }[] = [
-  { value: 'en', label: 'EN' },
-  { value: 'he', label: 'HE' },
-]
+const LABELS: Record<AppLocale, string> = {
+  en: 'EN',
+  he: 'HE',
+}
 
 function LanguageSwitcher({ locale, onChange, disabled, className, ariaLabel = 'Language' }: LanguageSwitcherProps) {
+  const next: AppLocale = locale === 'he' ? 'en' : 'he'
+
   return (
-    <div
-      role="group"
-      aria-label={ariaLabel}
+    <button
+      type="button"
+      disabled={disabled}
+      aria-label={`${ariaLabel}: ${LABELS[locale]}`}
+      title={LABELS[next]}
+      onClick={() => onChange(next)}
       className={cn(
-        'inline-flex items-center rounded-md border border-input bg-background p-0.5 text-xs font-medium',
+        'inline-flex h-8 min-w-8 items-center justify-center rounded-md border border-input bg-background px-2 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50',
         className,
       )}
     >
-      {OPTIONS.map((opt) => (
-        <button
-          key={opt.value}
-          type="button"
-          disabled={disabled}
-          aria-pressed={locale === opt.value}
-          onClick={() => opt.value !== locale && onChange(opt.value)}
-          className={cn(
-            'rounded-[5px] px-2 py-1 transition-colors disabled:pointer-events-none disabled:opacity-50',
-            locale === opt.value
-              ? 'bg-primary text-primary-foreground'
-              : 'text-muted-foreground hover:bg-accent hover:text-foreground',
-          )}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
+      {LABELS[locale]}
+    </button>
   )
 }
 

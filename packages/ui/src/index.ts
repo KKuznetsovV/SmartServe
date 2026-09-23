@@ -11,4 +11,5 @@ export * from './dialog'
 export * from './checkbox'
 export * from './language-switcher'
 export * from './theme'
+export * from './theme-script'
 

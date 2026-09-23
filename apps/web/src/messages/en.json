@@ -16,8 +16,7 @@
     "language": "Language",
     "theme": "Theme",
     "themeLight": "Light",
-    "themeDark": "Dark",
-    "themeSystem": "System"
+    "themeDark": "Dark"
   },
   "nav": {
     "dashboard": "Dashboard",

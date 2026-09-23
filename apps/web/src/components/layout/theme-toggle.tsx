@@ -13,7 +13,7 @@ export function ThemeToggle() {
       theme={theme}
       onChange={setTheme}
       ariaLabel={t('theme')}
-      labels={{ light: t('themeLight'), dark: t('themeDark'), system: t('themeSystem') }}
+      labels={{ light: t('themeLight'), dark: t('themeDark') }}
     />
   )
 }

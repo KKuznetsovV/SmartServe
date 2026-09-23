@@ -43,14 +43,14 @@ export function Sidebar() {
   const tAuth = useTranslations('auth')
 
   return (
-    <aside className="flex h-screen w-60 flex-col border-r bg-card">
+    <aside className="flex h-screen w-60 shrink-0 flex-col overflow-hidden border-r bg-card">
       {/* Logo */}
-      <div className="flex h-14 items-center justify-between gap-2 border-b px-4">
-        <div className="flex items-center gap-2">
-          <ChefHat className="h-6 w-6 text-primary" />
-          <span className="font-bold text-lg">SmartServe</span>
+      <div className="flex h-14 items-center justify-between gap-2 border-b px-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <ChefHat className="h-6 w-6 shrink-0 text-primary" />
+          <span className="truncate font-bold text-lg">SmartServe</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5">
           <LocaleToggle />
           <ThemeToggle />
         </div>
