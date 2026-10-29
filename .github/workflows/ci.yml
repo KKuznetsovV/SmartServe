@@ -7,7 +7,6 @@ on:
     branches: [main]
 
 jobs:
-  # ─── TypeScript packages & web app ────────────────────────────────────────
   ts-check:
     name: TypeScript & Lint
     runs-on: ubuntu-latest
@@ -30,14 +29,9 @@ jobs:
       - name: Typecheck all
         run: pnpm turbo run typecheck
 
-      - name: Lint web
-        run: pnpm turbo run lint --filter=@smartserve/web
+      - name: Lint apps
+        run: pnpm turbo run lint --filter=@smartserve/web --filter=@smartserve/orders
 
-  # ─── Python services ──────────────────────────────────────────────────────
-  # apps/api was retired (step 25) — every backend domain now lives under
-  # services/<name> as its own independently deployable FastAPI app. Each
-  # service's test suite runs against an in-memory SQLite DB, so no Postgres/
-  # Redis containers are needed in CI.
   python-check:
     name: Python lint & typecheck (${{ matrix.service }})
     runs-on: ubuntu-latest
@@ -73,7 +67,6 @@ jobs:
       - name: Mypy typecheck
         run: mypy app/ --ignore-missing-imports --explicit-package-bases
 
-  # ─── Python tests ─────────────────────────────────────────────────────────
   python-test:
     name: Python tests (${{ matrix.service }})
     runs-on: ubuntu-latest
@@ -101,7 +94,6 @@ jobs:
       - name: Run tests
         run: pytest -v --tb=short
 
-  # ─── Frontend tests ───────────────────────────────────────────────────────
   frontend-test:
     name: Frontend tests
     runs-on: ubuntu-latest
@@ -122,14 +114,48 @@ jobs:
         run: pnpm turbo run build --filter=@smartserve/types --filter=@smartserve/api-client
 
       - name: Run frontend tests
-        run: pnpm turbo run test --filter=@smartserve/web
+        run: pnpm turbo run test --filter=@smartserve/web --filter=@smartserve/orders
 
-  # ─── E2E tests (smoke only, no server required for static assertions) ─────
-  e2e-smoke:
-    name: E2E smoke tests
+  migrations:
+    name: Alembic upgrade and check
     runs-on: ubuntu-latest
-    # Only run if a BASE_URL is available (skip in forks or when no server is deployed)
-    if: ${{ vars.E2E_BASE_URL != '' }}
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: smartserve
+          POSTGRES_PASSWORD: smartserve
+          POSTGRES_DB: smartserve
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U smartserve"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: "pip"
+
+      - name: Install shared lib and service deps
+        run: |
+          pip install -e services/_shared
+          for svc in auth catalog ordering payments staff printing reporting; do
+            (cd "services/${svc}" && pip install -r requirements.txt)
+          done
+
+      - name: Upgrade every chain and check drift
+        env:
+          DATABASE_URL: postgresql+asyncpg://smartserve:smartserve@localhost:5432/smartserve
+        run: python scripts/check_migrations.py
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -140,13 +166,78 @@ jobs:
           node-version: 22
           cache: "pnpm"
 
-      - name: Install dependencies
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: "pip"
+
+      - name: Install audit tools
+        run: |
+          pip install pip-audit
+          pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: pip-audit services
+        run: python scripts/audit_deps.py
+
+      - name: pnpm audit production (high and critical)
+        continue-on-error: true
+        run: pnpm audit --prod --audit-level high
+
+  stack:
+    name: Stack, API suite and E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: "pip"
+
+      - name: Prepare env
+        run: cp .env.example .env
+
+      - name: Start demo stack
+        run: python scripts/demo.py --reset
+
+      - name: Install API test dependencies
+        run: pip install -r tests/api/requirements.txt
+
+      - name: Run black-box API suite
+        run: python -m pytest tests/api -q --tb=short
+
+      - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Install Playwright browsers
-        run: pnpm --filter=@smartserve/web exec playwright install --with-deps chromium
+        run: |
+          pnpm --filter=@smartserve/web exec playwright install --with-deps chromium
+          pnpm --filter=@smartserve/orders exec playwright install --with-deps chromium
 
-      - name: Run E2E smoke tests
+      - name: Run Playwright E2E
         env:
-          BASE_URL: ${{ vars.E2E_BASE_URL }}
-        run: pnpm --filter=@smartserve/web e2e
+          BASE_URL: http://localhost:3000
+          ORDERS_BASE_URL: http://localhost:3001
+        run: |
+          pnpm --filter=@smartserve/web e2e
+          pnpm --filter=@smartserve/orders e2e
+
+      - name: Collect compose logs
+        if: failure()
+        run: docker compose logs > compose-logs.txt 2>&1
+
+      - name: Upload compose logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compose-logs
+          path: compose-logs.txt
+          if-no-files-found: ignore

@@ -18,6 +18,8 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
+from smartserve_shared.alembic_filter import owned_include_object
+
 from app.core.config import settings
 from app.db import models  # noqa: F401 — ensure all models are registered on Base.metadata
 from app.db.session import Base
@@ -34,13 +36,7 @@ target_metadata = Base.metadata
 CATALOG_OWNED_TABLES = {"menu_categories", "menu_items", "modifier_groups", "modifiers", "discounts"}
 
 
-def include_object(object, name, type_, reflected, compare_to):
-    if type_ == "table":
-        return name in CATALOG_OWNED_TABLES
-    # For columns/indexes/etc., only include them if they belong to an owned table.
-    if hasattr(object, "table") and object.table is not None:
-        return object.table.name in CATALOG_OWNED_TABLES
-    return True
+include_object = owned_include_object(CATALOG_OWNED_TABLES)
 
 
 def get_url() -> str:
