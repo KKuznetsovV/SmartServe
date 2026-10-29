@@ -67,14 +67,20 @@ expo-sqlite for offline order queueing.
 ### Local development (Docker Compose)
 
 ```bash
-cp .env.example .env               # fill in SECRET_KEY, ANTHROPIC_API_KEY
-
-docker compose up -d --wait
+cp .env.example .env               # fill in SECRET_KEY; ANTHROPIC_API_KEY optional
+python scripts/demo.py             # compose up, migrate, seed demo data
+python scripts/demo.py --rebuild   # also rebuild images
+python scripts/demo.py --reset     # wipe volumes first (fresh database)
 ```
 
-This starts Postgres, Redis, RabbitMQ, the `auth`, `catalog`, `ordering`, `payments`, `staff`, `printing`,
-`reporting` and `ai` services, and the `gateway` (nginx) in front of them all. Frontends should point at the
-gateway:
+`python scripts/demo.py` is the one-command start for a fresh clone. It brings up Postgres, Redis, RabbitMQ,
+every backend service (each runs `alembic upgrade head` on boot), the `gateway`, and the web apps, then seeds
+the demo tenant (`owner@demo.com` / `demo1234`) plus a small Hebrew menu, tables, printers and `HAPPY10`.
+
+The optional local GGUF for `ai` is mounted from `${LOCAL_MODEL_DIR:-./models}` (gitignored). Leave
+`LOCAL_MODEL_PATH` empty to skip the local model and use Haiku/Sonnet only.
+
+Frontends should point at the gateway:
 
 Catalog, ordering, payments, staff, printing, reporting and ai all publish/consume events on a shared durable
 topic exchange (`smartserve.events`) over RabbitMQ — e.g. `order.created`/`order.updated`/`order.item_fired`,
