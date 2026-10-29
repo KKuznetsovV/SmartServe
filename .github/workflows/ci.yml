@@ -145,7 +145,7 @@ jobs:
         run: |
           pip install -e services/_shared
           for svc in auth catalog ordering payments staff printing reporting; do
-            pip install -r "services/${svc}/requirements.txt"
+            (cd "services/${svc}" && pip install -r requirements.txt)
           done
 
       - name: Upgrade every chain and check drift
