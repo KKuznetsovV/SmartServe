@@ -12,7 +12,7 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | # | ID | Branch | Status | PR |
 | --- | --- | --- | --- | --- |
 | 00 | SETUP | `chore/review-plan-and-check-runner` | merged | https://github.com/KKuznetsovV/SmartServe/pull/3 |
-| 01 | E2 | `fix/e2-db-session-commit` | todo | |
+| 01 | E2 | `fix/e2-db-session-commit` | merged | https://github.com/KKuznetsovV/SmartServe/pull/4 |
 | 02 | E8 | `refactor/e8-shared-backend-package` | todo | |
 | 03 | E12 | `fix/e12-db-pool-sizing` | todo | |
 | 04 | E1 | `fix/e1-migrations-and-demo-bootstrap` | todo | |
