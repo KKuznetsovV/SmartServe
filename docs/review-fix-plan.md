@@ -911,4 +911,7 @@ fixes* list, and these manual follow-ups that need the owner:
 
 ## Discovered during fixes
 
+- E4: the 20-order "mark ready then wait 1s" race did not reproduce on current `main` (all orders stayed
+  `ready`). QA-1 ships that case as a passing API test without `xfail`.
+
 (Add items here as you find them. Don't fix them in an unrelated branch.)
