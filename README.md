@@ -109,6 +109,16 @@ pnpm test         # turbo run test
 pnpm format       # prettier --write
 ```
 
+From the repo root, `python scripts/check.py` runs the same per-service and per-app checks CI expects
+(ruff, mypy, pytest; typecheck, lint, vitest, `next build`). Examples:
+
+```bash
+python scripts/check.py --changed          # services/apps touched on this branch vs main
+python scripts/check.py --services auth,catalog
+python scripts/check.py --frontend web,orders
+python scripts/check.py --all
+```
+
 ### Backend service commands (from each service directory, e.g. `services/auth`, `services/catalog`, `services/ordering`, `services/payments`, `services/staff`, `services/printing`, `services/reporting`, `services/ai`)
 
 ```bash
