@@ -6,11 +6,46 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from smartserve_shared.db import Base, make_engine, make_get_db, make_sessionmaker
 
+PG_URL = "postgresql+asyncpg://smartserve:smartserve@localhost/smartserve"
+
 
 class _Row(Base):
     __tablename__ = "shared_db_rows"
     id: Mapped[str] = mapped_column(String, primary_key=True)
     name: Mapped[str] = mapped_column(String)
+
+
+def _pool(engine):  # noqa: ANN001
+    return engine.sync_engine.pool
+
+
+def test_make_engine_defaults_fit_under_postgres_max_connections(monkeypatch) -> None:  # noqa: ANN001
+    monkeypatch.delenv("DB_POOL_SIZE", raising=False)
+    monkeypatch.delenv("DB_MAX_OVERFLOW", raising=False)
+    engine = make_engine(PG_URL)
+    pool = _pool(engine)
+    assert pool.size() == 5
+    assert pool._max_overflow == 5
+    # Seven services × (pool + overflow) must stay under Postgres' default max_connections=100.
+    assert 7 * (pool.size() + pool._max_overflow) < 100
+
+
+def test_make_engine_reads_pool_env(monkeypatch) -> None:  # noqa: ANN001
+    monkeypatch.setenv("DB_POOL_SIZE", "3")
+    monkeypatch.setenv("DB_MAX_OVERFLOW", "2")
+    engine = make_engine(PG_URL)
+    pool = _pool(engine)
+    assert pool.size() == 3
+    assert pool._max_overflow == 2
+
+
+def test_make_engine_explicit_args_override_env(monkeypatch) -> None:  # noqa: ANN001
+    monkeypatch.setenv("DB_POOL_SIZE", "3")
+    monkeypatch.setenv("DB_MAX_OVERFLOW", "2")
+    engine = make_engine(PG_URL, pool_size=7, max_overflow=1)
+    pool = _pool(engine)
+    assert pool.size() == 7
+    assert pool._max_overflow == 1
 
 
 async def test_get_db_commits_on_success() -> None:
