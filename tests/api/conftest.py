@@ -68,6 +68,9 @@ async def _first_location(client: httpx.AsyncClient, token: str, business_id: st
     return locations[0]
 
 
+PIN_STAFF_NAMES = {"waiter": "Demo Waiter", "kitchen": "Demo Cook"}
+
+
 async def _pin_login(client: httpx.AsyncClient, location_id: str, role: str, pin: str) -> str:
     cache_key = f"pin:{location_id}:{role}"
     cached = _TOKEN_CACHE.get(cache_key)
@@ -75,7 +78,10 @@ async def _pin_login(client: httpx.AsyncClient, location_id: str, role: str, pin
         return cached
     staff = await client.get("/auth/pin/staff", params={"locationId": location_id})
     staff.raise_for_status()
-    match = next((row for row in staff.json() if row["role"] == role), None)
+    preferred = PIN_STAFF_NAMES.get(role)
+    match = next((row for row in staff.json() if row["name"] == preferred), None)
+    if match is None:
+        match = next((row for row in staff.json() if row["role"] == role), None)
     if match is None:
         raise RuntimeError(f"no {role} with a PIN at location {location_id}")
     resp = await client.post(
@@ -99,7 +105,22 @@ async def owner_a(client: httpx.AsyncClient) -> dict[str, Any]:
     token = await _login(client, OWNER_A_EMAIL, OWNER_A_PASSWORD)
     profile = await _me(client, token)
     location = await _first_location(client, token, profile["businessId"])
+    await _restore_demo_manager(client, token, location["id"])
     return {**profile, "token": token, "locationId": location["id"], "locationName": location["name"]}
+
+
+async def _restore_demo_manager(client: httpx.AsyncClient, owner_token: str, location_id: str) -> None:
+    staff = await client.get("/auth/pin/staff", params={"locationId": location_id})
+    if staff.status_code != 200:
+        return
+    manager = next((row for row in staff.json() if row["name"] == "Demo Manager"), None)
+    if manager is None or manager["role"] == "manager":
+        return
+    await client.patch(
+        f"/staff/{manager['id']}",
+        headers=bearer(owner_token),
+        json={"role": "manager", "active": True},
+    )
 
 
 @pytest_asyncio.fixture
