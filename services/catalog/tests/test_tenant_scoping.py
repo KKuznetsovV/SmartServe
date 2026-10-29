@@ -8,9 +8,9 @@ id path param — every such attempt must 404 (not 403, to avoid leaking existen
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
+from smartserve_shared.security import create_access_token, hash_password
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import create_access_token, hash_password
 from app.db.models import Business, Location, MenuCategory, MenuItem, ModifierGroup, User
 
 

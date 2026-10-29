@@ -21,7 +21,7 @@ async def test_create_item_publishes_catalog_item_updated(
     db.add(cat)
     await db.flush()
 
-    with patch("app.core.mq.publish", new_callable=AsyncMock) as mock_publish:
+    with patch("smartserve_shared.mq.publish", new_callable=AsyncMock) as mock_publish:
         resp = await client.post(
             "/api/v1/menu/items",
             json={"categoryId": cat.id, "name": "Burger", "price": 50.0},
@@ -46,7 +46,7 @@ async def test_update_item_publishes_catalog_item_updated(
     _, token = manager_user
     headers = {"Authorization": f"Bearer {token}"}
 
-    with patch("app.core.mq.publish", new_callable=AsyncMock) as mock_publish:
+    with patch("smartserve_shared.mq.publish", new_callable=AsyncMock) as mock_publish:
         resp = await client.patch(f"/api/v1/menu/items/{menu_item.id}", json={"price": 60.0}, headers=headers)
     assert resp.status_code == 200
 
@@ -66,7 +66,7 @@ async def test_set_stock_publishes_catalog_item_updated(
     _, token = owner_user
     headers = {"Authorization": f"Bearer {token}"}
 
-    with patch("app.core.mq.publish", new_callable=AsyncMock) as mock_publish:
+    with patch("smartserve_shared.mq.publish", new_callable=AsyncMock) as mock_publish:
         resp = await client.patch(f"/api/v1/menu/items/{menu_item.id}/stock", json={"inStock": False}, headers=headers)
     assert resp.status_code == 200
 
@@ -86,7 +86,7 @@ async def test_bulk_price_update_publishes_catalog_item_updated(
     _, token = manager_user
     headers = {"Authorization": f"Bearer {token}"}
 
-    with patch("app.core.mq.publish", new_callable=AsyncMock) as mock_publish:
+    with patch("smartserve_shared.mq.publish", new_callable=AsyncMock) as mock_publish:
         resp = await client.post(
             "/api/v1/menu/items/bulk-price",
             json={"locationId": location.id, "changePct": 10},
