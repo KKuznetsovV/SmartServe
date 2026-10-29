@@ -1,8 +1,7 @@
 """Request/response schemas for the auth endpoints."""
 
 from pydantic import EmailStr
-
-from app.schemas.base import BaseSchema
+from smartserve_shared.schemas import BaseSchema
 
 
 class LoginRequest(BaseSchema):

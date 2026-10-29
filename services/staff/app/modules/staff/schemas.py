@@ -1,6 +1,5 @@
 from pydantic import EmailStr
-
-from app.schemas.base import BaseSchema as BaseModel
+from smartserve_shared.schemas import BaseSchema as BaseModel
 
 
 class UserOut(BaseModel):

@@ -24,7 +24,7 @@ async def test_create_order_publishes_order_created(
     _, token = manager_user
     headers = {"Authorization": f"Bearer {token}"}
 
-    with patch("app.core.mq.publish", new_callable=AsyncMock) as mock_publish:
+    with patch("smartserve_shared.mq.publish", new_callable=AsyncMock) as mock_publish:
         resp = await client.post(
             "/api/v1/orders",
             json={"locationId": location.id, "channel": "dine_in", "guestCount": 2},
@@ -58,7 +58,7 @@ async def test_submit_order_publishes_order_updated(
         )
     ).json()["id"]
 
-    with patch("app.core.mq.publish", new_callable=AsyncMock) as mock_publish:
+    with patch("smartserve_shared.mq.publish", new_callable=AsyncMock) as mock_publish:
         resp = await client.post(f"/api/v1/orders/{order_id}/submit", headers=headers)
     assert resp.status_code == 200
 
@@ -99,7 +99,7 @@ async def test_fire_course_publishes_order_item_fired(
     ).json()
     await client.post(f"/api/v1/orders/{order_id}/submit", headers=headers)
 
-    with patch("app.core.mq.publish", new_callable=AsyncMock) as mock_publish:
+    with patch("smartserve_shared.mq.publish", new_callable=AsyncMock) as mock_publish:
         resp = await client.post(f"/api/v1/orders/{order_id}/fire-course", json={"course": 2}, headers=headers)
     assert resp.status_code == 200
 

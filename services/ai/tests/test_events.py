@@ -35,7 +35,7 @@ async def test_confirm_publishes_ai_action_executed(client, manager_token, monke
     monkeypatch.setattr(catalog_client, "get", fake_catalog_get)
     monkeypatch.setattr(catalog_client, "post", fake_catalog_post)
 
-    with patch("app.core.mq.publish", new_callable=AsyncMock) as mock_publish:
+    with patch("smartserve_shared.mq.publish", new_callable=AsyncMock) as mock_publish:
         resp = await client.post(
             "/api/v1/ai/confirm",
             json={"executionId": "exec-events-1"},

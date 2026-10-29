@@ -1,8 +1,8 @@
 from fastapi import HTTPException, status
+from smartserve_shared.security import hash_password
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import hash_password
 from app.db.models import User
 from app.modules.staff.schemas import StaffCreate, StaffUpdate
 

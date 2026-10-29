@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from app.schemas.base import BaseSchema
+from smartserve_shared.schemas import BaseSchema
 
 
 class TopItemOut(BaseSchema):

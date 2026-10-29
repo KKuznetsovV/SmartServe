@@ -2,9 +2,9 @@
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from smartserve_shared.security import create_access_token, hash_password
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.core.security import create_access_token, hash_password
 from app.db.models import Location, Order, OrderItem, User
 from app.db.session import Base, get_db
 from app.main import app

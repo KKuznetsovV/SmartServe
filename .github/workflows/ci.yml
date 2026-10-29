@@ -57,7 +57,6 @@ jobs:
           cache: "pip"
 
       - name: Install shared lib
-        if: matrix.service == 'ai'
         run: pip install -e ../_shared
 
       - name: Install dependencies
@@ -94,7 +93,6 @@ jobs:
           cache: "pip"
 
       - name: Install shared lib
-        if: matrix.service == 'ai'
         run: pip install -e ../_shared
 
       - name: Install dependencies

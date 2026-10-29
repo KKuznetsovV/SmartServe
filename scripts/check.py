@@ -11,6 +11,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -120,17 +121,11 @@ def check_service(name: str) -> list[CheckResult]:
             )
         ]
 
-    env = None
-    extra_path: list[Path] = []
-    if name == "ai":
-        extra_path.append(REPO_ROOT / "services" / "_shared")
-        # Keep _shared importable even if the venv was created without `pip install -e`.
-        import os
-
-        env = os.environ.copy()
-        env["PYTHONPATH"] = os.pathsep.join(
-            [str(p) for p in extra_path] + [env[k] for k in ("PYTHONPATH",) if k in env]
-        )
+    env = os.environ.copy()
+    extra_path = [REPO_ROOT / "services" / "_shared" / "src"]
+    env["PYTHONPATH"] = os.pathsep.join(
+        [str(p) for p in extra_path] + [env[k] for k in ("PYTHONPATH",) if k in env]
+    )
 
     checks = [
         ("ruff check", [str(python), "-m", "ruff", "check", "app/"]),

@@ -1,6 +1,6 @@
 """Request schemas for the AI assistant endpoints."""
 
-from app.schemas.base import BaseSchema
+from smartserve_shared.schemas import BaseSchema
 
 
 class CommandRequest(BaseSchema):

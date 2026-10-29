@@ -1,8 +1,8 @@
 from fastapi import Depends, HTTPException, status
+from smartserve_shared.routing import APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.deps import require_manager
-from app.api.v1.router_base import APIRouter
 from app.db.models import User
 from app.db.session import get_db
 from app.modules.catalog.discount_schemas import DiscountCreate, DiscountOut, DiscountUpdate

@@ -1,10 +1,10 @@
 """Authentication business logic: credential/PIN verification and token issuance."""
 
 from fastapi import HTTPException, status
+from smartserve_shared.security import create_access_token, create_refresh_token, decode_token, verify_password
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import create_access_token, create_refresh_token, decode_token, verify_password
 from app.db.models import Location, User
 from app.modules.auth.schemas import TokenResponse
 

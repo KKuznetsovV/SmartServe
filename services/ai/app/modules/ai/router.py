@@ -7,11 +7,11 @@ from datetime import UTC, datetime
 import anthropic
 from fastapi import Depends, File, Form, HTTPException, Request, UploadFile, status
 from httpx import HTTPStatusError
+from smartserve_shared import mq
+from smartserve_shared.routing import APIRouter
 
 from app.api.v1.deps import AuthContext, get_auth_context, require_manager
-from app.api.v1.router_base import APIRouter
 from app.clients import auth_client
-from app.core import mq
 from app.core.config import settings
 from app.modules.ai.schemas import CommandRequest, ConfirmRequest, MenuImportApplyRequest, MenuImportMessageRequest
 from app.modules.ai.services.client import create_message, parse_json_reply, parse_menu_import_reply

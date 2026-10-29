@@ -1,9 +1,9 @@
 from fastapi import Depends, Request
+from smartserve_shared import mq
+from smartserve_shared.routing import APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.deps import require_staff
-from app.api.v1.router_base import APIRouter
-from app.core import mq
 from app.db.models import User
 from app.db.session import get_db
 from app.modules.payments.schemas import PaymentCreate, PaymentOut

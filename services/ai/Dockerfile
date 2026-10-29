@@ -1,5 +1,4 @@
-# Build context is ./services (not ./services/ai) so this Dockerfile can also COPY the
-# sibling _shared library that ai consumes for JWT verification + inter-service HTTP calls.
+# Build context is ./services so this Dockerfile can COPY the sibling _shared library.
 FROM python:3.14-slim
 
 WORKDIR /app
@@ -10,10 +9,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY _shared /shared
-RUN pip install --no-cache-dir -e /shared
-
 COPY ai/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN grep -v '^-e ' requirements.txt > /tmp/reqs.txt \
+ && pip install --no-cache-dir -e /shared -r /tmp/reqs.txt
 
 COPY ai/ .
 

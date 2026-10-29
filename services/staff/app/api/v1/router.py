@@ -1,4 +1,5 @@
-from app.api.v1.router_base import APIRouter
+from smartserve_shared.routing import APIRouter
+
 from app.modules.staff.router import router as staff
 from app.modules.staff.shift_router import router as shifts
 

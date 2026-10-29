@@ -20,7 +20,7 @@ async def test_full_payment_publishes_payment_completed(
     headers = {"Authorization": f"Bearer {token}"}
     order = await create_order(db, total=100.0)
 
-    with patch("app.core.mq.publish", new_callable=AsyncMock) as mock_publish:
+    with patch("smartserve_shared.mq.publish", new_callable=AsyncMock) as mock_publish:
         resp = await client.post(
             "/api/v1/payments",
             json={"orderId": order.id, "method": "cash", "amount": order.total},
@@ -46,7 +46,7 @@ async def test_partial_payment_does_not_publish_payment_completed(
     headers = {"Authorization": f"Bearer {token}"}
     order = await create_order(db, total=100.0)
 
-    with patch("app.core.mq.publish", new_callable=AsyncMock) as mock_publish:
+    with patch("smartserve_shared.mq.publish", new_callable=AsyncMock) as mock_publish:
         resp = await client.post(
             "/api/v1/payments",
             json={"orderId": order.id, "method": "cash", "amount": 50.0},

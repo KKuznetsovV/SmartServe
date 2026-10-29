@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from app.schemas.base import BaseSchema as BaseModel
+from smartserve_shared.schemas import BaseSchema as BaseModel
 
 
 class PrinterOut(BaseModel):

@@ -1,9 +1,9 @@
 from fastapi import Depends, HTTPException, status
+from smartserve_shared.routing import APIRouter
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.deps import get_current_user, require_manager, require_owner
-from app.api.v1.router_base import APIRouter
 from app.db.models import User
 from app.db.session import get_db
 from app.modules.auth.business_schemas import (

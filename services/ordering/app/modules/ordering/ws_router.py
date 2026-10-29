@@ -11,8 +11,7 @@ from typing import Any
 
 import structlog
 from fastapi import WebSocket, WebSocketDisconnect
-
-from app.api.v1.router_base import APIRouter
+from smartserve_shared.routing import APIRouter
 
 router = APIRouter()
 logger = structlog.get_logger()
