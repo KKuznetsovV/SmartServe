@@ -126,6 +126,39 @@ async def test_bulk_price_update(
 
 
 @pytest.mark.asyncio
+async def test_delete_category_with_items_is_409(
+    client: AsyncClient,
+    db: AsyncSession,
+    business: Business,
+    manager_user: tuple[User, str],
+):
+    _, token = manager_user
+    location = Location(business_id=business.id, name="Main Branch")
+    db.add(location)
+    await db.flush()
+    headers = {"Authorization": f"Bearer {token}"}
+
+    cat_resp = await client.post(
+        "/api/v1/menu/categories",
+        json={"locationId": location.id, "name": "Pizza"},
+        headers=headers,
+    )
+    category_id = cat_resp.json()["id"]
+    await client.post(
+        "/api/v1/menu/items",
+        json={"categoryId": category_id, "name": "Margherita", "price": 55.0},
+        headers=headers,
+    )
+
+    resp = await client.delete(f"/api/v1/menu/categories/{category_id}", headers=headers)
+    assert resp.status_code == 409
+    assert resp.json()["detail"] == "Category has items or subcategories"
+
+    listed = await client.get(f"/api/v1/menu/locations/{location.id}/categories", headers=headers)
+    assert any(row["id"] == category_id for row in listed.json())
+
+
+@pytest.mark.asyncio
 async def test_manager_required_for_mutation(
     client: AsyncClient,
     db: AsyncSession,

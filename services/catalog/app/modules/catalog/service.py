@@ -89,6 +89,14 @@ class MenuService:
 
     async def delete_category(self, category_id: str, business_id: str | None = None) -> None:
         cat = await self.get_category(category_id, business_id)
+        item_count = await self.db.scalar(
+            select(func.count()).select_from(MenuItem).where(MenuItem.category_id == category_id)
+        )
+        child_count = await self.db.scalar(
+            select(func.count()).select_from(MenuCategory).where(MenuCategory.parent_id == category_id)
+        )
+        if item_count or child_count:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Category has items or subcategories")
         await self.db.delete(cat)
 
     async def reorder_categories(self, location_id: str, ids: list[str], business_id: str | None = None) -> None:

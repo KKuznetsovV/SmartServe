@@ -1,10 +1,9 @@
 from fastapi import Depends
 from smartserve_shared.routing import APIRouter
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.deps import get_current_user, require_manager
 from app.db.models import User
-from app.db.session import get_db
+from app.db.session import DbSession
 from app.modules.ordering.table_schemas import TableCreate, TableOut, TableUpdate
 from app.modules.ordering.table_service import TableService
 
@@ -14,7 +13,7 @@ router = APIRouter()
 @router.get("/locations/{location_id}/tables", response_model=list[TableOut])
 async def list_tables(
     location_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(get_current_user),
 ):
     return await TableService(db).list_tables(location_id, current_user.business_id)
@@ -23,7 +22,7 @@ async def list_tables(
 @router.post("/tables", response_model=TableOut, status_code=201)
 async def create_table(
     data: TableCreate,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(require_manager),
 ):
     return await TableService(db).create_table(data, current_user.business_id)
@@ -33,7 +32,7 @@ async def create_table(
 async def update_table(
     table_id: str,
     data: TableUpdate,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(require_manager),
 ):
     return await TableService(db).update_table(table_id, data, current_user.business_id)
@@ -42,7 +41,7 @@ async def update_table(
 @router.delete("/tables/{table_id}", status_code=204)
 async def delete_table(
     table_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(require_manager),
 ):
     await TableService(db).delete_table(table_id, current_user.business_id)

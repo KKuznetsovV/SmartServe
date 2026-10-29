@@ -1,12 +1,25 @@
 from __future__ import annotations
 
+import inspect
+
 import pytest
+from fastapi import Depends
 from sqlalchemy import String, select
 from sqlalchemy.orm import Mapped, mapped_column
 
-from smartserve_shared.db import Base, make_engine, make_get_db, make_sessionmaker
+from smartserve_shared.db import Base, make_db_session, make_engine, make_get_db, make_sessionmaker
 
 PG_URL = "postgresql+asyncpg://smartserve:smartserve@localhost/smartserve"
+
+
+def test_fastapi_depends_supports_scope() -> None:
+    assert "scope" in inspect.signature(Depends).parameters
+
+
+def test_make_db_session_uses_function_scope() -> None:
+    alias = make_db_session(lambda: None)
+    dep = alias.__metadata__[0]
+    assert dep.scope == "function"
 
 
 class _Row(Base):

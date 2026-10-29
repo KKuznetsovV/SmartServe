@@ -1,11 +1,10 @@
 from fastapi import Depends, Request
 from smartserve_shared import mq
 from smartserve_shared.routing import APIRouter
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.deps import require_staff
 from app.db.models import User
-from app.db.session import get_db
+from app.db.session import DbSession
 from app.modules.payments.schemas import PaymentCreate, PaymentOut
 from app.modules.payments.service import PaymentService
 
@@ -16,7 +15,7 @@ router = APIRouter()
 async def create_payment(
     data: PaymentCreate,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     _: User = Depends(require_staff),
 ):
     payment, order = await PaymentService(db).create_payment(data)
@@ -37,7 +36,7 @@ async def create_payment(
 @router.get("/payments/{payment_id}", response_model=PaymentOut)
 async def get_payment(
     payment_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     _: User = Depends(require_staff),
 ):
     return await PaymentService(db).get_payment(payment_id)
@@ -46,7 +45,7 @@ async def get_payment(
 @router.get("/orders/{order_id}/payments", response_model=list[PaymentOut])
 async def list_order_payments(
     order_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     _: User = Depends(require_staff),
 ):
     return await PaymentService(db).list_by_order(order_id)

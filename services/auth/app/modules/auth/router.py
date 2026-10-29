@@ -3,9 +3,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from smartserve_shared.routing import APIRouter
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import get_db
+from app.db.session import DbSession
 from app.modules.auth.schemas import LoginRequest, PinLoginRequest, PinStaffOut, RefreshRequest, TokenResponse
 from app.modules.auth.service import AuthService
 
@@ -16,7 +15,7 @@ limiter = Limiter(key_func=get_remote_address)
 
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit("10/minute")
-async def login(request: Request, body: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login(request: Request, body: LoginRequest, db: DbSession):
     return await AuthService(db).login(body.email, body.password)
 
 
@@ -24,8 +23,8 @@ async def login(request: Request, body: LoginRequest, db: AsyncSession = Depends
 @limiter.limit("30/minute")
 async def pin_staff(
     request: Request,
+    db: DbSession,
     location_id: str = Query(alias="locationId"),
-    db: AsyncSession = Depends(get_db),
 ):
     """Public staff-picker list for the PIN-login screen (name + role only)."""
     return await AuthService(db).list_pin_staff(location_id)
@@ -33,18 +32,18 @@ async def pin_staff(
 
 @router.post("/pin", response_model=TokenResponse)
 @limiter.limit("20/minute")
-async def pin_login(request: Request, body: PinLoginRequest, db: AsyncSession = Depends(get_db)):
+async def pin_login(request: Request, body: PinLoginRequest, db: DbSession):
     return await AuthService(db).pin_login(body.location_id, body.user_id, body.pin)
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
+async def refresh(body: RefreshRequest, db: DbSession):
     return await AuthService(db).refresh(body.refresh_token)
 
 
 @router.get("/me")
 async def get_me(
+    db: DbSession,
     credentials: HTTPAuthorizationCredentials = Depends(bearer),
-    db: AsyncSession = Depends(get_db),
 ):
     return await AuthService(db).get_user_profile(credentials.credentials)

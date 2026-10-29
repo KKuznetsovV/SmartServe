@@ -1,7 +1,5 @@
 """Auth FastAPI dependencies: DB-backed user lookup, or claims-only for services with no DB."""
 
-from __future__ import annotations
-
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
@@ -9,8 +7,8 @@ from typing import Any
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
+from smartserve_shared.db import make_db_session
 from smartserve_shared.security import TokenClaims, TokenError, decode_token, verify_token
 
 bearer = HTTPBearer()
@@ -22,9 +20,11 @@ def make_auth_dependencies(user_model: type[Any], get_db: Callable[..., Any]) ->
     `user_model` must have `id`, `active`, and `role` attributes (SQLAlchemy mapped).
     """
 
+    DbSession = make_db_session(get_db)
+
     async def get_current_user(
+        db: DbSession,
         credentials: HTTPAuthorizationCredentials = Depends(bearer),
-        db: AsyncSession = Depends(get_db),
     ) -> Any:
         payload = decode_token(credentials.credentials)
         result = await db.execute(select(user_model).where(user_model.id == payload["sub"], user_model.active))
