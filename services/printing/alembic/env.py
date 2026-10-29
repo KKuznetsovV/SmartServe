@@ -9,6 +9,8 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
+from smartserve_shared.alembic_filter import owned_include_object
+
 from app.core.config import settings
 from app.db import models  # noqa: F401
 from app.db.session import Base
@@ -22,12 +24,7 @@ PRINTING_OWNED_TABLES = {"printers", "printer_routes", "print_jobs"}
 VERSION_TABLE = "alembic_version_printing"
 
 
-def include_object(object, name, type_, reflected, compare_to):  # noqa: ANN001, ARG001
-    if type_ == "table":
-        return name in PRINTING_OWNED_TABLES
-    if hasattr(object, "table") and object.table is not None:
-        return object.table.name in PRINTING_OWNED_TABLES
-    return True
+include_object = owned_include_object(PRINTING_OWNED_TABLES)
 
 
 def get_url() -> str:
