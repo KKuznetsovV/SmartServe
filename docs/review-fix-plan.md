@@ -16,7 +16,7 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 02 | E8 | `refactor/e8-shared-backend-package` | merged | https://github.com/KKuznetsovV/SmartServe/pull/5 |
 | 03 | E12 | `fix/e12-db-pool-sizing` | merged | https://github.com/KKuznetsovV/SmartServe/pull/6 |
 | 04 | E1 | `fix/e1-migrations-and-demo-bootstrap` | merged | https://github.com/KKuznetsovV/SmartServe/pull/7 |
-| 05 | QA-1 | `test/api-blackbox-suite` | todo | |
+| 05 | QA-1 | `test/api-blackbox-suite` | merged | https://github.com/KKuznetsovV/SmartServe/pull/8 |
 | 06 | QA-2 | `ci/full-pipeline` | todo | |
 | 07 | E3 | `fix/e3-commit-before-response` | todo | |
 | 08 | S1 | `fix/s1-tenant-scoping` | todo | |
@@ -910,5 +910,8 @@ fixes* list, and these manual follow-ups that need the owner:
 - Rotate any API keys or secrets that were ever shared or committed.
 
 ## Discovered during fixes
+
+- E4: the 20-order "mark ready then wait 1s" race did not reproduce on current `main` (all orders stayed
+  `ready`). QA-1 ships that case as a passing API test without `xfail`.
 
 (Add items here as you find them. Don't fix them in an unrelated branch.)

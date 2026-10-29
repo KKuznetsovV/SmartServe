@@ -3,6 +3,7 @@
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from smartserve_shared.security import create_access_token, hash_password
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.db.models import Business, Location, MenuItem, User
@@ -16,6 +17,13 @@ TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
 @pytest_asyncio.fixture(scope="function")
 async def db():
     engine = create_async_engine(TEST_DB_URL, echo=False)
+
+    @event.listens_for(engine.sync_engine, "connect")
+    def _enable_sqlite_fks(dbapi_connection, _connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 

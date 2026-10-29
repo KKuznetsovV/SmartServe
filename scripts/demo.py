@@ -30,7 +30,19 @@ def main() -> None:
     if args.rebuild:
         up = ["docker", "compose", "up", "-d", "--build", "--wait"]
     _run(up)
-    _run(["docker", "compose", "exec", "-T", "auth", "python", "-m", "app.db.seed"])
+    _run(
+        [
+            "docker",
+            "compose",
+            "exec",
+            "-T",
+            "auth",
+            "python",
+            "-m",
+            "app.db.seed",
+            "--with-second-tenant",
+        ]
+    )
     _run([sys.executable, str(ROOT / "scripts" / "seed_demo.py")])
 
     print()
@@ -44,6 +56,7 @@ def main() -> None:
     print("  manager  manager@demo.com / demo1234  (PIN 2222)")
     print("  waiter   PIN 1234")
     print("  kitchen  PIN 5678")
+    print("  other    owner@other.com / other1234")
 
 
 if __name__ == "__main__":

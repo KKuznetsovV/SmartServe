@@ -732,17 +732,9 @@ async def test_trashing_menu_item_does_not_affect_existing_order_item(
     ).json()
     assert order_item["menuItemName"] == "Soon To Be Trashed"
 
-    # Simulate catalog trashing (then permanently deleting) the underlying item.
+    # Simulate catalog trashing the underlying item. Hard-delete is blocked by the
+    # order_items.menu_item_id foreign key once SQLite enforces it (same as Postgres).
     item.deleted_at = datetime.now(UTC)
-    await db.flush()
-
-    order = (await client.get(f"/api/v1/orders/{order_id}", headers=headers)).json()
-    assert order["items"][0]["menuItemName"] == "Soon To Be Trashed"
-    assert order["subtotal"] == 66.0
-
-    # Now permanently delete the row outright (the real, irreversible delete) — the order
-    # must still render correctly since OrderItem never joins live to MenuItem for display.
-    await db.delete(item)
     await db.flush()
 
     order = (await client.get(f"/api/v1/orders/{order_id}", headers=headers)).json()
