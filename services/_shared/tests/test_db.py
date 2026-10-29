@@ -29,6 +29,22 @@ async def test_get_db_commits_on_success() -> None:
     await engine.dispose()
 
 
+async def test_get_db_resolves_sessionmaker_per_request() -> None:
+    engine = make_engine("sqlite+aiosqlite:///:memory:")
+    factory = make_sessionmaker(engine)
+    get_db = make_get_db(lambda: factory)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    async for session in get_db():
+        session.add(_Row(id="late", name="bound"))
+
+    async with factory() as check:
+        found = (await check.execute(select(_Row).where(_Row.id == "late"))).scalar_one()
+        assert found.name == "bound"
+    await engine.dispose()
+
+
 async def test_get_db_rolls_back_on_error() -> None:
     engine = make_engine("sqlite+aiosqlite:///:memory:")
     session_factory = make_sessionmaker(engine)

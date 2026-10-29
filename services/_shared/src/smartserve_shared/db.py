@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
@@ -41,10 +41,22 @@ def make_sessionmaker(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
 
 
 def make_get_db(
-    session_factory: async_sessionmaker[AsyncSession],
+    session_factory: async_sessionmaker[AsyncSession] | Callable[[], async_sessionmaker[AsyncSession]],
 ):
+    """Build a FastAPI `get_db` dependency.
+
+    Pass an `async_sessionmaker` or a zero-arg getter that returns one. A getter
+    is required when tests monkeypatch `AsyncSessionLocal` on the service module:
+    the factory is resolved per request, not captured at import.
+    """
+
+    def _factory() -> async_sessionmaker[AsyncSession]:
+        if isinstance(session_factory, async_sessionmaker):
+            return session_factory
+        return session_factory()
+
     async def get_db() -> AsyncGenerator[AsyncSession]:
-        async with session_factory() as session:
+        async with _factory()() as session:
             try:
                 yield session
                 await session.commit()

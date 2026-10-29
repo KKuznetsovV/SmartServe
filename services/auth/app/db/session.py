@@ -5,4 +5,4 @@ from app.core.config import settings
 
 engine = make_engine(settings.DATABASE_URL, echo=settings.ENVIRONMENT == "development")
 AsyncSessionLocal = make_sessionmaker(engine)
-get_db = make_get_db(AsyncSessionLocal)
+get_db = make_get_db(lambda: AsyncSessionLocal)
