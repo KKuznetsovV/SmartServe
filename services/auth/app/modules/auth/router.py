@@ -2,9 +2,9 @@ from fastapi import Depends, Query, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from smartserve_shared.routing import APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.router_base import APIRouter
 from app.db.session import get_db
 from app.modules.auth.schemas import LoginRequest, PinLoginRequest, PinStaffOut, RefreshRequest, TokenResponse
 from app.modules.auth.service import AuthService

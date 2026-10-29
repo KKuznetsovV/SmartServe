@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Callable
-from contextlib import asynccontextmanager
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from inspect import isasyncgenfunction
 from typing import Any
 
@@ -22,7 +22,7 @@ logger = structlog.get_logger()
 
 limiter = Limiter(key_func=get_remote_address)
 
-LifespanHooks = Callable[[FastAPI], AsyncIterator[None]]
+LifespanHooks = Callable[[FastAPI], AsyncIterator[None] | AbstractAsyncContextManager[Any]]
 
 
 def create_service_app(
