@@ -2,28 +2,49 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import AsyncGenerator, Callable
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
+DEFAULT_POOL_SIZE = 5
+DEFAULT_MAX_OVERFLOW = 5
+
 
 class Base(DeclarativeBase):
     pass
 
 
+def _env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    return int(raw)
+
+
 def make_engine(
     url: str,
-    pool_size: int = 10,
-    max_overflow: int = 20,
+    pool_size: int | None = None,
+    max_overflow: int | None = None,
     *,
     echo: bool = False,
     **kwargs: Any,
 ) -> AsyncEngine:
+    """Create an async engine.
+
+    Pool size comes from `DB_POOL_SIZE` / `DB_MAX_OVERFLOW` (defaults 5 / 5) so seven
+    services stay under Postgres' default `max_connections` of 100. Explicit arguments
+    override the environment.
+    """
     options: dict[str, Any] = {"echo": echo, **kwargs}
     if url.startswith("sqlite") or "+aiosqlite" in url:
         return create_async_engine(url, **options)
+    if pool_size is None:
+        pool_size = _env_int("DB_POOL_SIZE", DEFAULT_POOL_SIZE)
+    if max_overflow is None:
+        max_overflow = _env_int("DB_MAX_OVERFLOW", DEFAULT_MAX_OVERFLOW)
     options.setdefault("pool_pre_ping", True)
     options["pool_size"] = pool_size
     options["max_overflow"] = max_overflow
