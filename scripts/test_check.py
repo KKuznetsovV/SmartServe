@@ -7,7 +7,7 @@ def test_gateway_and_shared_select_every_service():
     assert not frontends
     assert not api
 
-    services, _, _ = targets_from_changed(["services/_shared/src/jwt.py"])
+    services, _, _ = targets_from_changed(["services/_shared/src/smartserve_shared/security.py"])
     assert services == set(SERVICES)
 
 
