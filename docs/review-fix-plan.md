@@ -17,7 +17,7 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 03 | E12 | `fix/e12-db-pool-sizing` | merged | https://github.com/KKuznetsovV/SmartServe/pull/6 |
 | 04 | E1 | `fix/e1-migrations-and-demo-bootstrap` | merged | https://github.com/KKuznetsovV/SmartServe/pull/7 |
 | 05 | QA-1 | `test/api-blackbox-suite` | merged | https://github.com/KKuznetsovV/SmartServe/pull/8 |
-| 06 | QA-2 | `ci/full-pipeline` | todo | |
+| 06 | QA-2 | `ci/full-pipeline` | merged | https://github.com/KKuznetsovV/SmartServe/pull/9 |
 | 07 | E3 | `fix/e3-commit-before-response` | todo | |
 | 08 | S1 | `fix/s1-tenant-scoping` | todo | |
 | 09 | S6 | `fix/s6-scope-audit-log` | todo | |
