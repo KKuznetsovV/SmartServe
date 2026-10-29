@@ -41,8 +41,8 @@ services:
 
   auth:
     build:
-      context: ./services/auth
-      dockerfile: Dockerfile
+      context: ./services
+      dockerfile: auth/Dockerfile
     ports:
       - "8001:8000"
     environment:
@@ -58,12 +58,13 @@ services:
         condition: service_healthy
     volumes:
       - ./services/auth:/app
+      - ./services/_shared:/shared
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   catalog:
     build:
-      context: ./services/catalog
-      dockerfile: Dockerfile
+      context: ./services
+      dockerfile: catalog/Dockerfile
     ports:
       - "8002:8000"
     environment:
@@ -82,12 +83,13 @@ services:
         condition: service_healthy
     volumes:
       - ./services/catalog:/app
+      - ./services/_shared:/shared
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   ordering:
     build:
-      context: ./services/ordering
-      dockerfile: Dockerfile
+      context: ./services
+      dockerfile: ordering/Dockerfile
     ports:
       - "8003:8000"
     environment:
@@ -106,12 +108,13 @@ services:
         condition: service_healthy
     volumes:
       - ./services/ordering:/app
+      - ./services/_shared:/shared
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   payments:
     build:
-      context: ./services/payments
-      dockerfile: Dockerfile
+      context: ./services
+      dockerfile: payments/Dockerfile
     ports:
       - "8004:8000"
     environment:
@@ -130,12 +133,13 @@ services:
         condition: service_healthy
     volumes:
       - ./services/payments:/app
+      - ./services/_shared:/shared
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   staff:
     build:
-      context: ./services/staff
-      dockerfile: Dockerfile
+      context: ./services
+      dockerfile: staff/Dockerfile
     ports:
       - "8005:8000"
     environment:
@@ -154,12 +158,13 @@ services:
         condition: service_healthy
     volumes:
       - ./services/staff:/app
+      - ./services/_shared:/shared
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   printing:
     build:
-      context: ./services/printing
-      dockerfile: Dockerfile
+      context: ./services
+      dockerfile: printing/Dockerfile
     ports:
       - "8006:8000"
     environment:
@@ -178,12 +183,13 @@ services:
         condition: service_healthy
     volumes:
       - ./services/printing:/app
+      - ./services/_shared:/shared
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   reporting:
     build:
-      context: ./services/reporting
-      dockerfile: Dockerfile
+      context: ./services
+      dockerfile: reporting/Dockerfile
     ports:
       - "8007:8000"
     environment:
@@ -202,13 +208,11 @@ services:
         condition: service_healthy
     volumes:
       - ./services/reporting:/app
+      - ./services/_shared:/shared
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   ai:
     build:
-      # Build context is ./services (not ./services/ai) so the Dockerfile can also COPY
-      # the sibling _shared library that ai installs editable — a deliberate one-off
-      # deviation from every other service's context: ./services/<name> pattern.
       context: ./services
       dockerfile: ai/Dockerfile
     ports:
