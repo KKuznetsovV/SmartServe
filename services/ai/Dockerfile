@@ -16,4 +16,5 @@ RUN grep -v '^-e ' requirements.txt > /tmp/reqs.txt \
 COPY ai/ .
 
 EXPOSE 8000
+ENTRYPOINT ["python", "/shared/entrypoint.py"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

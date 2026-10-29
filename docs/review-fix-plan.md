@@ -15,7 +15,7 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 01 | E2 | `fix/e2-db-session-commit` | merged | https://github.com/KKuznetsovV/SmartServe/pull/4 |
 | 02 | E8 | `refactor/e8-shared-backend-package` | merged | https://github.com/KKuznetsovV/SmartServe/pull/5 |
 | 03 | E12 | `fix/e12-db-pool-sizing` | merged | https://github.com/KKuznetsovV/SmartServe/pull/6 |
-| 04 | E1 | `fix/e1-migrations-and-demo-bootstrap` | todo | |
+| 04 | E1 | `fix/e1-migrations-and-demo-bootstrap` | merged | https://github.com/KKuznetsovV/SmartServe/pull/7 |
 | 05 | QA-1 | `test/api-blackbox-suite` | todo | |
 | 06 | QA-2 | `ci/full-pipeline` | todo | |
 | 07 | E3 | `fix/e3-commit-before-response` | todo | |

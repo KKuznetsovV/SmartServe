@@ -60,6 +60,12 @@ services:
       - ./services/auth:/app
       - ./services/_shared:/shared
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
 
   catalog:
     build:
@@ -85,6 +91,12 @@ services:
       - ./services/catalog:/app
       - ./services/_shared:/shared
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
 
   ordering:
     build:
@@ -110,6 +122,12 @@ services:
       - ./services/ordering:/app
       - ./services/_shared:/shared
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
 
   payments:
     build:
@@ -131,10 +149,18 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      ordering:
+        condition: service_healthy
     volumes:
       - ./services/payments:/app
       - ./services/_shared:/shared
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
 
   staff:
     build:
@@ -156,10 +182,18 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      auth:
+        condition: service_healthy
     volumes:
       - ./services/staff:/app
       - ./services/_shared:/shared
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
 
   printing:
     build:
@@ -185,6 +219,12 @@ services:
       - ./services/printing:/app
       - ./services/_shared:/shared
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
 
   reporting:
     build:
@@ -210,6 +250,12 @@ services:
       - ./services/reporting:/app
       - ./services/_shared:/shared
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
 
   ai:
     build:
@@ -227,23 +273,34 @@ services:
       RABBITMQ_URL: amqp://smartserve:smartserve@rabbitmq:5672/
       REDIS_URL: redis://redis:6379/2
       ENVIRONMENT: development
-      # Mount the quantized GGUF from the sibling smartserve-agent-model repo.
-      # Set to empty string to disable the local tier and use Haiku/Sonnet only.
-      LOCAL_MODEL_PATH: /models/Qwen2.5-1.5B-Instruct.Q4_K_M.gguf
+      # Empty by default so a fresh clone needs nothing outside this repo.
+      LOCAL_MODEL_PATH: ${LOCAL_MODEL_PATH:-}
     env_file:
       - ./.env
     depends_on:
-      - auth
-      - catalog
-      - printing
-      - reporting
-      - rabbitmq
-      - redis
+      auth:
+        condition: service_healthy
+      catalog:
+        condition: service_healthy
+      printing:
+        condition: service_healthy
+      reporting:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - ./services/ai:/app
       - ./services/_shared:/shared
-      - ../smartserve-agent-model/inference_gguf:/models:ro
+      - ${LOCAL_MODEL_DIR:-./models}:/models:ro
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
 
   gateway:
     build:
@@ -252,14 +309,22 @@ services:
     ports:
       - "8080:80"
     depends_on:
-      - auth
-      - catalog
-      - ordering
-      - payments
-      - staff
-      - printing
-      - reporting
-      - ai
+      auth:
+        condition: service_healthy
+      catalog:
+        condition: service_healthy
+      ordering:
+        condition: service_healthy
+      payments:
+        condition: service_healthy
+      staff:
+        condition: service_healthy
+      printing:
+        condition: service_healthy
+      reporting:
+        condition: service_healthy
+      ai:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:80/api/v1/health"]
       interval: 5s
