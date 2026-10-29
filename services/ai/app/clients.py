@@ -4,7 +4,7 @@ docs/microservices-plan.md §4), so every mutation is a REST call to the owning 
 with the caller's JWT forwarded for that service's own authorization checks.
 """
 
-from http_client import ServiceClient
+from smartserve_shared.http_client import ServiceClient
 
 from app.core.config import settings
 
