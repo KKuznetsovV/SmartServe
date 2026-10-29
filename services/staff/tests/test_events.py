@@ -16,7 +16,7 @@ async def test_create_staff_publishes_staff_created(
     _, token = manager_user
     headers = {"Authorization": f"Bearer {token}"}
 
-    with patch("app.core.mq.publish", new_callable=AsyncMock) as mock_publish:
+    with patch("smartserve_shared.mq.publish", new_callable=AsyncMock) as mock_publish:
         resp = await client.post(
             "/api/v1/staff",
             json={"name": "Waiter Bob", "role": "waiter", "pin": "1234"},
@@ -48,7 +48,7 @@ async def test_update_staff_publishes_staff_updated(
         )
     ).json()
 
-    with patch("app.core.mq.publish", new_callable=AsyncMock) as mock_publish:
+    with patch("smartserve_shared.mq.publish", new_callable=AsyncMock) as mock_publish:
         resp = await client.patch(f"/api/v1/staff/{created['id']}", json={"name": "Robert"}, headers=headers)
     assert resp.status_code == 200
 

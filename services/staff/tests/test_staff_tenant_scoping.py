@@ -7,9 +7,9 @@ business's staff record via a guessed/known user_id path param.
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
+from smartserve_shared.security import create_access_token, hash_password
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import create_access_token, hash_password
 from app.db.models import User
 
 

@@ -9,12 +9,12 @@ through a fresh session after the request completes.
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from smartserve_shared.security import create_access_token, hash_password
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
 import app.db.session as session_module
-from app.core.security import create_access_token, hash_password
 from app.db.models import Shift, User
 from app.db.session import Base
 from app.main import app
