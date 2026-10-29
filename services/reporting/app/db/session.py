@@ -1,36 +1,8 @@
-from collections.abc import AsyncGenerator
-
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import DeclarativeBase
+from smartserve_shared.db import Base as Base
+from smartserve_shared.db import make_engine, make_get_db, make_sessionmaker
 
 from app.core.config import settings
 
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=settings.ENVIRONMENT == "development",
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
-)
-
-AsyncSessionLocal = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autoflush=False,
-    autocommit=False,
-)
-
-
-class Base(DeclarativeBase):
-    pass
-
-
-async def get_db() -> AsyncGenerator[AsyncSession]:
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
+engine = make_engine(settings.DATABASE_URL, echo=settings.ENVIRONMENT == "development")
+AsyncSessionLocal = make_sessionmaker(engine)
+get_db = make_get_db(lambda: AsyncSessionLocal)
