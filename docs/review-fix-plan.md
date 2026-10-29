@@ -913,5 +913,8 @@ fixes* list, and these manual follow-ups that need the owner:
 
 - E4: the 20-order "mark ready then wait 1s" race did not reproduce on current `main` (all orders stayed
   `ready`). QA-1 ships that case as a passing API test without `xfail`.
+- QA-2: `pnpm audit --prod --audit-level high` fails on Next.js 15.3.0 (S7) and on Expo/`apps/pos`
+  advisories. The CI step runs and is visible, but is `continue-on-error` until S7. `pip-audit` still fails
+  the job on high/critical Python findings.
 
 (Add items here as you find them. Don't fix them in an unrelated branch.)

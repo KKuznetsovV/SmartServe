@@ -84,6 +84,9 @@ importers:
       '@eslint/eslintrc':
         specifier: ^3.3.6
         version: 3.3.6(supports-color@8.1.1)
+      '@playwright/test':
+        specifier: ^1.62.0
+        version: 1.62.0
       '@smartserve/config':
         specifier: workspace:*
         version: link:../../packages/config
