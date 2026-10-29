@@ -3,11 +3,11 @@
 from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
+from smartserve_shared.security import verify_password
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.security import verify_password
 from app.db.models import Discount, Location, MenuCategory, MenuItem, Order, OrderItem, Table, User
 from app.modules.ordering.schemas import (
     ApplyDiscountIn,

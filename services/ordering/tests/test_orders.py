@@ -4,9 +4,9 @@ from datetime import UTC, datetime
 
 import pytest
 from httpx import AsyncClient
+from smartserve_shared.security import hash_password
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import hash_password
 from app.db.models import Business, Location, MenuCategory, MenuItem, User
 
 

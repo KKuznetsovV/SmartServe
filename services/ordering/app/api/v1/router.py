@@ -1,4 +1,5 @@
-from app.api.v1.router_base import APIRouter
+from smartserve_shared.routing import APIRouter
+
 from app.modules.ordering.router import router as orders
 from app.modules.ordering.table_router import router as tables
 from app.modules.ordering.ws_router import router as ws
