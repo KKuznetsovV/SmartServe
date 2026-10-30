@@ -15,7 +15,7 @@ async def test_create_item_publishes_catalog_item_updated(
     manager_user: tuple[User, str],
     db,
 ):
-    _, token = manager_user
+    user, token = manager_user
     headers = {"Authorization": f"Bearer {token}"}
     cat = MenuCategory(location_id=location.id, name="Food", sort_order=0)
     db.add(cat)
@@ -35,6 +35,7 @@ async def test_create_item_publishes_catalog_item_updated(
     assert routing_key == "catalog.item_updated"
     assert payload["itemId"] == item_id
     assert payload["price"] == 50.0
+    assert payload["businessId"] == user.business_id
 
 
 @pytest.mark.asyncio
@@ -43,7 +44,7 @@ async def test_update_item_publishes_catalog_item_updated(
     menu_item: MenuItem,
     manager_user: tuple[User, str],
 ):
-    _, token = manager_user
+    user, token = manager_user
     headers = {"Authorization": f"Bearer {token}"}
 
     with patch("smartserve_shared.mq.publish", new_callable=AsyncMock) as mock_publish:
@@ -55,6 +56,7 @@ async def test_update_item_publishes_catalog_item_updated(
     assert routing_key == "catalog.item_updated"
     assert payload["itemId"] == menu_item.id
     assert payload["price"] == 60.0
+    assert payload["businessId"] == user.business_id
 
 
 @pytest.mark.asyncio
@@ -63,7 +65,7 @@ async def test_set_stock_publishes_catalog_item_updated(
     menu_item: MenuItem,
     owner_user: tuple[User, str],
 ):
-    _, token = owner_user
+    user, token = owner_user
     headers = {"Authorization": f"Bearer {token}"}
 
     with patch("smartserve_shared.mq.publish", new_callable=AsyncMock) as mock_publish:
@@ -74,6 +76,7 @@ async def test_set_stock_publishes_catalog_item_updated(
     _, routing_key, payload = mock_publish.await_args.args
     assert routing_key == "catalog.item_updated"
     assert payload["inStock"] is False
+    assert payload["businessId"] == user.business_id
 
 
 @pytest.mark.asyncio
@@ -83,7 +86,7 @@ async def test_bulk_price_update_publishes_catalog_item_updated(
     location: Location,
     manager_user: tuple[User, str],
 ):
-    _, token = manager_user
+    user, token = manager_user
     headers = {"Authorization": f"Bearer {token}"}
 
     with patch("smartserve_shared.mq.publish", new_callable=AsyncMock) as mock_publish:
@@ -99,3 +102,4 @@ async def test_bulk_price_update_publishes_catalog_item_updated(
     assert routing_key == "catalog.item_updated"
     assert payload["bulk"] is True
     assert payload["updated"] == 1
+    assert payload["businessId"] == user.business_id

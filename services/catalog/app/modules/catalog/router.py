@@ -112,6 +112,7 @@ async def create_item(
             "itemId": item.id,
             "categoryId": item.category_id,
             "locationId": location_id,
+            "businessId": current_user.business_id,
             "name": item.name,
             "price": item.price,
             "inStock": item.in_stock,
@@ -137,6 +138,7 @@ async def update_item(
             "itemId": item.id,
             "categoryId": item.category_id,
             "locationId": location_id,
+            "businessId": current_user.business_id,
             "name": item.name,
             "price": item.price,
             "inStock": item.in_stock,
@@ -162,6 +164,7 @@ async def set_item_stock(
             "itemId": item.id,
             "categoryId": item.category_id,
             "locationId": location_id,
+            "businessId": current_user.business_id,
             "name": item.name,
             "price": item.price,
             "inStock": item.in_stock,
@@ -201,7 +204,7 @@ async def delete_item(
     await mq.publish(
         request.app.state.mq_connection,
         "catalog.item_updated",
-        {"itemId": item_id, "trashed": True},
+        {"itemId": item_id, "trashed": True, "businessId": current_user.business_id},
     )
 
 
@@ -230,6 +233,7 @@ async def restore_item(
             "itemId": item.id,
             "categoryId": item.category_id,
             "locationId": location_id,
+            "businessId": current_user.business_id,
             "name": item.name,
             "price": item.price,
             "inStock": item.in_stock,
@@ -249,7 +253,7 @@ async def permanently_delete_item(
     await mq.publish(
         request.app.state.mq_connection,
         "catalog.item_updated",
-        {"itemId": item_id, "permanentlyDeleted": True},
+        {"itemId": item_id, "permanentlyDeleted": True, "businessId": current_user.business_id},
     )
 
 
@@ -268,6 +272,7 @@ async def bulk_price_update(
             "bulk": True,
             "categoryId": data.category_id,
             "locationId": data.location_id,
+            "businessId": current_user.business_id,
             "changePct": data.change_pct,
             "changeAbs": data.change_abs,
             "updated": count,

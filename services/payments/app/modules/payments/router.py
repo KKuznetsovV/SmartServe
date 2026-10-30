@@ -28,6 +28,7 @@ async def create_payment(
                 "orderId": payment.order_id,
                 "amount": payment.amount,
                 "method": payment.method,
+                "businessId": current_user.business_id,
             },
         )
     return payment

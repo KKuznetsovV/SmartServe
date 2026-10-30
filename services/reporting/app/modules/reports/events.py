@@ -22,9 +22,22 @@ from app.db.session import AsyncSessionLocal
 logger = structlog.get_logger()
 
 
+def _business_id_from_payload(payload: dict[str, Any]) -> str | None:
+    raw = payload.get("businessId")
+    if isinstance(raw, str) and raw:
+        return raw
+    return None
+
+
 async def handle_any_event(routing_key: str, payload: dict[str, Any]) -> None:
     async with AsyncSessionLocal() as db:
-        db.add(EventLog(routing_key=routing_key, payload=json.dumps(payload)))
+        db.add(
+            EventLog(
+                routing_key=routing_key,
+                payload=json.dumps(payload),
+                business_id=_business_id_from_payload(payload),
+            )
+        )
 
         if routing_key == "order.created":
             await _upsert_order(db, payload)

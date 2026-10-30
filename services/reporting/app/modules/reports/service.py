@@ -105,10 +105,18 @@ class ReportService:
             orders_by_status=orders_by_status,
         )
 
-    async def list_events(self, routing_key: str | None = None, limit: int = 100) -> list[EventLog]:
-        q = select(EventLog)
+    async def list_events(
+        self,
+        business_id: str,
+        routing_key: str | None = None,
+        limit: int = 100,
+        since: datetime | None = None,
+    ) -> list[EventLog]:
+        q = select(EventLog).where(EventLog.business_id == business_id)
         if routing_key:
             q = q.where(EventLog.routing_key == routing_key)
+        if since is not None:
+            q = q.where(EventLog.received_at >= since)
         q = q.order_by(EventLog.received_at.desc()).limit(limit)
         result = await self.db.execute(q)
         return list(result.scalars().all())

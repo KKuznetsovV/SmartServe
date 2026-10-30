@@ -22,7 +22,12 @@ async def create_staff(
     await mq.publish(
         request.app.state.mq_connection,
         "staff.created",
-        {"userId": staff.id, "businessId": staff.business_id, "name": staff.name, "role": staff.role},
+        {
+            "userId": staff.id,
+            "businessId": current_user.business_id,
+            "name": staff.name,
+            "role": staff.role,
+        },
     )
     return staff
 
@@ -48,6 +53,11 @@ async def update_staff(
     await mq.publish(
         request.app.state.mq_connection,
         "staff.updated",
-        {"userId": staff.id, "businessId": staff.business_id, "name": staff.name, "role": staff.role},
+        {
+            "userId": staff.id,
+            "businessId": current_user.business_id,
+            "name": staff.name,
+            "role": staff.role,
+        },
     )
     return staff

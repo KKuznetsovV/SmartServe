@@ -16,7 +16,7 @@ async def test_full_payment_publishes_payment_completed(
     db: AsyncSession,
     manager_user: tuple[User, str],
 ):
-    _, token = manager_user
+    user, token = manager_user
     headers = {"Authorization": f"Bearer {token}"}
     order = await create_order(db, total=100.0)
 
@@ -34,6 +34,7 @@ async def test_full_payment_publishes_payment_completed(
     assert routing_key == "payment.completed"
     assert payload["orderId"] == order.id
     assert payload["paymentId"] == payment_id
+    assert payload["businessId"] == user.business_id
 
 
 @pytest.mark.asyncio
