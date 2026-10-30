@@ -78,9 +78,10 @@ requirement. Step 27 closes them without introducing any new services.
   the audit trail actually answers "who asked for what, in their own words."
 - **Real-time propagation for AI-driven catalog changes**: `catalog` now includes `locationId` in every
   `catalog.item_updated` payload (previously only its bulk-price-change endpoint did). `ordering` — the sole
-  service the gateway proxies WebSocket traffic to — gained a second RabbitMQ consumer
-  (`ordering.realtime_relay`, binding `catalog.item_updated`) that relays the event to connected clients via
-  its existing `ws_router.broadcast()`, as a new `menu.item_updated` WS message. This was chosen over adding a
+  service the gateway proxies WebSocket traffic to — consumes committed `order.*` and `catalog.item_updated`
+  events on one durable queue (`ordering.realtime`) and publishes a slim `{type, locationId, payload}`
+  message to Redis `ws:{locationId}`. Every ordering worker subscribes to `ws:*` and pushes to its local
+  sockets. Catalog changes arrive as `menu.item_updated`. This was chosen over adding a
   WS runtime to `services/gateway` (pure nginx, no app process) or building new infrastructure, reusing the
   one WS connection every dashboard screen already holds open. `apps/web`'s `useLocationWs` hook was lifted
   from the Dashboard page into the shared `(dashboard)/layout.tsx` (so it's connected regardless of which
