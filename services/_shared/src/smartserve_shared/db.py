@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import os
 from collections.abc import AsyncGenerator, Callable
-from typing import Any
+from typing import Annotated, Any
 
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -86,3 +87,13 @@ def make_get_db(
                 raise
 
     return get_db
+
+
+def make_db_session(get_db: Callable[..., Any]) -> Any:
+    """`DbSession` alias: commit/rollback run before the response is sent.
+
+    FastAPI's default yield-dependency scope finishes *after* the response, which
+    is how a 2xx could leave the client before `commit()` failed. `scope="function"`
+    runs teardown around the path operation instead.
+    """
+    return Annotated[AsyncSession, Depends(get_db, scope="function")]

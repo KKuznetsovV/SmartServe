@@ -1,5 +1,5 @@
 -e ../_shared
-fastapi>=0.115.0
+fastapi>=0.121.0
 uvicorn[standard]>=0.34.0
 sqlalchemy[asyncio]>=2.0.41
 asyncpg>=0.31.0

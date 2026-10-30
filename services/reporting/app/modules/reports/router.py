@@ -4,11 +4,10 @@ from typing import Literal
 from fastapi import Depends, Query
 from fastapi.responses import StreamingResponse
 from smartserve_shared.routing import APIRouter
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.deps import require_manager
 from app.db.models import User
-from app.db.session import get_db
+from app.db.session import DbSession
 from app.modules.reports.schemas import (
     ClosedOrdersReportOut,
     EventLogOut,
@@ -24,8 +23,8 @@ router = APIRouter()
 @router.get("/locations/{location_id}/reports/summary", response_model=ReportSummaryOut)
 async def get_report_summary(
     location_id: str,
+    db: DbSession,
     period: Literal["today", "week", "month"] = "today",
-    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_manager),
 ) -> ReportSummaryOut:
     await verify_location_owned(db, location_id, current_user.business_id)
@@ -37,8 +36,8 @@ async def get_sales_report(
     location_id: str,
     start: datetime,
     end: datetime,
+    db: DbSession,
     group_by: Literal["item", "category", "menu"] = "item",
-    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_manager),
 ) -> SalesReportOut:
     await verify_location_owned(db, location_id, current_user.business_id)
@@ -50,9 +49,9 @@ async def get_sales_by_server_report(
     location_id: str,
     start: datetime,
     end: datetime,
+    db: DbSession,
     item_id: str | None = Query(None),
     category_id: str | None = Query(None),
-    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_manager),
 ) -> ServerSalesReportOut:
     await verify_location_owned(db, location_id, current_user.business_id)
@@ -64,8 +63,8 @@ async def get_closed_orders_report(
     location_id: str,
     start: datetime,
     end: datetime,
+    db: DbSession,
     status: Literal["paid", "cancelled", "other"] | None = Query(None),
-    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_manager),
 ) -> ClosedOrdersReportOut:
     await verify_location_owned(db, location_id, current_user.business_id)
@@ -78,11 +77,11 @@ async def export_report_csv(
     report_type: Literal["sales", "sales-by-server", "closed-orders"],
     start: datetime,
     end: datetime,
+    db: DbSession,
     group_by: Literal["item", "category", "menu"] = "item",
     item_id: str | None = Query(None),
     category_id: str | None = Query(None),
     status: Literal["paid", "cancelled", "other"] | None = Query(None),
-    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_manager),
 ) -> StreamingResponse:
     await verify_location_owned(db, location_id, current_user.business_id)
@@ -105,9 +104,9 @@ async def export_report_csv(
 
 @router.get("/events", response_model=list[EventLogOut])
 async def list_events(
+    db: DbSession,
     routing_key: str | None = Query(None),
     limit: int = Query(100, ge=1, le=500),
-    db: AsyncSession = Depends(get_db),
     _: User = Depends(require_manager),
 ):
     return await ReportService(db).list_events(routing_key, limit)

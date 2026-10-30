@@ -1,11 +1,10 @@
 from fastapi import Depends, Request
 from smartserve_shared import mq
 from smartserve_shared.routing import APIRouter
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.deps import get_current_user, require_manager
 from app.db.models import User
-from app.db.session import get_db
+from app.db.session import DbSession
 from app.modules.catalog.schemas import (
     BulkPriceUpdate,
     MenuCategoryCreate,
@@ -32,7 +31,7 @@ router = APIRouter()
 @router.get("/locations/{location_id}/categories", response_model=list[MenuCategoryOut])
 async def list_categories(
     location_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(get_current_user),
 ):
     return await MenuService(db).list_categories(location_id, current_user.business_id)
@@ -41,7 +40,7 @@ async def list_categories(
 @router.post("/categories", response_model=MenuCategoryOut, status_code=201)
 async def create_category(
     data: MenuCategoryCreate,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(require_manager),
 ):
     return await MenuService(db).create_category(data, current_user.business_id)
@@ -51,7 +50,7 @@ async def create_category(
 async def update_category(
     category_id: str,
     data: MenuCategoryUpdate,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(require_manager),
 ):
     return await MenuService(db).update_category(category_id, data, current_user.business_id)
@@ -60,7 +59,7 @@ async def update_category(
 @router.delete("/categories/{category_id}", status_code=204)
 async def delete_category(
     category_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(require_manager),
 ):
     await MenuService(db).delete_category(category_id, current_user.business_id)
@@ -70,7 +69,7 @@ async def delete_category(
 async def reorder_categories(
     location_id: str,
     body: dict,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(require_manager),
 ):
     await MenuService(db).reorder_categories(location_id, body["ids"], current_user.business_id)
@@ -82,7 +81,7 @@ async def reorder_categories(
 @router.get("/categories/{category_id}/items", response_model=list[MenuItemOut])
 async def list_items(
     category_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(get_current_user),
 ):
     return await MenuService(db).list_items(category_id, current_user.business_id)
@@ -91,7 +90,7 @@ async def list_items(
 @router.get("/items/{item_id}", response_model=MenuItemOut)
 async def get_item(
     item_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(get_current_user),
 ):
     return await MenuService(db).get_item(item_id, current_user.business_id)
@@ -101,7 +100,7 @@ async def get_item(
 async def create_item(
     data: MenuItemCreate,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(require_manager),
 ):
     item = await MenuService(db).create_item(data, current_user.business_id)
@@ -126,7 +125,7 @@ async def update_item(
     item_id: str,
     data: MenuItemUpdate,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(require_manager),
 ):
     item = await MenuService(db).update_item(item_id, data, current_user.business_id)
@@ -151,7 +150,7 @@ async def set_item_stock(
     item_id: str,
     data: StockUpdate,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(get_current_user),
 ):
     item = await MenuService(db).set_stock(item_id, data.in_stock, current_user.business_id)
@@ -174,7 +173,7 @@ async def set_item_stock(
 @router.get("/locations/{location_id}/stock", response_model=list[MenuItemOut])
 async def list_location_stock(
     location_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(get_current_user),
 ):
     return await MenuService(db).list_all_items(location_id, current_user.business_id)
@@ -184,7 +183,7 @@ async def list_location_stock(
 async def reorder_items(
     category_id: str,
     body: dict,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(require_manager),
 ):
     await MenuService(db).reorder_items(category_id, body["ids"], current_user.business_id)
@@ -194,7 +193,7 @@ async def reorder_items(
 async def delete_item(
     item_id: str,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(require_manager),
 ):
     """Moves the item to trash (soft-delete) — see `MenuService.delete_item`."""
@@ -209,7 +208,7 @@ async def delete_item(
 @router.get("/locations/{location_id}/trash", response_model=list[MenuItemOut])
 async def list_trashed_items(
     location_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(require_manager),
 ):
     return await MenuService(db).list_trashed_items(location_id, current_user.business_id)
@@ -219,7 +218,7 @@ async def list_trashed_items(
 async def restore_item(
     item_id: str,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(require_manager),
 ):
     item = await MenuService(db).restore_item(item_id, current_user.business_id)
@@ -243,7 +242,7 @@ async def restore_item(
 async def permanently_delete_item(
     item_id: str,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(require_manager),
 ):
     await MenuService(db).permanently_delete_item(item_id, current_user.business_id)
@@ -258,7 +257,7 @@ async def permanently_delete_item(
 async def bulk_price_update(
     data: BulkPriceUpdate,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(require_manager),
 ):
     count = await MenuService(db).bulk_price_update(data, current_user.business_id)
@@ -283,7 +282,7 @@ async def bulk_price_update(
 @router.post("/modifier-groups", response_model=ModifierGroupOut, status_code=201)
 async def create_modifier_group(
     data: ModifierGroupCreate,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(require_manager),
 ):
     return await MenuService(db).create_modifier_group(data, current_user.business_id)
@@ -293,7 +292,7 @@ async def create_modifier_group(
 async def update_modifier_group(
     group_id: str,
     data: ModifierGroupUpdate,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(require_manager),
 ):
     return await MenuService(db).update_modifier_group(group_id, data, current_user.business_id)
@@ -302,7 +301,7 @@ async def update_modifier_group(
 @router.delete("/modifier-groups/{group_id}", status_code=204)
 async def delete_modifier_group(
     group_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(require_manager),
 ):
     await MenuService(db).delete_modifier_group(group_id, current_user.business_id)
@@ -312,7 +311,7 @@ async def delete_modifier_group(
 async def add_modifier(
     group_id: str,
     data: ModifierCreate,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(require_manager),
 ):
     return await MenuService(db).add_modifier(group_id, data, current_user.business_id)
@@ -321,7 +320,7 @@ async def add_modifier(
 @router.delete("/modifiers/{modifier_id}", status_code=204)
 async def delete_modifier(
     modifier_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: DbSession,
     current_user: User = Depends(require_manager),
 ):
     await MenuService(db).delete_modifier(modifier_id, current_user.business_id)

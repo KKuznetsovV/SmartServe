@@ -10,10 +10,12 @@ from typing import Any
 import structlog
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 
 from smartserve_shared.logging import setup_logging
 from smartserve_shared.security import configure_security_from_settings
@@ -69,6 +71,15 @@ def create_service_app(
     app.state.mq_connection = None
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
+
+    @app.exception_handler(IntegrityError)
+    async def integrity_error_handler(_request: Request, exc: IntegrityError) -> JSONResponse:
+        orig = getattr(exc, "orig", None)
+        logger.warning("database_integrity_error", error=str(orig or exc))
+        return JSONResponse(
+            status_code=409,
+            content={"detail": "The change conflicts with existing data"},
+        )
 
     app.add_middleware(
         CORSMiddleware,
