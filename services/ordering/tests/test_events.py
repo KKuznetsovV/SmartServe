@@ -265,3 +265,61 @@ async def test_item_status_change_enqueues_order_updated(
     db.expire_all()
     rows = list((await db.execute(select(Outbox).where(Outbox.routing_key == "order.updated"))).scalars().all())
     assert any(json.loads(row.payload)["orderId"] == order_id for row in rows)
+
+
+@pytest.mark.asyncio
+async def test_cancel_item_enqueues_order_updated_with_new_total(
+    client: AsyncClient,
+    db: AsyncSession,
+    location: Location,
+    manager_user: tuple[User, str],
+):
+    _, token = manager_user
+    headers = {"Authorization": f"Bearer {token}"}
+    cola = MenuItem(category_id="cat-1", name="Cola", price=12.0)
+    burger = MenuItem(category_id="cat-1", name="Burger", price=68.0)
+    db.add_all([cola, burger])
+    await db.flush()
+
+    order_id = (
+        await client.post(
+            "/api/v1/orders",
+            json={"locationId": location.id, "channel": "takeaway"},
+            headers=headers,
+        )
+    ).json()["id"]
+    cola_line = (
+        await client.post(
+            f"/api/v1/orders/{order_id}/items",
+            json={"menuItemId": cola.id, "qty": 1},
+            headers=headers,
+        )
+    ).json()
+    await client.post(
+        f"/api/v1/orders/{order_id}/items",
+        json={"menuItemId": burger.id, "qty": 1},
+        headers=headers,
+    )
+    submitted = (await client.post(f"/api/v1/orders/{order_id}/submit", headers=headers)).json()
+    before = submitted["total"]
+
+    resp = await client.patch(
+        f"/api/v1/orders/{order_id}/items/{cola_line['id']}/status",
+        json={"status": "cancelled"},
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    after = (await client.get(f"/api/v1/orders/{order_id}", headers=headers)).json()
+    assert after["total"] < before
+
+    db.expire_all()
+    row = (
+        await db.execute(
+            select(Outbox).where(Outbox.routing_key == "order.updated").order_by(Outbox.occurred_at.desc())
+        )
+    ).scalars().first()
+    assert row is not None
+    payload = json.loads(row.payload)
+    assert payload["orderId"] == order_id
+    assert payload["total"] == after["total"]
+    assert "total" in payload
