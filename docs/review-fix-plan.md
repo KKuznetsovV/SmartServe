@@ -26,8 +26,8 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 12 | Q8 | `fix/q8-catalog-validation` | merged | https://github.com/KKuznetsovV/SmartServe/pull/16 |
 | 13 | S7 | `chore/s7-upgrade-next-and-dependabot` | merged | https://github.com/KKuznetsovV/SmartServe/pull/17 |
 | 14 | Q1 | `fix/q1-hydration-auth-guard` | merged | https://github.com/KKuznetsovV/SmartServe/pull/67 |
-| 15 | S10 | `fix/s10-locale-cookie-validation` | in progress | https://github.com/KKuznetsovV/SmartServe/pull/73 |
-| 16 | Q7 | `fix/q7-dashboard-links` | todo | |
+| 15 | S10 | `fix/s10-locale-cookie-validation` | merged | https://github.com/KKuznetsovV/SmartServe/pull/73 |
+| 16 | Q7 | `fix/q7-dashboard-links` | in progress | https://github.com/KKuznetsovV/SmartServe/pull/74 |
 | 17 | E4 | `refactor/e4-single-owner-tables` | todo | |
 | 18 | E5 | `feat/e5-transactional-outbox` | todo | |
 | 19 | E9 | `feat/e9-redis-ws-fanout` | todo | |
