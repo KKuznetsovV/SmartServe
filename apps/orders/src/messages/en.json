@@ -181,6 +181,7 @@
     "paymentMethodLabel": "Payment method",
     "amount": "Amount (\u20aa)",
     "balanceDue": "Balance due: \u20aa{amount}",
+    "changeDue": "Change due: \u20aa{amount}",
     "tip": "Tip",
     "noTip": "No tip",
     "customAmount": "Amount",
