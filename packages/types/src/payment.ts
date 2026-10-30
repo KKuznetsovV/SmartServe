@@ -16,5 +16,7 @@ export const PaymentSchema = z.object({
   status: PaymentStatus.default('pending'),
   gatewayRef: z.string().optional(),
   createdAt: z.string().datetime(),
+  orderFullyPaid: z.boolean().optional(),
+  remaining: z.number().optional(),
 })
 export type Payment = z.infer<typeof PaymentSchema>

@@ -5,6 +5,7 @@ trimmed, read-only mirror of the table owned by `ordering` — same physical Pos
 instance, schema-per-service mapping only (see docs/microservices-plan.md §4).
 `Order` is trimmed to the fields PaymentService reads (status, total, location_id)
 so tenant checks can resolve the order's location without mirroring the rest of ordering.
+Payments never writes `orders` — fully-paid is computed from payment rows plus `Order.total`.
 """
 
 import uuid

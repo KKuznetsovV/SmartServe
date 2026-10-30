@@ -25,7 +25,7 @@ class PaymentService:
         await verify_location_owned(self.db, order.location_id, business_id, Location)
         return order
 
-    async def create_payment(self, data: PaymentCreate, business_id: str) -> tuple[Payment, Order]:
+    async def create_payment(self, data: PaymentCreate, business_id: str) -> tuple[Payment, bool, float]:
         if data.method not in VALID_PAYMENT_METHODS:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -37,7 +37,8 @@ class PaymentService:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Tip amount cannot be negative")
 
         order = await self._owned_order(data.order_id, business_id)
-        if order.status == "paid":
+        existing_paid = await self._completed_total(data.order_id)
+        if existing_paid >= order.total - PAID_IN_FULL_EPSILON:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Order already paid")
 
         # Abstract provider call — implement gateway here in step/06
@@ -55,19 +56,26 @@ class PaymentService:
         self.db.add(payment)
         await self.db.flush()
 
-        # Mark order paid once the sum of all completed payments (bill portion only,
-        # tips aren't part of the order total) covers it — supports split/partial payments.
+        # Fully-paid is decided from payment rows plus the read-only order total.
+        # Ordering's payment.completed consumer is the only writer of orders.status.
+        total_paid = await self._completed_total(data.order_id)
+        fully_paid, remaining = self._settlement(order.total, total_paid)
+        await self.db.flush()
+        return payment, fully_paid, remaining
+
+    async def _completed_total(self, order_id: str) -> float:
         paid_result = await self.db.execute(
             select(func.coalesce(func.sum(Payment.amount), 0.0))
-            .where(Payment.order_id == data.order_id)
+            .where(Payment.order_id == order_id)
             .where(Payment.status == "completed")
         )
-        total_paid = paid_result.scalar_one()
-        if total_paid >= order.total - PAID_IN_FULL_EPSILON:
-            order.status = "paid"
+        return float(paid_result.scalar_one())
 
-        await self.db.flush()
-        return payment, order
+    @staticmethod
+    def _settlement(order_total: float, total_paid: float) -> tuple[bool, float]:
+        fully_paid = total_paid >= order_total - PAID_IN_FULL_EPSILON
+        remaining = 0.0 if fully_paid else max(0.0, round(order_total - total_paid, 2))
+        return fully_paid, remaining
 
     async def get_payment(self, payment_id: str, business_id: str) -> Payment:
         result = await self.db.execute(select(Payment).where(Payment.id == payment_id))

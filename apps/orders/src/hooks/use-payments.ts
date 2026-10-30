@@ -23,8 +23,12 @@ export function useCreatePayment() {
     ) => apiClient.payments.create(data),
     onSuccess: (p) => {
       qc.invalidateQueries({ queryKey: ['payments', p.orderId] })
-      qc.invalidateQueries({ queryKey: ['order', p.orderId] })
       qc.invalidateQueries({ queryKey: ['orders'] })
+      if (p.orderFullyPaid) {
+        qc.setQueryData(['order', p.orderId], (current: { status: string } | undefined) =>
+          current ? { ...current, status: 'paid' } : current,
+        )
+      }
       toast.success(t('toastRecorded'))
     },
     onError: (e: Error) => toast.error(e.message),

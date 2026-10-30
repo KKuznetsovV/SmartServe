@@ -86,7 +86,7 @@ async def test_payment_persists_across_fresh_sessions(fresh_session_client):
         assert payment.status == "completed"
 
         refreshed_order = (await verify_session.execute(select(Order).where(Order.id == order_id))).scalar_one()
-        assert refreshed_order.status == "paid"
+        assert refreshed_order.status == "submitted"
 
     # And the read-back API endpoint (itself using a fresh per-request session) confirms it too.
     get_resp = await client.get(f"/api/v1/payments/{payment_id}", headers=headers)
