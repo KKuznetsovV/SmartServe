@@ -121,8 +121,8 @@ async def test_bulk_price_update(
     items_resp = await client.get(f"/api/v1/menu/categories/{category_id}/items", headers=headers)
     items = items_resp.json()
     prices = {i["name"]: i["price"] for i in items}
-    assert abs(prices["Coffee"] - 13.2) < 0.01
-    assert abs(prices["Tea"] - 11.0) < 0.01
+    assert prices["Coffee"] == 13.2
+    assert prices["Tea"] == 11.0
 
 
 @pytest.mark.asyncio

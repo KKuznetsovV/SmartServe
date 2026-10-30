@@ -71,7 +71,7 @@ async def test_split_payment_across_installments_marks_paid_once_fully_covered(
     headers = {"Authorization": f"Bearer {token}"}
 
     order = await create_order(db, total=100.0)
-    half = 50.0
+    half = 50
 
     resp = await client.post(
         "/api/v1/payments",
@@ -89,7 +89,7 @@ async def test_split_payment_across_installments_marks_paid_once_fully_covered(
         json={
             "orderId": order.id,
             "method": "card",
-            "amount": order.total - half,
+            "amount": str(order.total - half),
             "guestNumber": 2,
             "tipAmount": 5,
         },
@@ -169,3 +169,32 @@ async def test_create_payment_rejects_already_paid_order(
         headers=headers,
     )
     assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_exact_total_pays_in_full_one_cent_short_leaves_remaining(
+    client: AsyncClient,
+    db: AsyncSession,
+    manager_user: tuple[User, str],
+):
+    _, token = manager_user
+    headers = {"Authorization": f"Bearer {token}"}
+    order = await create_order(db, total="10.10")
+
+    short = await client.post(
+        "/api/v1/payments",
+        json={"orderId": order.id, "method": "cash", "amount": "10.09"},
+        headers=headers,
+    )
+    assert short.status_code == 201
+    assert short.json()["orderFullyPaid"] is False
+    assert short.json()["remaining"] == 0.01
+
+    done = await client.post(
+        "/api/v1/payments",
+        json={"orderId": order.id, "method": "cash", "amount": "0.01"},
+        headers=headers,
+    )
+    assert done.status_code == 201
+    assert done.json()["orderFullyPaid"] is True
+    assert done.json()["remaining"] == 0

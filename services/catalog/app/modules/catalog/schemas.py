@@ -1,7 +1,9 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Annotated
 
 from pydantic import BeforeValidator, Field, model_validator
+from smartserve_shared.money import Money, OptionalMoney, OptionalRate, Rate
 from smartserve_shared.schemas import BaseSchema as BaseModel
 
 
@@ -29,7 +31,7 @@ class ModifierOut(BaseModel):
     group_id: str
     name: str
     name_he: str | None = None
-    price_delta: float
+    price_delta: Money
     active: bool
 
     model_config = {"from_attributes": True}
@@ -38,13 +40,13 @@ class ModifierOut(BaseModel):
 class ModifierCreate(BaseModel):
     name: TrimmedName
     name_he: OptionalTrimmedName = None
-    price_delta: float = Field(0.0, ge=-1000, le=1000)
+    price_delta: Money = Field(default=Decimal("0.00"), ge=-1000, le=1000)
 
 
 class ModifierUpdate(BaseModel):
     name: TrimmedName | None = None
     name_he: OptionalTrimmedName = None
-    price_delta: float | None = Field(None, ge=-1000, le=1000)
+    price_delta: OptionalMoney = Field(None, ge=-1000, le=1000)
     active: bool | None = None
 
 
@@ -119,8 +121,8 @@ class MenuItemOut(BaseModel):
     name_he: str | None = None
     description: str | None = None
     description_he: str | None = None
-    price: float
-    tax_rate: float
+    price: Money
+    tax_rate: Rate
     image_url: str | None = None
     preparation_time_min: int
     sort_order: int
@@ -139,8 +141,8 @@ class MenuItemCreate(BaseModel):
     name_he: OptionalTrimmedName = None
     description: str | None = None
     description_he: str | None = None
-    price: float = Field(..., ge=0)
-    tax_rate: float = 0.17
+    price: Money = Field(..., ge=0)
+    tax_rate: Rate = Decimal("0.17")
     image_url: str | None = None
     preparation_time_min: int = Field(10, ge=0, le=240)
     sort_order: int | None = Field(None, ge=0)
@@ -152,8 +154,8 @@ class MenuItemUpdate(BaseModel):
     name_he: OptionalTrimmedName = None
     description: str | None = None
     description_he: str | None = None
-    price: float | None = Field(None, ge=0)
-    tax_rate: float | None = None
+    price: OptionalMoney = Field(None, ge=0)
+    tax_rate: OptionalRate = None
     image_url: str | None = None
     preparation_time_min: int | None = Field(None, ge=0, le=240)
     sort_order: int | None = Field(None, ge=0)

@@ -7,10 +7,12 @@ exists so report endpoints can verify a `location_id` belongs to the caller's bu
 
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 
 from smartserve_shared.mirrors import ReadOnlyMirror
+from smartserve_shared.money import MONEY_NUMERIC
 from smartserve_shared.outbox import declare_processed_events
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.session import Base
@@ -54,7 +56,7 @@ class ReportingOrder(Base):
     location_id: Mapped[str] = mapped_column(String(), nullable=False, index=True)
     channel: Mapped[str] = mapped_column(String(50), default="dine_in")
     status: Mapped[str] = mapped_column(String(50), default="open")
-    total: Mapped[float] = mapped_column(Float, default=0.0)
+    total: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
     created_by: Mapped[str | None] = mapped_column(String(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -71,7 +73,7 @@ class ReportingOrderItem(Base):
     category_id: Mapped[str | None] = mapped_column(String(), nullable=True)
     category_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     qty: Mapped[int] = mapped_column(Integer, default=1)
-    unit_price: Mapped[float] = mapped_column(Float, nullable=False)
+    unit_price: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, nullable=False)
 
 
 class EventLog(Base):

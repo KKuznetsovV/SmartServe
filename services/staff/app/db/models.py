@@ -6,9 +6,11 @@ User and Location are trimmed read-only mirrors of tables owned by `auth`
 
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 
 from smartserve_shared.mirrors import ReadOnlyMirror
-from sqlalchemy import Boolean, DateTime, Float, String, Text
+from smartserve_shared.money import MONEY_NUMERIC
+from sqlalchemy import Boolean, DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.session import Base
@@ -63,7 +65,7 @@ class Shift(Base):
     closed_by: Mapped[str | None] = mapped_column(String(), nullable=True)
     opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    opening_cash: Mapped[float] = mapped_column(Float, default=0.0)
-    closing_cash: Mapped[float | None] = mapped_column(Float)
+    opening_cash: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
+    closing_cash: Mapped[Decimal | None] = mapped_column(MONEY_NUMERIC)
     status: Mapped[str] = mapped_column(String(20), default="open")
     notes: Mapped[str | None] = mapped_column(Text)

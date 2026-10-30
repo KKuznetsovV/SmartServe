@@ -317,3 +317,24 @@ async def test_export_closed_orders_csv(
     lines = resp.text.splitlines()
     assert lines[0] == "order_id,status,channel,total,created_by,created_by_name,created_at"
     assert order.id in lines[1]
+
+
+@pytest.mark.asyncio
+async def test_revenue_sum_has_no_float_drift(
+    client: AsyncClient,
+    db: AsyncSession,
+    location_id: str,
+    manager_user: tuple[User, str],
+):
+    _, token = manager_user
+    headers = {"Authorization": f"Bearer {token}"}
+    for _ in range(100):
+        await create_paid_order(db, location_id, [("Widget", 1, "10.10")])
+
+    resp = await client.get(
+        f"/api/v1/locations/{location_id}/reports/summary?period=month",
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    assert resp.json()["totalRevenue"] == 1010.0
+    assert resp.json()["orderCount"] == 100

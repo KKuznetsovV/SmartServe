@@ -10,10 +10,12 @@ Payments never writes `orders` — fully-paid is computed from payment rows plus
 
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 
 from smartserve_shared.mirrors import ReadOnlyMirror
+from smartserve_shared.money import MONEY_NUMERIC
 from smartserve_shared.outbox import declare_outbox
-from sqlalchemy import Boolean, DateTime, Float, Integer, String
+from sqlalchemy import Boolean, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -65,7 +67,7 @@ class Order(ReadOnlyMirror, Base):
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     location_id: Mapped[str] = mapped_column(String(), nullable=False)
     status: Mapped[str] = mapped_column(String(50), default="open")
-    total: Mapped[float] = mapped_column(Float, default=0.0)
+    total: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
 
     payments: Mapped[list[Payment]] = relationship(
         back_populates="order",
@@ -83,8 +85,8 @@ class Payment(Base):
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     order_id: Mapped[str] = mapped_column(String(), nullable=False)
     method: Mapped[str] = mapped_column(String(50), nullable=False)
-    amount: Mapped[float] = mapped_column(Float, nullable=False)
-    tip_amount: Mapped[float] = mapped_column(Float, default=0.0)
+    amount: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, nullable=False)
+    tip_amount: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
     guest_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="pending")
     gateway_ref: Mapped[str | None] = mapped_column(String(255))

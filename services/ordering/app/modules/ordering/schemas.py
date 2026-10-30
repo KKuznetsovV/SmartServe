@@ -1,7 +1,9 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Literal
 
 from pydantic import Field, model_validator
+from smartserve_shared.money import Money, OptionalMoney
 from smartserve_shared.schemas import BaseSchema as BaseModel
 
 
@@ -22,7 +24,7 @@ class OrderItemModifierIn(BaseModel):
 class OrderItemModifier(BaseModel):
     modifier_id: str
     name: str
-    price_delta: float
+    price_delta: Money
 
 
 class OrderItemOut(BaseModel):
@@ -33,7 +35,7 @@ class OrderItemOut(BaseModel):
     category_id: str | None = None
     category_name: str | None = None
     qty: int
-    unit_price: float
+    unit_price: Money
     modifiers: list[OrderItemModifier] = []
     notes: str | None = None
     status: str
@@ -41,8 +43,8 @@ class OrderItemOut(BaseModel):
     fire_course: int = 1
     guest_number: int | None = None
     discount_type: str | None = None
-    discount_value: float | None = None
-    discount_amount: float = 0.0
+    discount_value: OptionalMoney = None
+    discount_amount: Money = Decimal("0.00")
     is_comped: bool = False
     comped_by: str | None = None
 
@@ -74,15 +76,15 @@ class OrderOut(BaseModel):
     table_id: str | None = None
     table_name: str | None = None
     discount_id: str | None = None
-    discount_amount: float = 0.0
+    discount_amount: Money = Decimal("0.00")
     created_by: str | None = None
     channel: str
     status: str
     guest_count: int | None = None
     fired_courses: list[int] = []
-    subtotal: float
-    tax_amount: float
-    total: float
+    subtotal: Money
+    tax_amount: Money
+    total: Money
     notes: str | None = None
     created_at: datetime
     updated_at: datetime
@@ -126,7 +128,7 @@ class ItemSelection(BaseModel):
 class OrderItemDiscountRequest(BaseModel):
     items: list[ItemSelection]
     discount_type: Literal["percent", "fixed"] | None = None  # both None clears the discount
-    discount_value: float | None = None
+    discount_value: OptionalMoney = None
 
     @model_validator(mode="after")
     def validate_discount_bounds(self) -> OrderItemDiscountRequest:
