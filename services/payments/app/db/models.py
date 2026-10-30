@@ -11,7 +11,8 @@ Payments never writes `orders` — fully-paid is computed from payment rows plus
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String
+from smartserve_shared.mirrors import ReadOnlyMirror
+from sqlalchemy import Boolean, DateTime, Float, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -28,7 +29,7 @@ def _now() -> datetime:
 # ─── User (owned by auth, trimmed mirror) ─────────────────────────────────────
 
 
-class User(Base):
+class User(ReadOnlyMirror, Base):
     __tablename__ = "users"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
@@ -46,7 +47,7 @@ class User(Base):
 # ─── Location (owned by auth, trimmed mirror) ─────────────────────────────────
 
 
-class Location(Base):
+class Location(ReadOnlyMirror, Base):
     __tablename__ = "locations"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
@@ -57,7 +58,7 @@ class Location(Base):
 # ─── Order (owned by ordering, trimmed mirror) ────────────────────────────────
 
 
-class Order(Base):
+class Order(ReadOnlyMirror, Base):
     __tablename__ = "orders"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
@@ -65,7 +66,11 @@ class Order(Base):
     status: Mapped[str] = mapped_column(String(50), default="open")
     total: Mapped[float] = mapped_column(Float, default=0.0)
 
-    payments: Mapped[list[Payment]] = relationship(back_populates="order")
+    payments: Mapped[list[Payment]] = relationship(
+        back_populates="order",
+        primaryjoin="Payment.order_id == Order.id",
+        foreign_keys="[Payment.order_id]",
+    )
 
 
 # ─── Payments (owned here) ────────────────────────────────────────────────────
@@ -75,7 +80,7 @@ class Payment(Base):
     __tablename__ = "payments"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
-    order_id: Mapped[str] = mapped_column(ForeignKey("orders.id"), nullable=False)
+    order_id: Mapped[str] = mapped_column(String(), nullable=False)
     method: Mapped[str] = mapped_column(String(50), nullable=False)
     amount: Mapped[float] = mapped_column(Float, nullable=False)
     tip_amount: Mapped[float] = mapped_column(Float, default=0.0)
@@ -84,4 +89,8 @@ class Payment(Base):
     gateway_ref: Mapped[str | None] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
-    order: Mapped[Order] = relationship(back_populates="payments")
+    order: Mapped[Order] = relationship(
+        back_populates="payments",
+        primaryjoin="Payment.order_id == Order.id",
+        foreign_keys=[order_id],
+    )

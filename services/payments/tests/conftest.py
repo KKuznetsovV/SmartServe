@@ -1,5 +1,9 @@
 """Shared test fixtures for the payments service test suite."""
 
+import os
+
+os.environ.setdefault("SMARTSERVE_ALLOW_MIRROR_WRITES", "1")
+
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from smartserve_shared.security import create_access_token, hash_password
