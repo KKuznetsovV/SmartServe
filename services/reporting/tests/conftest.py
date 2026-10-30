@@ -2,7 +2,7 @@
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from smartserve_shared.money import money
+from smartserve_shared.money import money, vat_in_inclusive
 from smartserve_shared.security import create_access_token, hash_password
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -102,7 +102,12 @@ async def create_paid_order(
     """
     total = sum((money(price) * qty for _, qty, price in items), money(0))
     order = ReportingOrder(
-        location_id=location_id, channel=channel, status=status, total=total, created_by=created_by
+        location_id=location_id,
+        channel=channel,
+        status=status,
+        total=total,
+        tax_amount=vat_in_inclusive(total, "0.18"),
+        created_by=created_by,
     )
     db.add(order)
     await db.flush()

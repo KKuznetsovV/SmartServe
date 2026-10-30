@@ -28,6 +28,8 @@ async def test_report_summary_empty(
     assert resp.status_code == 200
     data = resp.json()
     assert data["totalRevenue"] == 0
+    assert data["vatCollected"] == 0
+    assert data["netRevenue"] == 0
     assert data["orderCount"] == 0
     assert data["avgOrderValue"] == 0
     assert data["topItems"] == []
@@ -53,6 +55,8 @@ async def test_report_summary_with_paid_order(
     data = resp.json()
     assert data["orderCount"] == 1
     assert data["totalRevenue"] == pytest.approx(order.total, rel=1e-3)
+    assert data["vatCollected"] == pytest.approx(order.tax_amount, rel=1e-3)
+    assert data["netRevenue"] == pytest.approx(order.total - order.tax_amount, rel=1e-3)
     assert data["avgOrderValue"] == pytest.approx(order.total, rel=1e-3)
     assert len(data["topItems"]) == 1
     assert data["topItems"][0]["menuItemName"] == "Burger"

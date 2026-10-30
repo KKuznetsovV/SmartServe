@@ -63,6 +63,7 @@ export const OrderSchema = z.object({
   guestCount: z.number().int().min(1).optional(),
   firedCourses: z.array(z.number().int()).default([]),
   items: z.array(OrderItemSchema).default([]),
+  vatRate: z.number().min(0).max(1).default(0.18),
   subtotal: z.number().min(0),
   taxAmount: z.number().min(0),
   total: z.number().min(0),

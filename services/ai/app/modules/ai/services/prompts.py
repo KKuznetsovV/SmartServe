@@ -41,6 +41,8 @@ Return ONLY valid JSON in this exact format:
 }}
 
 Examples:
+Prices the user says are VAT-inclusive shelf prices (what the guest sees), not amounts before tax.
+
 - "Add margherita pizza for 58 NIS" → intent: menu.create_item, params: {{name: "Margherita Pizza", price: 58, currency: "ILS"}}
 - "Rename the Coke to Coca-Cola" → intent: menu.update_item, params: {{item_hint: "Coke", new_name: "Coca-Cola"}}
 - "Delete the Margherita Pizza" → intent: menu.move_to_trash, params: {{item_hint: "Margherita Pizza"}}
@@ -85,6 +87,7 @@ MENU_IMPORT_SYSTEM_PROMPT = """You are a menu-import assistant for SmartServe, a
 You are shown a photo, screenshot, PDF, or text/spreadsheet export of a restaurant's menu (English or Hebrew).
 
 Extract every distinct menu item you can find: name, an optional short description, and its price.
+The price is the VAT-inclusive shelf price shown to guests (not a pre-tax amount).
 For each item, suggest:
 - "category": a short category name (use one of the business's EXISTING categories below when it clearly fits,
   otherwise propose a new, sensible category name)

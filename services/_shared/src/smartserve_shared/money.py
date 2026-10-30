@@ -25,6 +25,15 @@ def rate(x: object) -> Decimal:
     return value.quantize(RATE_QUANT, rounding=ROUND_HALF_UP)
 
 
+def vat_in_inclusive(total: object, vat_rate: object) -> Decimal:
+    """VAT contained in an inclusive total, rounded once at order level."""
+    amount = money(total)
+    vat = rate(vat_rate)
+    if vat <= 0 or amount == 0:
+        return money(0)
+    return money(amount - amount / (Decimal("1") + vat))
+
+
 def _parse_money(value: object) -> Decimal:
     if value is None:
         raise TypeError("money value is required")

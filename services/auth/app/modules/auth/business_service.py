@@ -21,7 +21,7 @@ class BusinessService:
 
     async def update_business(self, business_id: str, data: BusinessUpdate) -> Business:
         business = await self.get_business(business_id)
-        for field, value in data.model_dump(exclude_none=True).items():
+        for field, value in data.model_dump(exclude_unset=True).items():
             setattr(business, field, value)
         await self.db.flush()
         return business
@@ -47,7 +47,7 @@ class BusinessService:
 
     async def update_location(self, location_id: str, data: LocationUpdate, business_id: str | None = None) -> Location:
         location = await self.get_location(location_id, business_id)
-        for field, value in data.model_dump(exclude_none=True).items():
+        for field, value in data.model_dump(exclude_unset=True).items():
             setattr(location, field, value)
         await self.db.flush()
         return location

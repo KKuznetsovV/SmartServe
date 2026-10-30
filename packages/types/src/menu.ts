@@ -41,7 +41,7 @@ export const MenuItemSchema = z.object({
   description: z.string().optional(),
   descriptionHe: z.string().optional(),
   price: z.number().min(0),
-  taxRate: z.number().min(0).max(1).default(0.17), // 17% Israeli VAT
+  taxRate: z.number().min(0).max(1).default(0.17).optional(), // deprecated; VAT is on the business/location
   imageUrl: z.string().url().optional(),
   preparationTimeMin: z.number().int().min(0).default(10),
   sortOrder: z.number().int().default(0),

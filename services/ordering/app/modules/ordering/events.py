@@ -33,6 +33,7 @@ def order_event_payload(order: Order, business_id: str) -> dict[str, Any]:
         "channel": order.channel,
         "status": order.status,
         "total": order.total,
+        "taxAmount": order.tax_amount,
         "createdBy": order.created_by,
         "createdAt": created_at,
         "version": order.version,

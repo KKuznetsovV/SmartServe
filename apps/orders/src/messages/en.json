@@ -143,6 +143,7 @@
     "removeComp": "Remove Comp",
     "subtotal": "Subtotal",
     "tax": "Tax ({rate}%)",
+    "includesVat": "includes VAT {rate}%: ₪{amount}",
     "total": "Total",
     "paid": "Paid",
     "remaining": "Remaining",

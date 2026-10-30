@@ -19,7 +19,6 @@ const itemSchema = z.object({
   nameHe: z.string().optional(),
   description: z.string().optional(),
   price: z.coerce.number().positive('Price must be positive'),
-  taxRate: z.coerce.number().min(0).max(1).default(0.17),
   preparationTimeMin: z.coerce.number().int().min(0).default(10),
   defaultFireCourse: z.coerce.number().int().min(1).max(5).default(1),
 })
@@ -56,12 +55,11 @@ export function ItemFormDialog({
         nameHe: editing.nameHe ?? '',
         description: editing.description ?? '',
         price: editing.price,
-        taxRate: editing.taxRate,
         preparationTimeMin: editing.preparationTimeMin,
         defaultFireCourse: editing.defaultFireCourse,
       })
     } else {
-      reset({ name: '', price: 0, taxRate: 0.17, preparationTimeMin: 10, defaultFireCourse: 1 })
+      reset({ name: '', price: 0, preparationTimeMin: 10, defaultFireCourse: 1 })
     }
   }, [open, editing, reset])
 
@@ -76,7 +74,6 @@ export function ItemFormDialog({
         nameHe: data.nameHe || undefined,
         description: data.description || undefined,
         price: data.price,
-        taxRate: data.taxRate,
         preparationTimeMin: data.preparationTimeMin,
         defaultFireCourse: data.defaultFireCourse,
         active: true,
@@ -110,15 +107,11 @@ export function ItemFormDialog({
             <Label>{t('description')}</Label>
             <Textarea {...register('description')} placeholder={t('descriptionPlaceholder')} rows={2} />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>{t('price')} (₪)</Label>
               <Input type="number" step="0.01" {...register('price')} />
               {errors.price && <p className="text-xs text-destructive">{errors.price.message}</p>}
-            </div>
-            <div className="space-y-1">
-              <Label>{t('taxRate')}</Label>
-              <Input type="number" step="0.01" {...register('taxRate')} />
             </div>
             <div className="space-y-1">
               <Label>{t('prepTime')}</Label>

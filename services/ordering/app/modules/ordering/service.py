@@ -4,14 +4,25 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 from fastapi import HTTPException, status
-from smartserve_shared.money import money, rate
+from smartserve_shared.money import money, rate, vat_in_inclusive
 from smartserve_shared.security import verify_password
 from smartserve_shared.tenancy import verify_location_owned
 from sqlalchemy import inspect, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models import Discount, Location, MenuCategory, MenuItem, ModifierGroup, Order, OrderItem, Table, User
+from app.db.models import (
+    Business,
+    Discount,
+    Location,
+    MenuCategory,
+    MenuItem,
+    ModifierGroup,
+    Order,
+    OrderItem,
+    Table,
+    User,
+)
 from app.modules.ordering.schemas import (
     ApplyDiscountIn,
     AssignGuestsRequest,
@@ -181,6 +192,15 @@ class OrderService:
                 detail="Number of guests is required for dine-in orders",
             )
 
+        loc_row = await self.db.get(Location, data.location_id)
+        if loc_row is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
+        if loc_row.vat_rate is not None:
+            vat = rate(loc_row.vat_rate)
+        else:
+            biz = await self.db.get(Business, loc_row.business_id)
+            vat = rate(biz.vat_rate) if biz is not None else rate("0.18")
+
         order = Order(
             location_id=data.location_id,
             table_id=data.table_id,
@@ -192,6 +212,7 @@ class OrderService:
             subtotal=money(0),
             tax_amount=money(0),
             total=money(0),
+            vat_rate=vat,
         )
         self.db.add(order)
         await self.db.flush()
@@ -618,17 +639,11 @@ class OrderService:
         return split_item
 
     async def recompute_totals(self, order: Order) -> None:
-        """Derive subtotal, tax and total from non-cancelled lines, comps, line discounts
-        and the order-level discount. Call after every mutation of an order or its lines."""
+        """VAT-inclusive totals: subtotal is the gross line sum; total is that minus the
+        order discount; tax_amount is the VAT contained in total at the snapshotted rate."""
         items = [] if "items" in inspect(order).unloaded else list(order.items)
-        menu_item_ids = {item.menu_item_id for item in items}
-        tax_rates: dict[str, Decimal] = {}
-        if menu_item_ids:
-            result = await self.db.execute(select(MenuItem.id, MenuItem.tax_rate).where(MenuItem.id.in_(menu_item_ids)))
-            tax_rates = {row[0]: rate(row[1]) for row in result.all()}
 
         subtotal = money(0)
-        tax_amount = money(0)
         for item in items:
             if item.status == "cancelled":
                 continue
@@ -638,7 +653,6 @@ class OrderService:
                 else money(max(Decimal("0"), money(item.unit_price) * item.qty - money(item.discount_amount)))
             )
             subtotal += net
-            tax_amount += money(net * tax_rates.get(item.menu_item_id, Decimal("0")))
 
         order_discount = money(0)
         if order.discount_id:
@@ -650,5 +664,5 @@ class OrderService:
                     order_discount = min(money(discount.value), subtotal)
         order.discount_amount = money(order_discount)
         order.subtotal = money(subtotal)
-        order.tax_amount = money(tax_amount)
-        order.total = money(order.subtotal + order.tax_amount - order.discount_amount)
+        order.total = money(order.subtotal - order.discount_amount)
+        order.tax_amount = vat_in_inclusive(order.total, order.vat_rate)

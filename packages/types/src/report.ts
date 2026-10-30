@@ -10,6 +10,8 @@ export type TopItem = z.infer<typeof TopItemSchema>
 export const ReportSummarySchema = z.object({
   period: z.enum(['today', 'week', 'month']),
   totalRevenue: z.number(),
+  vatCollected: z.number().default(0),
+  netRevenue: z.number().default(0),
   orderCount: z.number().int(),
   avgOrderValue: z.number(),
   revenueByChannel: z.record(z.number()),

@@ -47,4 +47,4 @@ async def test_apply_discount_to_order(
     assert order["discountId"] is not None
     expected_discount = round(order["subtotal"] * 0.20, 2)
     assert abs(order["discountAmount"] - expected_discount) < 0.01
-    assert order["total"] == pytest.approx(order["subtotal"] + order["taxAmount"] - order["discountAmount"], rel=1e-3)
+    assert order["total"] == pytest.approx(order["subtotal"] - order["discountAmount"], rel=1e-3)

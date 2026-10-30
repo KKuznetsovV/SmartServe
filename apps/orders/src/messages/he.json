@@ -143,6 +143,7 @@
     "removeComp": "הסר פטור",
     "subtotal": "סך ביניים",
     "tax": "מע\"מ ({rate}%)",
+    "includesVat": "כולל מע\"מ {rate}%: ₪{amount}",
     "total": "סה\"כ",
     "paid": "שולם",
     "remaining": "נותר לתשלום",

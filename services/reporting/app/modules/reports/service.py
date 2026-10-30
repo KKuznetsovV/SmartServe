@@ -53,15 +53,21 @@ class ReportService:
 
         # Revenue + order count from paid orders in period
         revenue_q = await self.db.execute(
-            select(func.coalesce(func.sum(Order.total), 0.0), func.count(Order.id))
+            select(
+                func.coalesce(func.sum(Order.total), 0.0),
+                func.coalesce(func.sum(Order.tax_amount), 0.0),
+                func.count(Order.id),
+            )
             .where(Order.location_id == location_id)
             .where(Order.status == "paid")
             .where(Order.created_at >= since)
         )
-        total_revenue, order_count = revenue_q.one()
+        total_revenue, vat_collected, order_count = revenue_q.one()
         total_revenue = money(total_revenue or 0)
+        vat_collected = money(vat_collected or 0)
         order_count = int(order_count)
         avg_order_value = money(total_revenue / order_count) if order_count else money(0)
+        net_revenue = money(total_revenue - vat_collected)
 
         # Revenue by channel (paid orders)
         channel_q = await self.db.execute(
@@ -102,6 +108,8 @@ class ReportService:
         return ReportSummaryOut(
             period=period,
             total_revenue=total_revenue,
+            vat_collected=vat_collected,
+            net_revenue=net_revenue,
             order_count=order_count,
             avg_order_value=avg_order_value,
             revenue_by_channel=revenue_by_channel,

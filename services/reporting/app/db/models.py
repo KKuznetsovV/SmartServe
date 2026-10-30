@@ -57,6 +57,7 @@ class ReportingOrder(Base):
     channel: Mapped[str] = mapped_column(String(50), default="dine_in")
     status: Mapped[str] = mapped_column(String(50), default="open")
     total: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
+    tax_amount: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
     created_by: Mapped[str | None] = mapped_column(String(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
