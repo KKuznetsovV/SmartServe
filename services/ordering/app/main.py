@@ -14,7 +14,7 @@ from app.core.config import settings
 from app.db import models  # noqa: F401 — ensure models are registered
 from app.db.models import Outbox, ProcessedEvent
 from app.db.session import AsyncSessionLocal, engine, get_db
-from app.modules.ordering.events import handle_payment_completed, handle_realtime
+from app.modules.ordering.events import handle_payment_event, handle_realtime
 from app.modules.ordering.ws_router import bind_redis, subscribe_ws_forever
 
 logger = structlog.get_logger()
@@ -51,8 +51,8 @@ async def lifespan_hooks(app: FastAPI):
         mq.consume_forever(
             settings.RABBITMQ_URL,
             "ordering.payment_completed",
-            ["payment.completed"],
-            handle_payment_completed,
+            ["payment.completed", "payment.refunded"],
+            handle_payment_event,
             session_factory=AsyncSessionLocal,
             processed_model=ProcessedEvent,
         )

@@ -45,6 +45,7 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
   const [tipPercent, setTipPercent] = useState(15)
   const [tipAmountInput, setTipAmountInput] = useState('')
   const [tipTotalInput, setTipTotalInput] = useState('')
+  const [changeDue, setChangeDue] = useState<string | null>(null)
   const createPayment = useCreatePayment()
 
   const guestShares = splitBillByGuest(order, payments)
@@ -58,6 +59,7 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
     setTipMode('none')
     setTipAmountInput('')
     setTipTotalInput('')
+    setChangeDue(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
@@ -87,7 +89,7 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
   const chargeTotal = Math.round((baseAmount + tipAmount) * 100) / 100
 
   async function handleConfirm() {
-    if (isNaN(baseAmount) || baseAmount <= 0) return
+    if (isNaN(baseAmount) || baseAmount <= 0 || remaining <= 0) return
     const result = await createPayment.mutateAsync({
       orderId,
       method,
@@ -95,11 +97,16 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
       tipAmount,
       guestNumber: shareTag ?? undefined,
     })
+    if (result.changeDue && result.changeDue > 0) {
+      setChangeDue(result.changeDue.toFixed(2))
+    }
     if (result.remaining != null) {
       setAmount(result.remaining.toFixed(2))
     }
     if (result.orderFullyPaid || (result.remaining ?? remaining) <= 0) {
-      onOpenChange(false)
+      if (!(result.changeDue && result.changeDue > 0)) {
+        onOpenChange(false)
+      }
     }
   }
 
@@ -254,6 +261,14 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
               onChange={(e) => setAmount(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">{t('balanceDue', { amount: remaining.toFixed(2) })}</p>
+            {method === 'cash' && baseAmount > remaining && remaining > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {t('changeDue', { amount: (baseAmount - remaining).toFixed(2) })}
+              </p>
+            )}
+            {changeDue && (
+              <p className="text-sm font-medium">{t('changeDue', { amount: changeDue })}</p>
+            )}
           </div>
 
           {/* Tip */}
@@ -330,7 +345,10 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               {tCommon('cancel')}
             </Button>
-            <Button onClick={handleConfirm} disabled={createPayment.isPending || baseAmount <= 0}>
+            <Button
+              onClick={handleConfirm}
+              disabled={createPayment.isPending || remaining <= 0 || baseAmount <= 0}
+            >
               {t('confirmPayment')}
             </Button>
           </div>

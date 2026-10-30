@@ -10,7 +10,7 @@ export interface ApiClientConfig {
 
 export interface Http {
   get: <T>(path: string) => Promise<T>
-  post: <T>(path: string, body: unknown) => Promise<T>
+  post: <T>(path: string, body: unknown, extraHeaders?: Record<string, string>) => Promise<T>
   postForm: <T>(path: string, body: FormData) => Promise<T>
   put: <T>(path: string, body: unknown) => Promise<T>
   patch: <T>(path: string, body: unknown) => Promise<T>
@@ -134,7 +134,8 @@ async function requestBlob(
 export function createHttp(config: ApiClientConfig): Http {
   return {
     get: (path) => request(config, path),
-    post: (path, body) => request(config, path, { method: 'POST', body: JSON.stringify(body) }),
+    post: (path, body, extraHeaders) =>
+      request(config, path, { method: 'POST', body: JSON.stringify(body), headers: extraHeaders }),
     postForm: (path, body) => request(config, path, { method: 'POST', body }),
     put: (path, body) => request(config, path, { method: 'PUT', body: JSON.stringify(body) }),
     patch: (path, body) => request(config, path, { method: 'PATCH', body: JSON.stringify(body) }),

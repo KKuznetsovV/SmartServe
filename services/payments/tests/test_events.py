@@ -62,3 +62,34 @@ async def test_partial_payment_does_not_enqueue_payment_completed(
     db.expire_all()
     rows = (await db.execute(select(Outbox))).scalars().all()
     assert rows == []
+
+
+@pytest.mark.asyncio
+async def test_refund_enqueues_payment_refunded(
+    client: AsyncClient,
+    db: AsyncSession,
+    manager_user: tuple[User, str],
+):
+    from smartserve_shared.security import hash_password
+
+    user, token = manager_user
+    user.pin_hash = hash_password("2222")
+    await db.flush()
+    headers = {"Authorization": f"Bearer {token}"}
+    order = await create_order(db, total=40.0)
+    created = await client.post(
+        "/api/v1/payments",
+        json={"orderId": order.id, "method": "card", "amount": 40.0},
+        headers=headers,
+    )
+    payment_id = created.json()["id"]
+    refunded = await client.post(
+        f"/api/v1/payments/{payment_id}/refund",
+        json={"managerUserId": user.id, "pin": "2222", "reason": "comp"},
+        headers=headers,
+    )
+    assert refunded.status_code == 200
+    db.expire_all()
+    keys = [row.routing_key for row in (await db.execute(select(Outbox))).scalars().all()]
+    assert "payment.completed" in keys
+    assert "payment.refunded" in keys

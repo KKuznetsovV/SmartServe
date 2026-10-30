@@ -181,6 +181,7 @@
     "paymentMethodLabel": "אמצעי תשלום",
     "amount": "סכום (\u20aa)",
     "balanceDue": "יתרה לתשלום: \u20aa{amount}",
+    "changeDue": "עודף: \u20aa{amount}",
     "tip": "טיפ",
     "noTip": "ללא טיפ",
     "customAmount": "סכום",

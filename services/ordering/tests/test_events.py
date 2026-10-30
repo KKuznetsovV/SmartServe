@@ -11,7 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.db.models import Business, Location, MenuItem, Order, Outbox, User
 from app.db.session import Base
-from app.modules.ordering.events import handle_payment_completed, handle_realtime, slim_ws_payload
+from app.modules.ordering.events import (
+    handle_payment_completed,
+    handle_payment_refunded,
+    handle_realtime,
+    slim_ws_payload,
+)
 
 
 @pytest.mark.asyncio
@@ -170,6 +175,24 @@ async def test_handle_payment_completed_ignores_unknown_order(events_engine):
 
 
 @pytest.mark.asyncio
+async def test_handle_payment_refunded_marks_paid_order_served(events_engine):
+    session_factory = async_sessionmaker(events_engine, class_=AsyncSession, expire_on_commit=False)
+    async with session_factory() as session:
+        order = Order(location_id="loc-1", channel="dine_in", status="paid", total=42.0)
+        session.add(order)
+        await session.commit()
+        order_id = order.id
+
+    async with session_factory() as session:
+        await handle_payment_refunded("payment.refunded", {"orderId": order_id}, session)
+        await session.commit()
+
+    async with session_factory() as session:
+        result = await session.execute(select(Order).where(Order.id == order_id))
+        reopened = result.scalar_one()
+        assert reopened.status == "served"
+
+
 async def test_handle_payment_completed_missing_order_id_is_noop(events_engine):
     session_factory = async_sessionmaker(events_engine, class_=AsyncSession, expire_on_commit=False)
     async with session_factory() as session:

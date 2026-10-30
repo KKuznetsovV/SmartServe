@@ -15,7 +15,7 @@ from decimal import Decimal
 from smartserve_shared.mirrors import ReadOnlyMirror
 from smartserve_shared.money import MONEY_NUMERIC
 from smartserve_shared.outbox import declare_outbox
-from sqlalchemy import Boolean, DateTime, Integer, String
+from sqlalchemy import Boolean, DateTime, Index, Integer, String, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -76,20 +76,42 @@ class Order(ReadOnlyMirror, Base):
     )
 
 
+class OrderItem(ReadOnlyMirror, Base):
+    __tablename__ = "order_items"
+
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
+    order_id: Mapped[str] = mapped_column(String(), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(50), default="pending")
+
+
 # ─── Payments (owned here) ────────────────────────────────────────────────────
 
 
 class Payment(Base):
     __tablename__ = "payments"
+    __table_args__ = (
+        Index(
+            "uq_payments_order_idempotency",
+            "order_id",
+            "idempotency_key",
+            unique=True,
+            sqlite_where=text("idempotency_key IS NOT NULL"),
+            postgresql_where=text("idempotency_key IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     order_id: Mapped[str] = mapped_column(String(), nullable=False)
     method: Mapped[str] = mapped_column(String(50), nullable=False)
     amount: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, nullable=False)
     tip_amount: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
+    tendered: Mapped[Decimal | None] = mapped_column(MONEY_NUMERIC, nullable=True)
+    change_due: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
     guest_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="pending")
     gateway_ref: Mapped[str | None] = mapped_column(String(255))
+    idempotency_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    refund_of_id: Mapped[str | None] = mapped_column(String(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     order: Mapped[Order] = relationship(

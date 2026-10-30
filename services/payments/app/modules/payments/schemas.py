@@ -11,6 +11,8 @@ class PaymentOut(BaseModel):
     method: str
     amount: Money
     tip_amount: Money = Decimal("0.00")
+    tendered: OptionalMoney = None
+    change_due: Money = Decimal("0.00")
     guest_number: int | None = None
     status: str
     gateway_ref: str | None = None
@@ -27,3 +29,9 @@ class PaymentCreate(BaseModel):
     amount: Money
     tip_amount: Money = Decimal("0.00")
     guest_number: int | None = None
+
+
+class PaymentRefundIn(BaseModel):
+    manager_user_id: str
+    pin: str
+    reason: str

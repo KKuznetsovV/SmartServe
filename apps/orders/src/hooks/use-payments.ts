@@ -20,7 +20,10 @@ export function useCreatePayment() {
   return useMutation({
     mutationFn: (
       data: Pick<Payment, 'orderId' | 'method' | 'amount'> & Partial<Pick<Payment, 'tipAmount' | 'guestNumber'>>,
-    ) => apiClient.payments.create(data),
+    ) =>
+      apiClient.payments.create(data, {
+        'Idempotency-Key': crypto.randomUUID(),
+      }),
     onSuccess: (p) => {
       qc.invalidateQueries({ queryKey: ['payments', p.orderId] })
       qc.invalidateQueries({ queryKey: ['orders'] })
