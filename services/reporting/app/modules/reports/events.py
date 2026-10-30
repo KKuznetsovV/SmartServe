@@ -95,6 +95,7 @@ async def _project_order(db, payload: dict[str, Any]) -> None:
             channel=payload.get("channel", "dine_in"),
             status=payload.get("status", "open"),
             total=money(payload.get("total") or 0),
+            tax_amount=money(payload.get("taxAmount") or 0),
             created_by=payload.get("createdBy"),
             created_at=created_dt,
             version=incoming_version,
@@ -110,6 +111,8 @@ async def _project_order(db, payload: dict[str, Any]) -> None:
             row.status = payload["status"]
         if "total" in payload:
             row.total = money(payload["total"] or 0)
+        if "taxAmount" in payload:
+            row.tax_amount = money(payload["taxAmount"] or 0)
         if "createdBy" in payload:
             row.created_by = payload["createdBy"]
         row.version = incoming_version

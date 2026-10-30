@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Literal
 
 from pydantic import Field, model_validator
-from smartserve_shared.money import Money, OptionalMoney
+from smartserve_shared.money import Money, OptionalMoney, Rate
 from smartserve_shared.schemas import BaseSchema as BaseModel
 
 
@@ -82,6 +82,7 @@ class OrderOut(BaseModel):
     status: str
     guest_count: int | None = None
     fired_courses: list[int] = []
+    vat_rate: Rate = Decimal("0.18")
     subtotal: Money
     tax_amount: Money
     total: Money

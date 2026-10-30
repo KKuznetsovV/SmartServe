@@ -8,7 +8,9 @@ references such as `orders.location_id`.
 
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 
+from smartserve_shared.money import RATE_NUMERIC
 from smartserve_shared.outbox import declare_outbox
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -32,6 +34,7 @@ class Business(Base):
     tax_id: Mapped[str | None] = mapped_column(String(50))
     country: Mapped[str] = mapped_column(String(2), default="IL")
     currency: Mapped[str] = mapped_column(String(3), default="ILS")
+    vat_rate: Mapped[Decimal] = mapped_column(RATE_NUMERIC, default=Decimal("0.18"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     locations: Mapped[list[Location]] = relationship(back_populates="business")
@@ -47,6 +50,7 @@ class Location(Base):
     address: Mapped[str | None] = mapped_column(Text)
     timezone: Mapped[str] = mapped_column(String(50), default="Asia/Jerusalem")
     language: Mapped[str] = mapped_column(String(5), default="he")
+    vat_rate: Mapped[Decimal | None] = mapped_column(RATE_NUMERIC, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     business: Mapped[Business] = relationship(back_populates="locations")

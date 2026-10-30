@@ -13,6 +13,8 @@ class TopItemOut(BaseSchema):
 class ReportSummaryOut(BaseSchema):
     period: str
     total_revenue: Money
+    vat_collected: Money
+    net_revenue: Money
     order_count: int
     avg_order_value: Money
     revenue_by_channel: dict[str, Money]

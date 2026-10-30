@@ -438,10 +438,6 @@ export default function OrderDetailPage({ params }: Props) {
             <span className="text-muted-foreground">{t('subtotal')}</span>
             <span>₪{order.subtotal.toFixed(2)}</span>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">{t('tax', { rate: 17 })}</span>
-            <span>₪{order.taxAmount.toFixed(2)}</span>
-          </div>
           {order.discountAmount > 0 && (
             <div className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400">
               <span>{t('discount')}</span>
@@ -451,6 +447,14 @@ export default function OrderDetailPage({ params }: Props) {
           <div className="flex justify-between font-bold text-base pt-1 border-t">
             <span>{t('total')}</span>
             <span>₪{order.total.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>
+              {t('includesVat', {
+                rate: Math.round((order.vatRate ?? 0.18) * 100),
+                amount: order.taxAmount.toFixed(2),
+              })}
+            </span>
           </div>
           {paidAmount > 0 && (
             <>

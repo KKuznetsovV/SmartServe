@@ -50,6 +50,7 @@ class Business(ReadOnlyMirror, Base):
     tax_id: Mapped[str | None] = mapped_column(String(50))
     country: Mapped[str] = mapped_column(String(2), default="IL")
     currency: Mapped[str] = mapped_column(String(3), default="ILS")
+    vat_rate: Mapped[Decimal] = mapped_column(RATE_NUMERIC, default=Decimal("0.18"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     discounts: Mapped[list[Discount]] = relationship(
@@ -68,6 +69,7 @@ class Location(ReadOnlyMirror, Base):
     address: Mapped[str | None] = mapped_column(Text)
     timezone: Mapped[str] = mapped_column(String(50), default="Asia/Jerusalem")
     language: Mapped[str] = mapped_column(String(5), default="he")
+    vat_rate: Mapped[Decimal | None] = mapped_column(RATE_NUMERIC, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     tables: Mapped[list[Table]] = relationship(
@@ -114,6 +116,8 @@ class MenuItem(ReadOnlyMirror, Base):
     category_id: Mapped[str] = mapped_column(String(), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     price: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, nullable=False)
+    # Deprecated: VAT is location/business-level and snapshotted on the order. Kept for
+    # existing rows; ordering no longer reads this column when computing totals.
     tax_rate: Mapped[Decimal] = mapped_column(RATE_NUMERIC, default=Decimal("0.17"))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     in_stock: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -245,6 +249,7 @@ class Order(Base):
     tax_amount: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
     discount_amount: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
     total: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
+    vat_rate: Mapped[Decimal] = mapped_column(RATE_NUMERIC, default=Decimal("0.18"))
     notes: Mapped[str | None] = mapped_column(Text)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

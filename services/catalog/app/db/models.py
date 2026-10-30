@@ -121,6 +121,8 @@ class MenuItem(Base):
     description: Mapped[str | None] = mapped_column(Text)
     description_he: Mapped[str | None] = mapped_column(Text)
     price: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, nullable=False)
+    # Deprecated: prices are VAT-inclusive; VAT is businesses.vat_rate / locations.vat_rate.
+    # Do not drop yet — older clients still send the field.
     tax_rate: Mapped[Decimal] = mapped_column(RATE_NUMERIC, default=Decimal("0.17"))
     image_url: Mapped[str | None] = mapped_column(Text)
     preparation_time_min: Mapped[int] = mapped_column(Integer, default=10)

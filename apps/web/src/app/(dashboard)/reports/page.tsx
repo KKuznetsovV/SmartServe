@@ -74,13 +74,29 @@ function OverviewSection() {
       {data && (
         <>
           {/* KPI cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             <Card>
               <CardHeader className="pb-1">
                 <CardTitle className="text-sm font-medium text-muted-foreground">{t('revenue')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold">₪{data.totalRevenue.toFixed(2)}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-1">
+                <CardTitle className="text-sm font-medium text-muted-foreground">{t('vatCollected')}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">₪{(data.vatCollected ?? 0).toFixed(2)}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-1">
+                <CardTitle className="text-sm font-medium text-muted-foreground">{t('netRevenue')}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">₪{(data.netRevenue ?? 0).toFixed(2)}</p>
               </CardContent>
             </Card>
             <Card>

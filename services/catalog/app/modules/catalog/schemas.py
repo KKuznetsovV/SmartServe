@@ -122,7 +122,7 @@ class MenuItemOut(BaseModel):
     description: str | None = None
     description_he: str | None = None
     price: Money
-    tax_rate: Rate
+    tax_rate: Rate  # deprecated: unused for totals; VAT lives on the business/location
     image_url: str | None = None
     preparation_time_min: int
     sort_order: int

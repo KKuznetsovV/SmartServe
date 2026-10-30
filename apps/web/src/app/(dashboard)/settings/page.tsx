@@ -20,6 +20,7 @@ const bizSchema = z.object({
   name: z.string().min(1, 'Required'),
   taxId: z.string().optional().or(z.literal('')),
   currency: z.string().min(1),
+  vatRatePercent: z.coerce.number().min(0).max(100),
 })
 type BizForm = z.infer<typeof bizSchema>
 
@@ -28,6 +29,7 @@ const locSchema = z.object({
   address: z.string().optional().or(z.literal('')),
   timezone: z.string().min(1),
   language: z.enum(['he', 'en']),
+  vatRatePercent: z.string(),
 })
 type LocForm = z.infer<typeof locSchema>
 
@@ -53,7 +55,13 @@ export default function SettingsPage() {
   })
 
   const updateBiz = useMutation({
-    mutationFn: (data: BizForm) => apiClient.businesses.update(activeBusinessId!, data),
+    mutationFn: (data: BizForm) =>
+      apiClient.businesses.update(activeBusinessId!, {
+        name: data.name,
+        taxId: data.taxId,
+        currency: data.currency,
+        vatRate: data.vatRatePercent / 100,
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['business', activeBusinessId] })
       toast.success(t('businessSaved'))
@@ -62,7 +70,16 @@ export default function SettingsPage() {
   })
 
   const updateLoc = useMutation({
-    mutationFn: (data: LocForm) => apiClient.locations.update(activeLocationId!, data),
+    mutationFn: (data: LocForm) => {
+      const trimmed = data.vatRatePercent.trim()
+      return apiClient.locations.update(activeLocationId!, {
+        name: data.name,
+        address: data.address,
+        timezone: data.timezone,
+        language: data.language,
+        vatRate: trimmed === '' ? null : Number(trimmed) / 100,
+      })
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['location', activeLocationId] })
       toast.success(t('locationSaved'))
@@ -74,7 +91,13 @@ export default function SettingsPage() {
   const locForm = useForm<LocForm>({ resolver: zodResolver(locSchema) })
 
   useEffect(() => {
-    if (biz) bizForm.reset({ name: biz.name, taxId: biz.taxId ?? '', currency: biz.currency })
+    if (biz)
+      bizForm.reset({
+        name: biz.name,
+        taxId: biz.taxId ?? '',
+        currency: biz.currency,
+        vatRatePercent: Math.round((biz.vatRate ?? 0.18) * 1000) / 10,
+      })
   }, [biz]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -84,6 +107,7 @@ export default function SettingsPage() {
         address: loc.address ?? '',
         timezone: loc.timezone,
         language: loc.language as 'he' | 'en',
+        vatRatePercent: loc.vatRate == null ? '' : String(Math.round(loc.vatRate * 1000) / 10),
       })
   }, [loc]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -118,6 +142,11 @@ export default function SettingsPage() {
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>{t('vatRate')}</Label>
+                <Input type="number" step="0.1" min={0} max={100} {...bizForm.register('vatRatePercent')} />
+                <p className="text-xs text-muted-foreground">{t('vatRateHint')}</p>
               </div>
               <Button type="submit" disabled={updateBiz.isPending}>{t('saveBusiness')}</Button>
             </form>
@@ -163,6 +192,18 @@ export default function SettingsPage() {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">{t('defaultLanguageHint')}</p>
+              <div className="space-y-1">
+                <Label>{t('locationVatRate')}</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  min={0}
+                  max={100}
+                  placeholder="18"
+                  {...locForm.register('vatRatePercent')}
+                />
+                <p className="text-xs text-muted-foreground">{t('locationVatRateHint')}</p>
+              </div>
               <Button type="submit" disabled={updateLoc.isPending}>{t('saveLocation')}</Button>
             </form>
           )}
