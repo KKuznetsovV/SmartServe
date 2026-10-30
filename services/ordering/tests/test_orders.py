@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from smartserve_shared.security import hash_password
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Business, Location, MenuCategory, MenuItem, User
+from app.db.models import Business, Location, MenuCategory, MenuItem, Table, User
 
 
 @pytest.mark.asyncio
@@ -95,6 +95,45 @@ async def test_dine_in_order_requires_guest_count(
         headers=headers,
     )
     assert resp.status_code == 201
+    assert resp.json()["tableName"] is None
+
+
+@pytest.mark.asyncio
+async def test_order_responses_include_table_name(
+    client: AsyncClient,
+    db: AsyncSession,
+    location: Location,
+    manager_user: tuple[User, str],
+):
+    _, token = manager_user
+    headers = {"Authorization": f"Bearer {token}"}
+    table = Table(location_id=location.id, name="T3", capacity=4)
+    db.add(table)
+    await db.flush()
+
+    created = await client.post(
+        "/api/v1/orders",
+        json={
+            "locationId": location.id,
+            "channel": "dine_in",
+            "guestCount": 2,
+            "tableId": table.id,
+        },
+        headers=headers,
+    )
+    assert created.status_code == 201
+    assert created.json()["tableName"] == "T3"
+    order_id = created.json()["id"]
+
+    detail = await client.get(f"/api/v1/orders/{order_id}", headers=headers)
+    assert detail.json()["tableName"] == "T3"
+
+    listed = await client.get(f"/api/v1/locations/{location.id}/orders", headers=headers)
+    match = next(row for row in listed.json() if row["id"] == order_id)
+    assert match["tableName"] == "T3"
+
+    display = await client.get(f"/api/v1/public/locations/{location.id}/orders")
+    assert display.status_code == 200
 
 
 async def _make_order_with_two_items(client: AsyncClient, db: AsyncSession, business: Business, headers: dict):

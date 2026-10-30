@@ -142,7 +142,11 @@ class OrderService:
     ) -> list[Order]:
         if business_id is not None:
             await verify_location_owned(self.db, location_id, business_id, Location)
-        q = select(Order).where(Order.location_id == location_id).options(selectinload(Order.items))
+        q = (
+            select(Order)
+            .where(Order.location_id == location_id)
+            .options(selectinload(Order.items), selectinload(Order.table))
+        )
         if status_filter:
             q = q.where(Order.status == status_filter)
         q = q.order_by(Order.created_at.desc()).limit(limit).offset(offset)
@@ -154,7 +158,7 @@ class OrderService:
         q = (
             select(Order)
             .where(Order.location_id == location_id, Order.status.in_(["submitted", "preparing", "ready"]))
-            .options(selectinload(Order.items))
+            .options(selectinload(Order.items), selectinload(Order.table))
             .order_by(Order.created_at.asc())
             .limit(50)
         )
@@ -162,7 +166,7 @@ class OrderService:
         return list(result.scalars().all())
 
     async def get_order(self, order_id: str, business_id: str | None = None, *, for_update: bool = False) -> Order:
-        q = select(Order).where(Order.id == order_id).options(selectinload(Order.items))
+        q = select(Order).where(Order.id == order_id).options(selectinload(Order.items), selectinload(Order.table))
         if for_update:
             q = q.with_for_update(of=Order)
         if business_id is not None:
