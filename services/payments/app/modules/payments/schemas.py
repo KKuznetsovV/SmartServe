@@ -13,6 +13,8 @@ class PaymentOut(BaseModel):
     status: str
     gateway_ref: str | None = None
     created_at: datetime
+    order_fully_paid: bool | None = None
+    remaining: float | None = None
 
     model_config = {"from_attributes": True}
 

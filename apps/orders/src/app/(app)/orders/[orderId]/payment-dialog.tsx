@@ -88,14 +88,19 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
 
   async function handleConfirm() {
     if (isNaN(baseAmount) || baseAmount <= 0) return
-    await createPayment.mutateAsync({
+    const result = await createPayment.mutateAsync({
       orderId,
       method,
       amount: baseAmount,
       tipAmount,
       guestNumber: shareTag ?? undefined,
     })
-    onOpenChange(false)
+    if (result.remaining != null) {
+      setAmount(result.remaining.toFixed(2))
+    }
+    if (result.orderFullyPaid || (result.remaining ?? remaining) <= 0) {
+      onOpenChange(false)
+    }
   }
 
   return (

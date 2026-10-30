@@ -18,8 +18,8 @@ async def create_payment(
     db: DbSession,
     current_user: User = Depends(require_staff),
 ):
-    payment, order = await PaymentService(db).create_payment(data, current_user.business_id)
-    if order.status == "paid":
+    payment, fully_paid, remaining = await PaymentService(db).create_payment(data, current_user.business_id)
+    if fully_paid:
         await mq.publish(
             request.app.state.mq_connection,
             "payment.completed",
@@ -31,7 +31,8 @@ async def create_payment(
                 "businessId": current_user.business_id,
             },
         )
-    return payment
+    out = PaymentOut.model_validate(payment)
+    return out.model_copy(update={"order_fully_paid": fully_paid, "remaining": remaining})
 
 
 @router.get("/payments/{payment_id}", response_model=PaymentOut)

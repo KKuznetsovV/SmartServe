@@ -322,6 +322,7 @@ export default function OrderDetailPage({ params }: Props) {
 
   const paidAmount = (payments ?? []).reduce((sum: number, p) => sum + p.amount, 0)
   const remaining = Math.max(0, order.total - paidAmount)
+  const fullyPaid = order.status === 'paid'
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -527,7 +528,7 @@ export default function OrderDetailPage({ params }: Props) {
             {t('submitToKitchen')}
           </Button>
         )}
-        {canPay && remaining > 0 && (
+        {canPay && !fullyPaid && remaining > 0 && (
           <Button onClick={() => setPaymentOpen(true)}>{t('collectPayment')}</Button>
         )}
         {['submitted', 'preparing', 'ready'].includes(order.status) &&

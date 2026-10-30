@@ -25,10 +25,13 @@ async def test_payment_marks_order_paid(
         headers=headers,
     )
     assert resp.status_code == 201
-    assert resp.json()["status"] == "completed"
+    body = resp.json()
+    assert body["status"] == "completed"
+    assert body["orderFullyPaid"] is True
+    assert body["remaining"] == pytest.approx(0)
 
     await db.refresh(order)
-    assert order.status == "paid"
+    assert order.status == "submitted"
 
 
 @pytest.mark.asyncio
@@ -76,8 +79,10 @@ async def test_split_payment_across_installments_marks_paid_once_fully_covered(
         headers=headers,
     )
     assert resp.status_code == 201
+    assert resp.json()["orderFullyPaid"] is False
+    assert resp.json()["remaining"] == pytest.approx(half)
     await db.refresh(order)
-    assert order.status != "paid"
+    assert order.status == "submitted"
 
     resp = await client.post(
         "/api/v1/payments",
@@ -96,7 +101,9 @@ async def test_split_payment_across_installments_marks_paid_once_fully_covered(
     assert body["guestNumber"] == 2
 
     await db.refresh(order)
-    assert order.status == "paid"
+    assert order.status == "submitted"
+    assert body["orderFullyPaid"] is True
+    assert body["remaining"] == pytest.approx(0)
 
 
 @pytest.mark.asyncio
@@ -148,7 +155,14 @@ async def test_create_payment_rejects_already_paid_order(
     _, token = manager_user
     headers = {"Authorization": f"Bearer {token}"}
 
-    order = await create_order(db, total=100.0, status="paid")
+    order = await create_order(db, total=100.0)
+    first = await client.post(
+        "/api/v1/payments",
+        json={"orderId": order.id, "method": "cash", "amount": 100.0},
+        headers=headers,
+    )
+    assert first.status_code == 201
+    assert first.json()["orderFullyPaid"] is True
     resp = await client.post(
         "/api/v1/payments",
         json={"orderId": order.id, "method": "cash", "amount": 100.0},
