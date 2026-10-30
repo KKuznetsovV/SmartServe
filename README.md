@@ -17,6 +17,7 @@ migration from a monolith to microservices is tracked in [docs/microservices-pla
 
 ## Monorepo structure
 
+![SmartServe system design](docs/smartserve-system-design.png)
 ```
 SmartServe/
 ├── apps/                    # user-facing frontends
