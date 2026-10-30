@@ -4,6 +4,8 @@ A user from a DIFFERENT business must never be able to reach or modify another
 business's orders, order items, or tables via a guessed/known id path param.
 """
 
+from datetime import date
+
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
@@ -38,7 +40,14 @@ async def other_manager(db: AsyncSession, other_business: Business) -> tuple[Use
 
 @pytest_asyncio.fixture
 async def order(db: AsyncSession, location: Location) -> Order:
-    o = Order(location_id=location.id, channel="dine_in", status="open", guest_count=2)
+    o = Order(
+        location_id=location.id,
+        channel="dine_in",
+        status="open",
+        guest_count=2,
+        order_number=1,
+        business_date=date(2020, 1, 1),
+    )
     db.add(o)
     await db.flush()
     return o
