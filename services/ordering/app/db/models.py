@@ -295,6 +295,7 @@ class OrderItem(Base):
     status: Mapped[str] = mapped_column(String(50), default="pending")
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     fire_course: Mapped[int] = mapped_column(Integer, default=1)
+    fired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     guest_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     discount_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
     discount_value: Mapped[Decimal | None] = mapped_column(MONEY_NUMERIC, nullable=True)
