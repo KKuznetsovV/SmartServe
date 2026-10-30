@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from fastapi import Depends, Query, Request
 from smartserve_shared.outbox import enqueue
 from smartserve_shared.routing import APIRouter
@@ -30,6 +32,32 @@ async def _publish_order_event(db, order, business_id: str, routing_key: str) ->
     payload = order_event_payload(order, business_id)
     await enqueue(db, Outbox, routing_key, payload, business_id=business_id)
     return payload
+
+
+async def _enqueue_unfired_pending(db, order, business_id: str) -> None:
+    """One `order.item_fired` per pending line, never twice (`fired_at` in the same TX)."""
+    if order.status == "open":
+        return
+    now = datetime.now(UTC)
+    for item in order.items:
+        if item.status != "pending" or item.fired_at is not None:
+            continue
+        item.fired_at = now
+        await enqueue(
+            db,
+            Outbox,
+            "order.item_fired",
+            {
+                "orderId": order.id,
+                "itemId": item.id,
+                "menuItemId": item.menu_item_id,
+                "menuItemName": item.menu_item_name,
+                "locationId": order.location_id,
+                "businessId": business_id,
+                "course": item.fire_course,
+            },
+            business_id=business_id,
+        )
 
 
 @router.get("/locations/{location_id}/orders", response_model=list[OrderWithItemsOut])
@@ -77,6 +105,7 @@ async def add_order_item(
 ):
     item = await OrderService(db).add_item(order_id, data, current_user.business_id)
     order = await OrderService(db).get_order(order_id, current_user.business_id)
+    await _enqueue_unfired_pending(db, order, current_user.business_id)
     await _publish_order_event(db, order, current_user.business_id, "order.updated")
     return item
 
@@ -142,6 +171,7 @@ async def submit_order(
     current_user: User = Depends(require_staff),
 ):
     order = await OrderService(db).transition_order(order_id, "submitted", current_user.business_id)
+    await _enqueue_unfired_pending(db, order, current_user.business_id)
     await _publish_order_event(db, order, current_user.business_id, "order.updated")
     return order
 
@@ -228,26 +258,8 @@ async def fire_course(
     db: DbSession,
     current_user: User = Depends(require_staff),
 ):
-    service = OrderService(db)
-    order_before = await service.get_order(order_id, current_user.business_id)
-    newly_fired = [i for i in order_before.items if i.status == "held" and i.fire_course == data.course]
-    result = await service.fire_course(order_id, data, current_user.business_id)
-    for item in newly_fired:
-        await enqueue(
-            db,
-            Outbox,
-            "order.item_fired",
-            {
-                "orderId": order_id,
-                "itemId": item.id,
-                "menuItemId": item.menu_item_id,
-                "menuItemName": item.menu_item_name,
-                "locationId": result.location_id,
-                "businessId": current_user.business_id,
-                "course": data.course,
-            },
-            business_id=current_user.business_id,
-        )
+    result = await OrderService(db).fire_course(order_id, data, current_user.business_id)
+    await _enqueue_unfired_pending(db, result, current_user.business_id)
     await _publish_order_event(db, result, current_user.business_id, "order.updated")
     return result
 

@@ -137,6 +137,79 @@ async def test_fire_course_publishes_order_item_fired(
     assert payload["businessId"] == business_id
 
 
+def _fired_payloads(rows: list[Outbox]) -> list[dict]:
+    return [json.loads(row.payload) for row in rows if row.routing_key == "order.item_fired"]
+
+
+@pytest.mark.asyncio
+async def test_submit_and_add_enqueue_item_fired_once(
+    client: AsyncClient,
+    db: AsyncSession,
+    location: Location,
+    manager_user: tuple[User, str],
+):
+    user, token = manager_user
+    headers = {"Authorization": f"Bearer {token}"}
+    burger = MenuItem(category_id="cat-1", name="Burger", price=45.0, tax_rate=0.17, default_fire_course=1)
+    steak = MenuItem(category_id="cat-1", name="Steak", price=80.0, tax_rate=0.17, default_fire_course=2)
+    db.add_all([burger, steak])
+    await db.flush()
+    burger_id = burger.id
+    steak_id = steak.id
+
+    order_id = (
+        await client.post(
+            "/api/v1/orders",
+            json={"locationId": location.id, "channel": "dine_in", "guestCount": 2},
+            headers=headers,
+        )
+    ).json()["id"]
+    first = (
+        await client.post(
+            f"/api/v1/orders/{order_id}/items",
+            json={"menuItemId": burger_id, "qty": 1},
+            headers=headers,
+        )
+    ).json()
+    course_two = (
+        await client.post(
+            f"/api/v1/orders/{order_id}/items",
+            json={"menuItemId": steak_id, "qty": 1},
+            headers=headers,
+        )
+    ).json()
+
+    assert (await client.post(f"/api/v1/orders/{order_id}/submit", headers=headers)).status_code == 200
+    db.expire_all()
+    rows = (await db.execute(select(Outbox))).scalars().all()
+    fired = _fired_payloads(rows)
+    assert [row["itemId"] for row in fired] == [first["id"]]
+
+    assert (await client.post(f"/api/v1/orders/{order_id}/submit", headers=headers)).status_code == 400
+    db.expire_all()
+    assert len(_fired_payloads((await db.execute(select(Outbox))).scalars().all())) == 1
+
+    second = (
+        await client.post(
+            f"/api/v1/orders/{order_id}/items",
+            json={"menuItemId": burger_id, "qty": 1},
+            headers=headers,
+        )
+    ).json()
+    db.expire_all()
+    fired_ids = [row["itemId"] for row in _fired_payloads((await db.execute(select(Outbox))).scalars().all())]
+    assert fired_ids == [first["id"], second["id"]]
+
+    assert (await client.post(f"/api/v1/orders/{order_id}/fire-course", json={"course": 2}, headers=headers)).status_code == 200
+    db.expire_all()
+    fired_ids = [row["itemId"] for row in _fired_payloads((await db.execute(select(Outbox))).scalars().all())]
+    assert fired_ids == [first["id"], second["id"], course_two["id"]]
+
+    assert (await client.post(f"/api/v1/orders/{order_id}/fire-course", json={"course": 2}, headers=headers)).status_code == 400
+    db.expire_all()
+    assert len(_fired_payloads((await db.execute(select(Outbox))).scalars().all())) == 3
+
+
 @pytest_asyncio.fixture
 async def events_engine():
     engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=False)
