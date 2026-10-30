@@ -10,6 +10,8 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
+from smartserve_shared import mirrors as _mirrors  # noqa: F401 — register before_flush
+
 DEFAULT_POOL_SIZE = 5
 DEFAULT_MAX_OVERFLOW = 5
 

@@ -7,7 +7,8 @@ docs/microservices-plan.md §4). Location is a trimmed mirror used only for tena
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text
+from smartserve_shared.mirrors import ReadOnlyMirror
+from sqlalchemy import Boolean, DateTime, Float, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.session import Base
@@ -42,7 +43,7 @@ class User(Base):
 # ─── Location (owned by auth, trimmed mirror) ─────────────────────────────────
 
 
-class Location(Base):
+class Location(ReadOnlyMirror, Base):
     __tablename__ = "locations"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
@@ -58,8 +59,8 @@ class Shift(Base):
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     location_id: Mapped[str] = mapped_column(String(), nullable=False)
-    opened_by: Mapped[str] = mapped_column(ForeignKey("users.id"), nullable=False)
-    closed_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
+    opened_by: Mapped[str] = mapped_column(String(), nullable=False)
+    closed_by: Mapped[str | None] = mapped_column(String(), nullable=True)
     opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     opening_cash: Mapped[float] = mapped_column(Float, default=0.0)

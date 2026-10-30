@@ -11,6 +11,7 @@ already exist as owned by the other services.
 import uuid
 from datetime import UTC, datetime
 
+from smartserve_shared.mirrors import ReadOnlyMirror
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -38,7 +39,7 @@ def _now() -> datetime:
 # ─── Business / Location / User (owned by auth, trimmed mirror) ──────────────
 
 
-class Business(Base):
+class Business(ReadOnlyMirror, Base):
     __tablename__ = "businesses"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
@@ -48,29 +49,41 @@ class Business(Base):
     currency: Mapped[str] = mapped_column(String(3), default="ILS")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
-    discounts: Mapped[list[Discount]] = relationship(back_populates="business")
+    discounts: Mapped[list[Discount]] = relationship(
+        back_populates="business",
+        primaryjoin="Discount.business_id == Business.id",
+        foreign_keys="[Discount.business_id]",
+    )
 
 
-class Location(Base):
+class Location(ReadOnlyMirror, Base):
     __tablename__ = "locations"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
-    business_id: Mapped[str] = mapped_column(ForeignKey("businesses.id"), nullable=False)
+    business_id: Mapped[str] = mapped_column(String(), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     address: Mapped[str | None] = mapped_column(Text)
     timezone: Mapped[str] = mapped_column(String(50), default="Asia/Jerusalem")
     language: Mapped[str] = mapped_column(String(5), default="he")
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    tables: Mapped[list[Table]] = relationship(back_populates="location")
-    orders: Mapped[list[Order]] = relationship(back_populates="location")
+    tables: Mapped[list[Table]] = relationship(
+        back_populates="location",
+        primaryjoin="Table.location_id == Location.id",
+        foreign_keys="[Table.location_id]",
+    )
+    orders: Mapped[list[Order]] = relationship(
+        back_populates="location",
+        primaryjoin="Order.location_id == Location.id",
+        foreign_keys="[Order.location_id]",
+    )
 
 
-class User(Base):
+class User(ReadOnlyMirror, Base):
     __tablename__ = "users"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
-    business_id: Mapped[str] = mapped_column(ForeignKey("businesses.id"), nullable=False)
+    business_id: Mapped[str] = mapped_column(String(), nullable=False)
     email: Mapped[str | None] = mapped_column(String(255), unique=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     password_hash: Mapped[str | None] = mapped_column(String(255))
@@ -84,14 +97,14 @@ class User(Base):
 # ─── Catalog (owned by catalog, trimmed mirror) ───────────────────────────────
 
 
-class MenuCategory(Base):
+class MenuCategory(ReadOnlyMirror, Base):
     __tablename__ = "menu_categories"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
 
-class MenuItem(Base):
+class MenuItem(ReadOnlyMirror, Base):
     __tablename__ = "menu_items"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
@@ -111,44 +124,60 @@ class MenuItem(Base):
     # never retroactively affected by trashing/deleting a menu item.
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    modifier_groups: Mapped[list[ModifierGroup]] = relationship(back_populates="item")
+    modifier_groups: Mapped[list[ModifierGroup]] = relationship(
+        back_populates="item",
+        primaryjoin="ModifierGroup.item_id == MenuItem.id",
+        foreign_keys="[ModifierGroup.item_id]",
+    )
 
 
-class ModifierGroup(Base):
+class ModifierGroup(ReadOnlyMirror, Base):
     """Read-only mirror of catalog.modifier_groups — ordering never writes this table."""
 
     __tablename__ = "modifier_groups"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
-    item_id: Mapped[str] = mapped_column(ForeignKey("menu_items.id"), nullable=False)
+    item_id: Mapped[str] = mapped_column(String(), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     required: Mapped[bool] = mapped_column(Boolean, default=False)
     min_select: Mapped[int] = mapped_column(Integer, default=0)
     max_select: Mapped[int] = mapped_column(Integer, default=1)
 
-    item: Mapped[MenuItem] = relationship(back_populates="modifier_groups")
-    modifiers: Mapped[list[Modifier]] = relationship(back_populates="group")
+    item: Mapped[MenuItem] = relationship(
+        back_populates="modifier_groups",
+        primaryjoin="ModifierGroup.item_id == MenuItem.id",
+        foreign_keys=[item_id],
+    )
+    modifiers: Mapped[list[Modifier]] = relationship(
+        back_populates="group",
+        primaryjoin="Modifier.group_id == ModifierGroup.id",
+        foreign_keys="[Modifier.group_id]",
+    )
 
 
-class Modifier(Base):
+class Modifier(ReadOnlyMirror, Base):
     """Read-only mirror of catalog.modifiers — ordering never writes this table."""
 
     __tablename__ = "modifiers"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
-    group_id: Mapped[str] = mapped_column(ForeignKey("modifier_groups.id"), nullable=False)
+    group_id: Mapped[str] = mapped_column(String(), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     price_delta: Mapped[float] = mapped_column(Float, default=0.0)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    group: Mapped[ModifierGroup] = relationship(back_populates="modifiers")
+    group: Mapped[ModifierGroup] = relationship(
+        back_populates="modifiers",
+        primaryjoin="Modifier.group_id == ModifierGroup.id",
+        foreign_keys=[group_id],
+    )
 
 
-class Discount(Base):
+class Discount(ReadOnlyMirror, Base):
     __tablename__ = "discounts"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
-    business_id: Mapped[str] = mapped_column(ForeignKey("businesses.id"), nullable=False)
+    business_id: Mapped[str] = mapped_column(String(), nullable=False)
     code: Mapped[str] = mapped_column(String(50), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     type: Mapped[str] = mapped_column(String(20), default="percent")
@@ -158,8 +187,16 @@ class Discount(Base):
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
-    business: Mapped[Business] = relationship(back_populates="discounts")
-    orders: Mapped[list[Order]] = relationship(back_populates="discount")
+    business: Mapped[Business] = relationship(
+        back_populates="discounts",
+        primaryjoin="Discount.business_id == Business.id",
+        foreign_keys=[business_id],
+    )
+    orders: Mapped[list[Order]] = relationship(
+        back_populates="discount",
+        primaryjoin="Order.discount_id == Discount.id",
+        foreign_keys="[Order.discount_id]",
+    )
 
 
 # ─── Ordering (owned here) ────────────────────────────────────────────────────
@@ -169,7 +206,7 @@ class Table(Base):
     __tablename__ = "tables"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
-    location_id: Mapped[str] = mapped_column(ForeignKey("locations.id"), nullable=False)
+    location_id: Mapped[str] = mapped_column(String(), nullable=False)
     name: Mapped[str] = mapped_column(String(50), nullable=False)
     capacity: Mapped[int] = mapped_column(Integer, default=4)
     section: Mapped[str | None] = mapped_column(String(100))
@@ -177,7 +214,11 @@ class Table(Base):
     pos_y: Mapped[float] = mapped_column(Float, default=0.0)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    location: Mapped[Location] = relationship(back_populates="tables")
+    location: Mapped[Location] = relationship(
+        back_populates="tables",
+        primaryjoin="Table.location_id == Location.id",
+        foreign_keys=[location_id],
+    )
     orders: Mapped[list[Order]] = relationship(back_populates="table")
 
 
@@ -189,10 +230,10 @@ class Order(Base):
     )
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
-    location_id: Mapped[str] = mapped_column(ForeignKey("locations.id"), nullable=False)
+    location_id: Mapped[str] = mapped_column(String(), nullable=False)
     table_id: Mapped[str | None] = mapped_column(ForeignKey("tables.id"))
-    discount_id: Mapped[str | None] = mapped_column(ForeignKey("discounts.id"))
-    created_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    discount_id: Mapped[str | None] = mapped_column(String(), nullable=True)
+    created_by: Mapped[str | None] = mapped_column(String(), nullable=True)
     channel: Mapped[str] = mapped_column(String(50), default="dine_in")
     status: Mapped[str] = mapped_column(String(50), default="open")
     guest_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -206,9 +247,17 @@ class Order(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
-    location: Mapped[Location] = relationship(back_populates="orders")
+    location: Mapped[Location] = relationship(
+        back_populates="orders",
+        primaryjoin="Order.location_id == Location.id",
+        foreign_keys=[location_id],
+    )
     table: Mapped[Table] = relationship(back_populates="orders")
-    discount: Mapped[Discount | None] = relationship(back_populates="orders")
+    discount: Mapped[Discount | None] = relationship(
+        back_populates="orders",
+        primaryjoin="Order.discount_id == Discount.id",
+        foreign_keys=[discount_id],
+    )
     items: Mapped[list[OrderItem]] = relationship(back_populates="order", order_by="OrderItem.sort_order")
 
 
@@ -218,7 +267,7 @@ class OrderItem(Base):
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     order_id: Mapped[str] = mapped_column(ForeignKey("orders.id"), nullable=False)
-    menu_item_id: Mapped[str] = mapped_column(ForeignKey("menu_items.id"), nullable=False)
+    menu_item_id: Mapped[str] = mapped_column(String(), nullable=False)
     menu_item_name: Mapped[str] = mapped_column(String(255), nullable=False)
     category_id: Mapped[str | None] = mapped_column(String(), nullable=True)
     category_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -234,6 +283,6 @@ class OrderItem(Base):
     discount_value: Mapped[float | None] = mapped_column(Float, nullable=True)
     discount_amount: Mapped[float] = mapped_column(Float, default=0.0)
     is_comped: Mapped[bool] = mapped_column(Boolean, default=False)
-    comped_by: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    comped_by: Mapped[str | None] = mapped_column(String(), nullable=True)
 
     order: Mapped[Order] = relationship(back_populates="items")

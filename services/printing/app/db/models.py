@@ -7,6 +7,7 @@ item's category through that location's business.
 import uuid
 from datetime import UTC, datetime
 
+from smartserve_shared.mirrors import ReadOnlyMirror
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -24,7 +25,7 @@ def _now() -> datetime:
 # ─── User (owned by auth, trimmed mirror) ─────────────────────────────────────
 
 
-class User(Base):
+class User(ReadOnlyMirror, Base):
     __tablename__ = "users"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
@@ -42,7 +43,7 @@ class User(Base):
 # ─── Location / catalog (owned elsewhere, trimmed mirrors) ────────────────────
 
 
-class Location(Base):
+class Location(ReadOnlyMirror, Base):
     __tablename__ = "locations"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
@@ -50,14 +51,14 @@ class Location(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
 
-class MenuCategory(Base):
+class MenuCategory(ReadOnlyMirror, Base):
     __tablename__ = "menu_categories"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     location_id: Mapped[str] = mapped_column(String(), nullable=False)
 
 
-class MenuItem(Base):
+class MenuItem(ReadOnlyMirror, Base):
     __tablename__ = "menu_items"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)

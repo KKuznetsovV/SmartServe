@@ -8,6 +8,7 @@ exists so report endpoints can verify a `location_id` belongs to the caller's bu
 import uuid
 from datetime import UTC, datetime
 
+from smartserve_shared.mirrors import ReadOnlyMirror
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -22,7 +23,7 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
-class User(Base):
+class User(ReadOnlyMirror, Base):
     __tablename__ = "users"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
@@ -37,7 +38,7 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
-class Location(Base):
+class Location(ReadOnlyMirror, Base):
     __tablename__ = "locations"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)

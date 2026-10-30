@@ -1,7 +1,7 @@
 """cascade-delete modifier groups and modifiers with their menu item
 
-Permanently deleting a trashed item must remove catalog-owned children. Cross-service
-references (order lines) still block the delete.
+Permanently deleting a trashed item must remove catalog-owned children. Historical
+order lines keep a snapshot of name/price and no longer FK to menu_items.
 
 Revision ID: 0003_modifier_delete_cascade
 Revises: 0002_menu_item_trash
