@@ -18,6 +18,7 @@ from app.modules.ordering.schemas import (
     OrderItemStatusUpdate,
     OrderItemUpdate,
     OrderWithItemsOut,
+    ReorderRequest,
 )
 from app.modules.ordering.service import OrderService
 from app.modules.ordering.ws_router import broadcast_event
@@ -121,11 +122,11 @@ async def update_order_item(
 @router.post("/orders/{order_id}/items/reorder", status_code=204)
 async def reorder_order_items(
     order_id: str,
-    body: dict,
+    body: ReorderRequest,
     db: DbSession,
     current_user: User = Depends(require_staff),
 ):
-    await OrderService(db).reorder_items(order_id, body["ids"], current_user.business_id)
+    await OrderService(db).reorder_items(order_id, body.ids, current_user.business_id)
 
 
 @router.delete("/orders/{order_id}/items/{item_id}", status_code=204)

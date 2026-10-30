@@ -91,6 +91,37 @@ async def test_confirm_create_item_success(client, manager_token, monkeypatch):
     assert await app.state.redis.get("ai:pending:exec-3") is None
 
 
+async def test_confirm_catalog_422_is_readable(client, manager_token, monkeypatch):
+    await _seed_pending("exec-q8", "menu.create_item", {"name": "Bad", "price": -50})
+
+    async def fake_auth_get(path, *, forward_token=None, **kwargs):
+        return httpx.Response(200, json={"id": "loc-1", "businessId": "biz-1"})
+
+    async def fake_catalog_get(path, *, forward_token=None, **kwargs):
+        return httpx.Response(200, json=[{"id": "cat-1", "name": "Mains", "parentId": None}])
+
+    async def fake_catalog_post(path, *, forward_token=None, **kwargs):
+        request = httpx.Request("POST", "http://catalog/api/v1/menu/items")
+        return httpx.Response(
+            422,
+            json={"detail": [{"loc": ["body", "price"], "msg": "Input should be greater than or equal to 0"}]},
+            request=request,
+        )
+
+    monkeypatch.setattr(auth_client, "get", fake_auth_get)
+    monkeypatch.setattr(catalog_client, "get", fake_catalog_get)
+    monkeypatch.setattr(catalog_client, "post", fake_catalog_post)
+
+    resp = await client.post(
+        "/api/v1/ai/confirm",
+        json={"executionId": "exec-q8"},
+        headers={"Authorization": f"Bearer {manager_token}"},
+    )
+    assert resp.status_code == 422
+    assert "greater than or equal to 0" in str(resp.json()["detail"])
+    assert resp.status_code != 502
+
+
 async def test_confirm_toggle_availability(client, manager_token, monkeypatch):
     await _seed_pending("exec-4", "menu.toggle_availability", {"name": "Pizza", "in_stock": False})
 

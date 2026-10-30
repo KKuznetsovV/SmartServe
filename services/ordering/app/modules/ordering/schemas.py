@@ -9,6 +9,10 @@ class ApplyDiscountIn(BaseModel):
     code: str
 
 
+class ReorderRequest(BaseModel):
+    ids: list[str] = Field(..., min_length=1)
+
+
 class OrderItemModifierIn(BaseModel):
     """Client may send only the id; name and price come from the catalog."""
 

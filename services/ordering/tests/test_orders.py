@@ -533,6 +533,13 @@ async def test_reorder_order_items(
     order = (await client.get(f"/api/v1/orders/{order_id}", headers=headers)).json()
     assert [i["id"] for i in order["items"]] == [second_id, first_id]
 
+    empty = await client.post(
+        f"/api/v1/orders/{order_id}/items/reorder",
+        json={},
+        headers=headers,
+    )
+    assert empty.status_code == 422
+
 
 @pytest.mark.asyncio
 async def test_remove_order_item(

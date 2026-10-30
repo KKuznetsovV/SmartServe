@@ -18,6 +18,7 @@ from app.modules.catalog.schemas import (
     ModifierCreate,
     ModifierGroupCreate,
     ModifierGroupUpdate,
+    validate_group_select,
 )
 
 
@@ -59,13 +60,11 @@ class MenuService:
         self, category_id: str, data: MenuCategoryUpdate, business_id: str | None = None
     ) -> MenuCategory:
         cat = await self.get_category(category_id, business_id)
-        if data.parent_id:
-            if data.parent_id == category_id:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST, detail="A category cannot be its own parent"
-                )
-            await self._validate_parent(data.parent_id, cat.location_id)
-        for field, value in data.model_dump(exclude_none=True).items():
+        updates = data.model_dump(exclude_unset=True)
+        if "parent_id" in updates and updates["parent_id"] is not None:
+            await self._reject_parent_cycle(category_id, updates["parent_id"])
+            await self._validate_parent(updates["parent_id"], cat.location_id)
+        for field, value in updates.items():
             setattr(cat, field, value)
         await self.db.flush()
         return cat
@@ -76,6 +75,23 @@ class MenuService:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Parent category is not in this location"
             )
+
+    async def _reject_parent_cycle(self, category_id: str, parent_id: str) -> None:
+        if parent_id == category_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A category cannot be its own parent")
+        current: str | None = parent_id
+        seen: set[str] = set()
+        while current:
+            if current == category_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="A category cannot be nested under one of its descendants",
+                )
+            if current in seen:
+                break
+            seen.add(current)
+            ancestor = await self.get_category(current)
+            current = ancestor.parent_id
 
     async def delete_category(self, category_id: str, business_id: str | None = None) -> None:
         cat = await self.get_category(category_id, business_id)
@@ -252,9 +268,10 @@ class MenuService:
 
         for item in items:
             if data.change_pct is not None:
-                item.price = round(item.price * (1 + data.change_pct / 100), 2)
-            elif data.change_abs is not None:
-                item.price = max(0.0, round(item.price + data.change_abs, 2))
+                next_price = round(item.price * (1 + data.change_pct / 100), 2)
+            else:
+                next_price = round(item.price + (data.change_abs or 0), 2)
+            item.price = max(0.0, next_price)
 
         await self.db.flush()
         return len(items)
@@ -320,7 +337,15 @@ class MenuService:
         self, group_id: str, data: ModifierGroupUpdate, business_id: str | None = None
     ) -> ModifierGroup:
         group = await self.get_modifier_group(group_id, business_id)
-        for field, value in data.model_dump(exclude_none=True).items():
+        updates = data.model_dump(exclude_unset=True)
+        required = updates["required"] if "required" in updates else group.required
+        min_select = updates["min_select"] if "min_select" in updates else group.min_select
+        max_select = updates["max_select"] if "max_select" in updates else group.max_select
+        try:
+            validate_group_select(required, min_select, max_select)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        for field, value in updates.items():
             setattr(group, field, value)
         await self.db.flush()
         return group
