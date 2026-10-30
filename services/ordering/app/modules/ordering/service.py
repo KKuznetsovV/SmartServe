@@ -617,25 +617,50 @@ class OrderService:
         if quantity < 1:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="quantity must be at least 1")
 
+        original_qty = item.qty
         item.qty -= quantity
+        split_discount_amount = money(0)
+        split_discount_value = item.discount_value
+        if item.discount_type == "fixed":
+            original_amount = money(item.discount_amount)
+            split_discount_amount = money(original_amount * quantity / original_qty)
+            item.discount_amount = money(original_amount - split_discount_amount)
+            if item.discount_value is not None:
+                original_value = money(item.discount_value)
+                split_discount_value = money(original_value * quantity / original_qty)
+                item.discount_value = money(original_value - split_discount_value)
+        elif item.discount_type == "percent" and item.discount_value is not None:
+            remaining_line = money(money(item.unit_price) * item.qty)
+            split_line = money(money(item.unit_price) * quantity)
+            item.discount_amount = money(remaining_line * money(item.discount_value) / Decimal("100"))
+            split_discount_amount = money(split_line * money(item.discount_value) / Decimal("100"))
+
         split_item = OrderItem(
             order_id=order.id,
             menu_item_id=item.menu_item_id,
             menu_item_name=item.menu_item_name,
+            category_id=item.category_id,
+            category_name=item.category_name,
             qty=quantity,
             unit_price=item.unit_price,
-            modifiers=item.modifiers,
+            modifiers=list(item.modifiers or []),
             notes=item.notes,
             status=item.status,
             sort_order=item.sort_order,
             fire_course=item.fire_course,
             guest_number=item.guest_number,
+            discount_type=item.discount_type,
+            discount_value=split_discount_value,
+            discount_amount=split_discount_amount,
+            is_comped=item.is_comped,
+            comped_by=item.comped_by,
         )
         self.db.add(split_item)
         await self.db.flush()
         # Keep the already-loaded collection in sync so this session's later reads
         # (recompute totals, delete-from-collection) see the new row immediately.
         order.items.append(split_item)
+        await self.recompute_totals(order)
         return split_item
 
     async def recompute_totals(self, order: Order) -> None:
