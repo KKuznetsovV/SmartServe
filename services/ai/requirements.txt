@@ -9,6 +9,6 @@ defusedxml>=0.7.1
 python-multipart>=0.0.20
 structlog>=25.4.0
 slowapi>=0.1.9
-aio-pika>=9.4.0
+aio-pika>=10.2.1
 redis>=6.1.0
 llama-cpp-python>=0.3.0
