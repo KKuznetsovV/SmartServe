@@ -22,6 +22,7 @@ ALEMBIC_SERVICES = (
     "staff",
     "printing",
     "reporting",
+    "ai",
 )
 
 

@@ -144,7 +144,7 @@ jobs:
       - name: Install shared lib and service deps
         run: |
           pip install -e services/_shared
-          for svc in auth catalog ordering payments staff printing reporting; do
+          for svc in auth catalog ordering payments staff printing reporting ai; do
             (cd "services/${svc}" && pip install -r requirements.txt)
           done
 

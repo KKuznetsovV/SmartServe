@@ -1,9 +1,9 @@
 from fastapi import Depends, Query, Request
-from smartserve_shared import mq
+from smartserve_shared.outbox import enqueue
 from smartserve_shared.routing import APIRouter
 
 from app.api.v1.deps import require_staff
-from app.db.models import User
+from app.db.models import Outbox, User
 from app.db.session import DbSession
 from app.modules.ordering.events import order_event_payload
 from app.modules.ordering.schemas import (
@@ -27,9 +27,9 @@ from app.modules.ordering.ws_router import broadcast_event
 router = APIRouter()
 
 
-async def _publish_order_event(request: Request, order, business_id: str, routing_key: str) -> dict:
+async def _publish_order_event(db, order, business_id: str, routing_key: str) -> dict:
     payload = order_event_payload(order, business_id)
-    await mq.publish(request.app.state.mq_connection, routing_key, payload)
+    await enqueue(db, Outbox, routing_key, payload, business_id=business_id)
     return payload
 
 
@@ -64,7 +64,7 @@ async def create_order(
     current_user: User = Depends(require_staff),
 ):
     order = await OrderService(db).create_order(data, created_by=current_user.id, business_id=current_user.business_id)
-    await _publish_order_event(request, order, current_user.business_id, "order.created")
+    await _publish_order_event(db, order, current_user.business_id, "order.created")
     return order
 
 
@@ -78,7 +78,7 @@ async def add_order_item(
 ):
     item = await OrderService(db).add_item(order_id, data, current_user.business_id)
     order = await OrderService(db).get_order(order_id, current_user.business_id)
-    await _publish_order_event(request, order, current_user.business_id, "order.updated")
+    await _publish_order_event(db, order, current_user.business_id, "order.updated")
     return item
 
 
@@ -93,7 +93,7 @@ async def update_item_status(
 ):
     item = await OrderService(db).update_item_status(order_id, item_id, data, current_user.business_id)
     order = await OrderService(db).get_order(order_id, current_user.business_id)
-    await _publish_order_event(request, order, current_user.business_id, "order.updated")
+    await _publish_order_event(db, order, current_user.business_id, "order.updated")
     await broadcast_event(
         order.location_id,
         "order.item_status_changed",
@@ -119,7 +119,7 @@ async def update_order_item(
 ):
     item = await OrderService(db).update_item(order_id, item_id, data, current_user.business_id)
     order = await OrderService(db).get_order(order_id, current_user.business_id)
-    await _publish_order_event(request, order, current_user.business_id, "order.updated")
+    await _publish_order_event(db, order, current_user.business_id, "order.updated")
     return item
 
 
@@ -143,7 +143,7 @@ async def remove_order_item(
 ):
     await OrderService(db).remove_item(order_id, item_id, current_user.business_id)
     order = await OrderService(db).get_order(order_id, current_user.business_id)
-    await _publish_order_event(request, order, current_user.business_id, "order.updated")
+    await _publish_order_event(db, order, current_user.business_id, "order.updated")
 
 
 @router.post("/orders/{order_id}/submit", response_model=OrderWithItemsOut)
@@ -154,7 +154,7 @@ async def submit_order(
     current_user: User = Depends(require_staff),
 ):
     order = await OrderService(db).transition_order(order_id, "submitted", current_user.business_id)
-    payload = await _publish_order_event(request, order, current_user.business_id, "order.updated")
+    payload = await _publish_order_event(db, order, current_user.business_id, "order.updated")
     await broadcast_event(order.location_id, "order.updated", payload)
     return order
 
@@ -167,7 +167,7 @@ async def cancel_order(
     current_user: User = Depends(require_staff),
 ):
     order = await OrderService(db).transition_order(order_id, "cancelled", current_user.business_id)
-    payload = await _publish_order_event(request, order, current_user.business_id, "order.updated")
+    payload = await _publish_order_event(db, order, current_user.business_id, "order.updated")
     await broadcast_event(order.location_id, "order.updated", payload)
     return order
 
@@ -181,7 +181,7 @@ async def apply_discount(
     current_user: User = Depends(require_staff),
 ):
     order = await OrderService(db).apply_discount(order_id, data, current_user.business_id)
-    await _publish_order_event(request, order, current_user.business_id, "order.updated")
+    await _publish_order_event(db, order, current_user.business_id, "order.updated")
     return order
 
 
@@ -204,7 +204,7 @@ async def apply_item_discount(
     current_user: User = Depends(require_staff),
 ):
     order = await OrderService(db).apply_item_discount(order_id, data, current_user.business_id)
-    await _publish_order_event(request, order, current_user.business_id, "order.updated")
+    await _publish_order_event(db, order, current_user.business_id, "order.updated")
     return order
 
 
@@ -217,7 +217,7 @@ async def comp_items(
     current_user: User = Depends(require_staff),
 ):
     order = await OrderService(db).set_item_comp(order_id, data, current_user.id, current_user.business_id)
-    await _publish_order_event(request, order, current_user.business_id, "order.updated")
+    await _publish_order_event(db, order, current_user.business_id, "order.updated")
     return order
 
 
@@ -230,7 +230,7 @@ async def bulk_delete_items(
     current_user: User = Depends(require_staff),
 ):
     order = await OrderService(db).delete_items(order_id, data, current_user.business_id)
-    await _publish_order_event(request, order, current_user.business_id, "order.updated")
+    await _publish_order_event(db, order, current_user.business_id, "order.updated")
     return order
 
 
@@ -247,8 +247,9 @@ async def fire_course(
     newly_fired = [i for i in order_before.items if i.status == "held" and i.fire_course == data.course]
     result = await service.fire_course(order_id, data, current_user.business_id)
     for item in newly_fired:
-        await mq.publish(
-            request.app.state.mq_connection,
+        await enqueue(
+            db,
+            Outbox,
             "order.item_fired",
             {
                 "orderId": order_id,
@@ -259,8 +260,9 @@ async def fire_course(
                 "businessId": current_user.business_id,
                 "course": data.course,
             },
+            business_id=current_user.business_id,
         )
-    payload = await _publish_order_event(request, result, current_user.business_id, "order.updated")
+    payload = await _publish_order_event(db, result, current_user.business_id, "order.updated")
     await broadcast_event(result.location_id, "order.updated", payload)
     return result
 

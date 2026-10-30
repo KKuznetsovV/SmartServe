@@ -4,11 +4,15 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key-for-tests-only-32-bytes-min
 
 import jwt
 import pytest
+import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.db.session import Base, get_db
 from app.main import app
 
 SECRET_KEY = os.environ["SECRET_KEY"]
+TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
 
 
 class FakeRedis:
@@ -48,9 +52,26 @@ def staff_token():
     return make_token(role="staff", sub="user-2")
 
 
+@pytest_asyncio.fixture(scope="function")
+async def db():
+    engine = create_async_engine(TEST_DB_URL, echo=False)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async with session_factory() as session:
+        yield session
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+    await engine.dispose()
+
+
 @pytest.fixture
-async def client():
+async def client(db: AsyncSession):
+    async def _override_db():
+        yield db
+
+    app.dependency_overrides[get_db] = _override_db
     app.state.redis = FakeRedis()
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
+    app.dependency_overrides.clear()

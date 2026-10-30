@@ -101,20 +101,55 @@ def create_service_app(
             response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
         return response
 
+    async def _db_ping() -> None:
+        provider = app.dependency_overrides.get(get_db, get_db)
+        async for session in provider():
+            await session.execute(text("SELECT 1"))
+            break
+
+    def _broker_missing() -> bool:
+        if not getattr(app.state, "mq_required", False):
+            return False
+        conn = getattr(app.state, "mq_connection", None)
+        return conn is None or getattr(conn, "is_closed", True)
+
     if get_db is not None:
 
         @app.get("/api/v1/health")
         async def health_db() -> dict[str, str]:
-            async for session in get_db():
-                await session.execute(text("SELECT 1"))
-                break
+            await _db_ping()
             return {"status": "ok", "db": "ok", "service": f"smartserve-{name}"}
+
+        @app.get("/api/v1/ready")
+        async def ready_db() -> JSONResponse:
+            missing: list[str] = []
+            try:
+                await _db_ping()
+            except Exception:  # noqa: BLE001 — any DB failure means not ready
+                missing.append("db")
+            if _broker_missing():
+                missing.append("broker")
+            if missing:
+                return JSONResponse(
+                    status_code=503,
+                    content={"status": "not_ready", "missing": missing, "service": f"smartserve-{name}"},
+                )
+            return JSONResponse(content={"status": "ok", "service": f"smartserve-{name}"})
 
     else:
 
         @app.get("/api/v1/health")
         async def health() -> dict[str, str]:
             return {"status": "ok", "service": f"smartserve-{name}"}
+
+        @app.get("/api/v1/ready")
+        async def ready() -> JSONResponse:
+            if _broker_missing():
+                return JSONResponse(
+                    status_code=503,
+                    content={"status": "not_ready", "missing": ["broker"], "service": f"smartserve-{name}"},
+                )
+            return JSONResponse(content={"status": "ok", "service": f"smartserve-{name}"})
 
     app.include_router(api_router, prefix="/api/v1")
     return app

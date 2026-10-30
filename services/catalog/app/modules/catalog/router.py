@@ -1,9 +1,9 @@
 from fastapi import Depends, Request
-from smartserve_shared import mq
+from smartserve_shared.outbox import enqueue
 from smartserve_shared.routing import APIRouter
 
 from app.api.v1.deps import get_current_user, require_manager
-from app.db.models import User
+from app.db.models import Outbox, User
 from app.db.session import DbSession
 from app.modules.catalog.schemas import (
     BulkPriceUpdate,
@@ -106,8 +106,9 @@ async def create_item(
 ):
     item = await MenuService(db).create_item(data, current_user.business_id)
     location_id = await MenuService(db).get_item_location_id(item)
-    await mq.publish(
-        request.app.state.mq_connection,
+    await enqueue(
+        db,
+        Outbox,
         "catalog.item_updated",
         {
             "itemId": item.id,
@@ -132,8 +133,9 @@ async def update_item(
 ):
     item = await MenuService(db).update_item(item_id, data, current_user.business_id)
     location_id = await MenuService(db).get_item_location_id(item)
-    await mq.publish(
-        request.app.state.mq_connection,
+    await enqueue(
+        db,
+        Outbox,
         "catalog.item_updated",
         {
             "itemId": item.id,
@@ -158,8 +160,9 @@ async def set_item_stock(
 ):
     item = await MenuService(db).set_stock(item_id, data.in_stock, current_user.business_id)
     location_id = await MenuService(db).get_item_location_id(item)
-    await mq.publish(
-        request.app.state.mq_connection,
+    await enqueue(
+        db,
+        Outbox,
         "catalog.item_updated",
         {
             "itemId": item.id,
@@ -202,8 +205,9 @@ async def delete_item(
 ):
     """Moves the item to trash (soft-delete) — see `MenuService.delete_item`."""
     await MenuService(db).delete_item(item_id, current_user.business_id)
-    await mq.publish(
-        request.app.state.mq_connection,
+    await enqueue(
+        db,
+        Outbox,
         "catalog.item_updated",
         {"itemId": item_id, "trashed": True, "businessId": current_user.business_id},
     )
@@ -227,8 +231,9 @@ async def restore_item(
 ):
     item = await MenuService(db).restore_item(item_id, current_user.business_id)
     location_id = await MenuService(db).get_item_location_id(item)
-    await mq.publish(
-        request.app.state.mq_connection,
+    await enqueue(
+        db,
+        Outbox,
         "catalog.item_updated",
         {
             "itemId": item.id,
@@ -251,8 +256,9 @@ async def permanently_delete_item(
     current_user: User = Depends(require_manager),
 ):
     await MenuService(db).permanently_delete_item(item_id, current_user.business_id)
-    await mq.publish(
-        request.app.state.mq_connection,
+    await enqueue(
+        db,
+        Outbox,
         "catalog.item_updated",
         {"itemId": item_id, "permanentlyDeleted": True, "businessId": current_user.business_id},
     )
@@ -266,8 +272,9 @@ async def bulk_price_update(
     current_user: User = Depends(require_manager),
 ):
     count = await MenuService(db).bulk_price_update(data, current_user.business_id)
-    await mq.publish(
-        request.app.state.mq_connection,
+    await enqueue(
+        db,
+        Outbox,
         "catalog.item_updated",
         {
             "bulk": True,

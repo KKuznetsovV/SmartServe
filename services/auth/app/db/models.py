@@ -9,6 +9,7 @@ references such as `orders.location_id`.
 import uuid
 from datetime import UTC, datetime
 
+from smartserve_shared.outbox import declare_outbox
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -67,3 +68,6 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     business: Mapped[Business] = relationship(back_populates="users")
+
+
+Outbox = declare_outbox(Base, "auth_outbox")

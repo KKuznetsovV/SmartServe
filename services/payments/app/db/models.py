@@ -12,6 +12,7 @@ import uuid
 from datetime import UTC, datetime
 
 from smartserve_shared.mirrors import ReadOnlyMirror
+from smartserve_shared.outbox import declare_outbox
 from sqlalchemy import Boolean, DateTime, Float, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -94,3 +95,6 @@ class Payment(Base):
         primaryjoin="Payment.order_id == Order.id",
         foreign_keys=[order_id],
     )
+
+
+Outbox = declare_outbox(Base, "payments_outbox")

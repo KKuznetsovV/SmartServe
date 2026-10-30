@@ -7,12 +7,14 @@ from datetime import UTC, datetime
 import anthropic
 from fastapi import Depends, File, Form, HTTPException, Request, UploadFile, status
 from httpx import HTTPStatusError
-from smartserve_shared import mq
+from smartserve_shared.outbox import enqueue
 from smartserve_shared.routing import APIRouter
 
 from app.api.v1.deps import AuthContext, get_auth_context, require_manager
 from app.clients import auth_client
 from app.core.config import settings
+from app.db.models import Outbox
+from app.db.session import DbSession
 from app.modules.ai.schemas import CommandRequest, ConfirmRequest, MenuImportApplyRequest, MenuImportMessageRequest
 from app.modules.ai.services.client import create_message, parse_json_reply, parse_menu_import_reply
 from app.modules.ai.services.dispatch import dispatch_intent
@@ -141,6 +143,7 @@ async def ai_command(
 async def ai_confirm(
     body: ConfirmRequest,
     request: Request,
+    db: DbSession,
     ctx: AuthContext = Depends(require_manager),
 ):
     raw = await request.app.state.redis.getdel(f"ai:pending:{body.execution_id}")
@@ -164,8 +167,9 @@ async def ai_confirm(
 
     # Audit log: who ran the assistant, what it was asked, and what it actually did —
     # consumed by `reporting`'s wildcard EventLog subscriber (GET /reports/events).
-    await mq.publish(
-        request.app.state.mq_connection,
+    await enqueue(
+        db,
+        Outbox,
         "ai.action_executed",
         {
             "intent": intent,
@@ -177,6 +181,7 @@ async def ai_confirm(
             "message": message,
             "source": pending.get("source", "unknown"),
         },
+        business_id=ctx.claims.business_id,
     )
 
     return {"success": True, "message": message}

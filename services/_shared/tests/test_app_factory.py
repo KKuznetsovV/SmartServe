@@ -33,6 +33,27 @@ def test_create_service_app_health_and_served_by() -> None:
     ping = client.get("/api/v1/ping")
     assert ping.json() == {"pong": "ok"}
     assert ping.headers["X-Content-Type-Options"] == "nosniff"
+    ready = client.get("/api/v1/ready")
+    assert ready.status_code == 200
+    assert ready.json() == {"status": "ok", "service": "smartserve-auth"}
+
+
+def test_ready_503_when_broker_required_but_missing() -> None:
+    settings = SimpleNamespace(
+        ENVIRONMENT="development",
+        SECRET_KEY="test-secret-key-for-shared-package",
+        CORS_ORIGINS=[],
+        ALGORITHM="HS256",
+        ACCESS_TOKEN_EXPIRE_MINUTES=15,
+        REFRESH_TOKEN_EXPIRE_DAYS=7,
+    )
+    app = create_service_app("ordering", settings, APIRouter())
+    app.state.mq_required = True
+    app.state.mq_connection = None
+    client = TestClient(app)
+    resp = client.get("/api/v1/ready")
+    assert resp.status_code == 503
+    assert resp.json()["missing"] == ["broker"]
 
 
 def test_integrity_error_returns_409() -> None:

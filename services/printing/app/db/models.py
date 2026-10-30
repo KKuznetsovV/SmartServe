@@ -8,6 +8,7 @@ import uuid
 from datetime import UTC, datetime
 
 from smartserve_shared.mirrors import ReadOnlyMirror
+from smartserve_shared.outbox import declare_processed_events
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -105,3 +106,6 @@ class PrintJob(Base):
     item_id: Mapped[str] = mapped_column(String(), nullable=False)
     printer_id: Mapped[str] = mapped_column(ForeignKey("printers.id"), nullable=False)
     fired_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+ProcessedEvent = declare_processed_events(Base, "printing_processed_events")

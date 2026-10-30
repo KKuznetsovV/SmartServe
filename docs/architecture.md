@@ -1,6 +1,6 @@
 # SmartServe — Architecture Document
 
-> Last updated: 2026-07-31
+> Last updated: 2026-10-30
 > This file is the living reference for the entire SmartServe project.
 
 ---
@@ -118,6 +118,28 @@ businesses (id, name, tax_id, country, currency, created_at)
         ├── inventory_items (id, location_id, menu_item_id, quantity, unit, threshold)
         └── staff_shifts (id, user_id, clock_in, clock_out, role)
 ```
+
+### Table ownership
+
+Services share one Postgres database. Each table has a single writer. Other services may map a trimmed **read-only mirror** of the same table (enforced in-process; see E4) but must not migrate or update it. Full ADR is E14.
+
+| Table | Owner | Read by (mirrors) |
+|-------|--------|-------------------|
+| `businesses` | auth | catalog, ordering |
+| `locations` | auth | catalog, ordering, payments, staff, printing, reporting |
+| `users` | auth | catalog, ordering, payments, staff, printing, reporting |
+| `menu_categories` | catalog | ordering, printing |
+| `menu_items` | catalog | ordering, printing |
+| `modifier_groups`, `modifiers`, `discounts` | catalog | ordering |
+| `tables`, `orders`, `order_items` | ordering | payments reads `orders` |
+| `payments` | payments | — |
+| `shifts` | staff | — |
+| `printers`, `printer_routes`, `print_jobs` | printing | — |
+| `event_log`, `reporting_orders`, `reporting_order_items` | reporting | — |
+| `<service>_outbox` | that publisher (auth, catalog, ordering, payments, ai) | relay in the same process |
+| `<service>_processed_events` | that consumer (ordering, printing, reporting) | — |
+
+Domain events are written to the owner’s outbox in the request transaction. A background relay publishes to RabbitMQ (`smartserve.events`). Consumers retry via a dead-letter/TTL queue, then park; they skip duplicate `eventId`s.
 
 ---
 
@@ -260,3 +282,4 @@ REST API with OpenAPI auto-documentation at `/docs`.
 | 2026-07-31 | Hebrew + English from day 1 | Target market is Israel, RTL complexity grows if added late |
 | 2026-07-31 | FastAPI over Django | Async native, auto-OpenAPI for client generation, lighter weight |
 | 2026-07-31 | PostgreSQL over MySQL | JSONB for modifiers, better full-text search for Hebrew |
+| 2026-10-30 | One writer per table; transactional outbox | Shared Postgres without schema isolation; events survive rollback |

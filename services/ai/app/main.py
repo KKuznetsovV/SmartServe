@@ -1,25 +1,39 @@
+import asyncio
+import contextlib
 from contextlib import asynccontextmanager
 
 import redis.asyncio as aioredis
 from fastapi import FastAPI
 from smartserve_shared import mq
 from smartserve_shared.app_factory import create_service_app
+from smartserve_shared.outbox import relay_forever
 
 from app.api.v1.router import api_router
 from app.core.config import settings
+from app.db import models  # noqa: F401
+from app.db.models import Outbox
+from app.db.session import AsyncSessionLocal, engine, get_db
 from app.modules.ai.services import local_classifier
 
 
 @asynccontextmanager
 async def lifespan_hooks(app: FastAPI):
-    app.state.mq_connection = await mq.connect(settings.RABBITMQ_URL)
+    reconnect = asyncio.create_task(mq.maintain_connection(app, settings.RABBITMQ_URL))
+    relay = asyncio.create_task(relay_forever(lambda: app.state.mq_connection, AsyncSessionLocal, Outbox))
     app.state.redis = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
     if settings.LOCAL_MODEL_PATH:
         local_classifier.load_model(settings.LOCAL_MODEL_PATH)
     yield
+    reconnect.cancel()
+    relay.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await reconnect
+    with contextlib.suppress(asyncio.CancelledError):
+        await relay
     if app.state.mq_connection is not None:
         await app.state.mq_connection.close()
     await app.state.redis.aclose()
+    await engine.dispose()
 
 
 def create_app() -> FastAPI:
@@ -28,6 +42,7 @@ def create_app() -> FastAPI:
         settings,
         api_router,
         lifespan_hooks,
+        get_db=get_db,
         title="SmartServe AI Service",
     )
 
