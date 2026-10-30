@@ -1,9 +1,10 @@
 'use client'
 
 import * as React from 'react'
+import type { AppLocale } from './locale'
 import { cn } from './utils'
 
-export type AppLocale = 'he' | 'en'
+export type { AppLocale }
 
 export interface LanguageSwitcherProps {
   /** Currently active UI locale. */
