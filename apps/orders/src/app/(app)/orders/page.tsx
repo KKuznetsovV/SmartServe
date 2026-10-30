@@ -148,11 +148,8 @@ export default function OrdersPage() {
                     <span className="font-mono text-sm font-medium">
                       #{order.id.slice(0, 8)}
                     </span>
-                    {order.tableName && (
-                      <span className="text-sm text-muted-foreground">{order.tableName}</span>
-                    )}
-                    <span className="text-xs text-muted-foreground">
-                      {t(`channel.${order.channel}`)}
+                    <span className="text-sm text-muted-foreground">
+                      {order.tableName ?? t(`channel.${order.channel}`)}
                     </span>
                     {order.guestCount != null && (
                       <span className="text-xs text-muted-foreground">

@@ -177,9 +177,8 @@ export default function DashboardPage() {
                   <span className="font-mono text-xs text-muted-foreground">
                     #{o.id.slice(0, 8)}
                   </span>
-                  {o.tableName && <span className="text-sm">{o.tableName}</span>}
-                  <span className="text-xs text-muted-foreground">
-                    {tOrders(`channel.${o.channel}`)}
+                  <span className="text-sm">
+                    {o.tableName ?? tOrders(`channel.${o.channel}`)}
                   </span>
                 </div>
                 <div className="flex items-center gap-3">

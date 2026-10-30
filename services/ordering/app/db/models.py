@@ -25,6 +25,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    inspect,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -261,6 +262,14 @@ class Order(Base):
         foreign_keys=[location_id],
     )
     table: Mapped[Table] = relationship(back_populates="orders")
+
+    @property
+    def table_name(self) -> str | None:
+        """Denormalized for API responses; takeaway orders have no table."""
+        if "table" in inspect(self).unloaded:
+            return None
+        return self.table.name if self.table is not None else None
+
     discount: Mapped[Discount | None] = relationship(
         back_populates="orders",
         primaryjoin="Order.discount_id == Discount.id",

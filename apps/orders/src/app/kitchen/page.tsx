@@ -56,14 +56,11 @@ function OrderCard({ orderId }: { orderId: string }) {
       <div className="flex items-center justify-between border-b border-zinc-700 pb-2">
         <div>
           <span className="font-mono text-lg font-bold">#{order.id.slice(0, 6)}</span>
-          {order.tableName && (
-            <span className="ms-2 text-zinc-400 text-sm">{order.tableName}</span>
-          )}
+          <span className="ms-2 text-zinc-400 text-sm">
+            {order.tableName ?? tOrders(`channel.${order.channel}` as never)}
+          </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-zinc-500 capitalize">
-            {tOrders(`channel.${order.channel}` as never)}
-          </span>
           {!allReady && (
             <button
               onClick={markAllReady}

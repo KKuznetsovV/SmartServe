@@ -336,9 +336,7 @@ export default function OrderDetailPage({ params }: Props) {
             {t('orderNumber')} <span className="font-mono text-xl">#{order.id.slice(0, 8)}</span>
           </h1>
           <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-            {order.tableName && <span>{order.tableName}</span>}
-            <span>·</span>
-            <span className="capitalize">{tOrders(`channel.${order.channel}`)}</span>
+            <span>{order.tableName ?? tOrders(`channel.${order.channel}`)}</span>
             <span>·</span>
             <span>{new Date(order.createdAt).toLocaleString('he-IL')}</span>
           </div>
