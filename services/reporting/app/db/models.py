@@ -9,6 +9,7 @@ import uuid
 from datetime import UTC, datetime
 
 from smartserve_shared.mirrors import ReadOnlyMirror
+from smartserve_shared.outbox import declare_processed_events
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -84,3 +85,6 @@ class EventLog(Base):
     payload: Mapped[str] = mapped_column(String(), nullable=False)
     business_id: Mapped[str | None] = mapped_column(String(), nullable=True, index=True)
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+ProcessedEvent = declare_processed_events(Base, "reporting_processed_events")

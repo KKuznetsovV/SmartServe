@@ -1,9 +1,9 @@
-from fastapi import Depends, Request
-from smartserve_shared import mq
+from fastapi import Depends
+from smartserve_shared.outbox import enqueue
 from smartserve_shared.routing import APIRouter
 
 from app.api.v1.deps import require_manager
-from app.db.models import User
+from app.db.models import Outbox, User
 from app.db.session import DbSession
 from app.modules.staff.schemas import StaffCreate, StaffUpdate, UserOut
 from app.modules.staff.service import StaffService
@@ -14,13 +14,13 @@ router = APIRouter()
 @router.post("/staff", response_model=UserOut, status_code=201)
 async def create_staff(
     data: StaffCreate,
-    request: Request,
     db: DbSession,
     current_user: User = Depends(require_manager),
 ):
     staff = await StaffService(db).create_staff(current_user, data)
-    await mq.publish(
-        request.app.state.mq_connection,
+    await enqueue(
+        db,
+        Outbox,
         "staff.created",
         {
             "userId": staff.id,
@@ -28,6 +28,7 @@ async def create_staff(
             "name": staff.name,
             "role": staff.role,
         },
+        business_id=current_user.business_id,
     )
     return staff
 
@@ -45,13 +46,13 @@ async def get_staff(
 async def update_staff(
     user_id: str,
     data: StaffUpdate,
-    request: Request,
     db: DbSession,
     current_user: User = Depends(require_manager),
 ):
     staff = await StaffService(db).update_staff(current_user, user_id, data)
-    await mq.publish(
-        request.app.state.mq_connection,
+    await enqueue(
+        db,
+        Outbox,
         "staff.updated",
         {
             "userId": staff.id,
@@ -59,5 +60,6 @@ async def update_staff(
             "name": staff.name,
             "role": staff.role,
         },
+        business_id=current_user.business_id,
     )
     return staff

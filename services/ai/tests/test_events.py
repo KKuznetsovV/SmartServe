@@ -1,16 +1,16 @@
-"""Test for the ai.action_executed publish call site (mocked mq.publish, no live broker)."""
+"""Test for the ai.action_executed outbox row (no live broker)."""
 
-from unittest.mock import AsyncMock, patch
+import json
 
 import httpx
+from sqlalchemy import select
 
 from app.clients import auth_client, catalog_client
+from app.db.models import Outbox
 from app.main import app
 
 
 async def _seed_pending(execution_id, intent, params, location_id="loc-1"):
-    import json
-
     await app.state.redis.setex(
         f"ai:pending:{execution_id}",
         600,
@@ -18,7 +18,7 @@ async def _seed_pending(execution_id, intent, params, location_id="loc-1"):
     )
 
 
-async def test_confirm_publishes_ai_action_executed(client, manager_token, monkeypatch):
+async def test_confirm_enqueues_ai_action_executed(client, manager_token, db, monkeypatch):
     await _seed_pending("exec-events-1", "menu.create_item", {"name": "Pizza", "price": 42})
 
     async def fake_auth_get(path, *, forward_token=None, **kwargs):
@@ -35,19 +35,21 @@ async def test_confirm_publishes_ai_action_executed(client, manager_token, monke
     monkeypatch.setattr(catalog_client, "get", fake_catalog_get)
     monkeypatch.setattr(catalog_client, "post", fake_catalog_post)
 
-    with patch("smartserve_shared.mq.publish", new_callable=AsyncMock) as mock_publish:
-        resp = await client.post(
-            "/api/v1/ai/confirm",
-            json={"executionId": "exec-events-1"},
-            headers={"Authorization": f"Bearer {manager_token}"},
-        )
+    resp = await client.post(
+        "/api/v1/ai/confirm",
+        json={"executionId": "exec-events-1"},
+        headers={"Authorization": f"Bearer {manager_token}"},
+    )
     assert resp.status_code == 200
 
-    mock_publish.assert_awaited_once()
-    _, routing_key, payload = mock_publish.await_args.args
-    assert routing_key == "ai.action_executed"
+    db.expire_all()
+    row = (await db.execute(select(Outbox))).scalar_one()
+    assert row.routing_key == "ai.action_executed"
+    payload = json.loads(row.payload)
     assert payload["intent"] == "menu.create_item"
     assert payload["locationId"] == "loc-1"
     assert payload["businessId"] == "biz-1"
     assert payload["userId"]
+    assert payload["eventId"]
     assert "originalMessage" in payload
+    assert "occurredAt" in payload

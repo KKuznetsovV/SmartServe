@@ -33,7 +33,14 @@ target_metadata = Base.metadata
 # Tables this service's Alembic chain is allowed to create/alter. Everything else on
 # Base.metadata is a read-only mirror owned by another service (auth) and must be left
 # alone here.
-CATALOG_OWNED_TABLES = {"menu_categories", "menu_items", "modifier_groups", "modifiers", "discounts"}
+CATALOG_OWNED_TABLES = {
+    "menu_categories",
+    "menu_items",
+    "modifier_groups",
+    "modifiers",
+    "discounts",
+    "catalog_outbox",
+}
 
 
 include_object = owned_include_object(CATALOG_OWNED_TABLES)

@@ -20,7 +20,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
-PAYMENTS_OWNED_TABLES = {"payments"}
+PAYMENTS_OWNED_TABLES = {"payments", "payments_outbox"}
 VERSION_TABLE = "alembic_version_payments"
 
 

@@ -30,7 +30,12 @@ target_metadata = Base.metadata
 # Tables this service's Alembic chain is allowed to create/alter. Everything else on
 # Base.metadata (users, locations) is a read-only mirror owned and migrated by auth
 # and must be left alone here.
-REPORTING_OWNED_TABLES = {"event_log", "reporting_orders", "reporting_order_items"}
+REPORTING_OWNED_TABLES = {
+    "event_log",
+    "reporting_orders",
+    "reporting_order_items",
+    "reporting_processed_events",
+}
 
 
 include_object = owned_include_object(REPORTING_OWNED_TABLES)

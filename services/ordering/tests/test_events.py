@@ -1,6 +1,6 @@
-"""Tests for the RabbitMQ event-bus integration: publish call sites (mocked) and the
-`payment.completed` consumer handler (against a real in-memory DB)."""
+"""Tests for outbox enqueue call sites and the payment.completed consumer handler."""
 
+import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -9,70 +9,79 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.db.models import Business, Location, MenuItem, Order, User
+from app.db.models import Business, Location, MenuItem, Order, Outbox, User
 from app.db.session import Base
 from app.modules.ordering.events import handle_catalog_item_updated, handle_payment_completed
 
 
 @pytest.mark.asyncio
-async def test_create_order_publishes_order_created(
+async def test_create_order_enqueues_order_created(
     client: AsyncClient,
     business: Business,
     location: Location,
     manager_user: tuple[User, str],
+    db: AsyncSession,
 ):
     user, token = manager_user
+    business_id = user.business_id
+    location_id = location.id
     headers = {"Authorization": f"Bearer {token}"}
 
-    with patch("smartserve_shared.mq.publish", new_callable=AsyncMock) as mock_publish:
-        resp = await client.post(
-            "/api/v1/orders",
-            json={"locationId": location.id, "channel": "dine_in", "guestCount": 2},
-            headers=headers,
-        )
+    resp = await client.post(
+        "/api/v1/orders",
+        json={"locationId": location_id, "channel": "dine_in", "guestCount": 2},
+        headers=headers,
+    )
     assert resp.status_code == 201
     order_id = resp.json()["id"]
 
-    mock_publish.assert_awaited_once()
-    _, routing_key, payload = mock_publish.await_args.args
-    assert routing_key == "order.created"
+    db.expire_all()
+    row = (await db.execute(select(Outbox))).scalar_one()
+    payload = json.loads(row.payload)
+    assert row.routing_key == "order.created"
     assert payload["orderId"] == order_id
     assert payload["version"] == 1
     assert "occurredAt" in payload
-    assert payload["locationId"] == location.id
-    assert payload["businessId"] == user.business_id
+    assert payload["locationId"] == location_id
+    assert payload["businessId"] == business_id
     assert payload["createdBy"] == resp.json()["createdBy"]
+    assert payload["eventId"]
 
 
 @pytest.mark.asyncio
-async def test_submit_order_publishes_order_updated(
+async def test_submit_order_enqueues_order_updated(
     client: AsyncClient,
     location: Location,
     manager_user: tuple[User, str],
+    db: AsyncSession,
 ):
     user, token = manager_user
+    business_id = user.business_id
+    location_id = location.id
     headers = {"Authorization": f"Bearer {token}"}
 
     order_id = (
         await client.post(
             "/api/v1/orders",
-            json={"locationId": location.id, "channel": "dine_in", "guestCount": 2},
+            json={"locationId": location_id, "channel": "dine_in", "guestCount": 2},
             headers=headers,
         )
     ).json()["id"]
 
-    with patch("smartserve_shared.mq.publish", new_callable=AsyncMock) as mock_publish:
-        resp = await client.post(f"/api/v1/orders/{order_id}/submit", headers=headers)
+    resp = await client.post(f"/api/v1/orders/{order_id}/submit", headers=headers)
     assert resp.status_code == 200
 
-    mock_publish.assert_awaited_once()
-    _, routing_key, payload = mock_publish.await_args.args
-    assert routing_key == "order.updated"
+    db.expire_all()
+    row = (
+        await db.execute(select(Outbox).where(Outbox.routing_key == "order.updated").order_by(Outbox.occurred_at.desc()))
+    ).scalars().first()
+    assert row is not None
+    payload = json.loads(row.payload)
     assert payload["orderId"] == order_id
     assert payload["status"] == "submitted"
     assert payload["version"] == 2
     assert "occurredAt" in payload
-    assert payload["businessId"] == user.business_id
+    assert payload["businessId"] == business_id
 
 
 @pytest.mark.asyncio
@@ -83,40 +92,44 @@ async def test_fire_course_publishes_order_item_fired(
     manager_user: tuple[User, str],
 ):
     user, token = manager_user
+    business_id = user.business_id
+    location_id = location.id
     headers = {"Authorization": f"Bearer {token}"}
 
     item = MenuItem(category_id="cat-1", name="Steak", price=80.0, tax_rate=0.17, default_fire_course=2)
     db.add(item)
     await db.flush()
+    menu_item_id = item.id
 
     order_id = (
         await client.post(
             "/api/v1/orders",
-            json={"locationId": location.id, "channel": "dine_in", "guestCount": 2},
+            json={"locationId": location_id, "channel": "dine_in", "guestCount": 2},
             headers=headers,
         )
     ).json()["id"]
     item_resp = (
         await client.post(
             f"/api/v1/orders/{order_id}/items",
-            json={"menuItemId": item.id, "qty": 1},
+            json={"menuItemId": menu_item_id, "qty": 1},
             headers=headers,
         )
     ).json()
     await client.post(f"/api/v1/orders/{order_id}/submit", headers=headers)
 
-    with patch("smartserve_shared.mq.publish", new_callable=AsyncMock) as mock_publish:
-        resp = await client.post(f"/api/v1/orders/{order_id}/fire-course", json={"course": 2}, headers=headers)
+    resp = await client.post(f"/api/v1/orders/{order_id}/fire-course", json={"course": 2}, headers=headers)
     assert resp.status_code == 200
 
-    keys = [call.args[1] for call in mock_publish.await_args_list]
+    db.expire_all()
+    rows = (await db.execute(select(Outbox))).scalars().all()
+    keys = [row.routing_key for row in rows]
     assert "order.item_fired" in keys
     assert "order.updated" in keys
-    payload = next(call.args[2] for call in mock_publish.await_args_list if call.args[1] == "order.item_fired")
+    payload = json.loads(next(row.payload for row in rows if row.routing_key == "order.item_fired"))
     assert payload["orderId"] == order_id
     assert payload["itemId"] == item_resp["id"]
-    assert payload["menuItemId"] == item.id
-    assert payload["businessId"] == user.business_id
+    assert payload["menuItemId"] == menu_item_id
+    assert payload["businessId"] == business_id
 
 
 @pytest_asyncio.fixture

@@ -20,7 +20,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
-PRINTING_OWNED_TABLES = {"printers", "printer_routes", "print_jobs"}
+PRINTING_OWNED_TABLES = {"printers", "printer_routes", "print_jobs", "printing_processed_events"}
 VERSION_TABLE = "alembic_version_printing"
 
 

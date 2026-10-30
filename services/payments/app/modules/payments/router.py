@@ -1,9 +1,9 @@
-from fastapi import Depends, Request
-from smartserve_shared import mq
+from fastapi import Depends
+from smartserve_shared.outbox import enqueue
 from smartserve_shared.routing import APIRouter
 
 from app.api.v1.deps import require_staff
-from app.db.models import User
+from app.db.models import Outbox, User
 from app.db.session import DbSession
 from app.modules.payments.schemas import PaymentCreate, PaymentOut
 from app.modules.payments.service import PaymentService
@@ -14,14 +14,14 @@ router = APIRouter()
 @router.post("/payments", response_model=PaymentOut, status_code=201)
 async def create_payment(
     data: PaymentCreate,
-    request: Request,
     db: DbSession,
     current_user: User = Depends(require_staff),
 ):
     payment, fully_paid, remaining = await PaymentService(db).create_payment(data, current_user.business_id)
     if fully_paid:
-        await mq.publish(
-            request.app.state.mq_connection,
+        await enqueue(
+            db,
+            Outbox,
             "payment.completed",
             {
                 "paymentId": payment.id,
@@ -30,6 +30,7 @@ async def create_payment(
                 "method": payment.method,
                 "businessId": current_user.business_id,
             },
+            business_id=current_user.business_id,
         )
     out = PaymentOut.model_validate(payment)
     return out.model_copy(update={"order_fully_paid": fully_paid, "remaining": remaining})

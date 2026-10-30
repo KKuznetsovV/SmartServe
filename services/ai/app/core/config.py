@@ -6,6 +6,9 @@ class Settings(BaseSettings):
 
     ENVIRONMENT: str = "development"
 
+    # Database — `ai_outbox` only; pending confirmations stay in Redis
+    DATABASE_URL: str = "postgresql+asyncpg://smartserve:smartserve@localhost:5432/smartserve"
+
     # Auth — ai only ever verifies tokens issued by `auth`, it never issues its own
     SECRET_KEY: str = "change-me-in-production-use-a-256-bit-random-string"
 

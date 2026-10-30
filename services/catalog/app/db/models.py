@@ -9,6 +9,7 @@ import uuid
 from datetime import UTC, datetime
 
 from smartserve_shared.mirrors import ReadOnlyMirror
+from smartserve_shared.outbox import declare_outbox
 from sqlalchemy import (
     Boolean,
     DateTime,
@@ -191,3 +192,6 @@ class Discount(Base):
         primaryjoin="Discount.business_id == Business.id",
         foreign_keys=[business_id],
     )
+
+
+Outbox = declare_outbox(Base, "catalog_outbox")

@@ -12,6 +12,7 @@ import uuid
 from datetime import UTC, datetime
 
 from smartserve_shared.mirrors import ReadOnlyMirror
+from smartserve_shared.outbox import declare_outbox, declare_processed_events
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -286,3 +287,7 @@ class OrderItem(Base):
     comped_by: Mapped[str | None] = mapped_column(String(), nullable=True)
 
     order: Mapped[Order] = relationship(back_populates="items")
+
+
+Outbox = declare_outbox(Base, "ordering_outbox")
+ProcessedEvent = declare_processed_events(Base, "ordering_processed_events")
