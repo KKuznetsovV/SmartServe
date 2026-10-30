@@ -59,8 +59,8 @@ importers:
         specifier: ^2.1.1
         version: 2.1.1
       lucide-react:
-        specifier: ^0.511.0
-        version: 0.511.0(react@19.1.10)
+        specifier: ^1.62.0
+        version: 1.62.0(@types/react@19.2.17)(react@19.1.10)
       next:
         specifier: 15.3.9
         version: 15.3.9(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.62.0)(@types/node@22.20.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.1.10(react@19.1.10))(react@19.1.10)
@@ -238,8 +238,8 @@ importers:
         specifier: ^2.1.1
         version: 2.1.1
       lucide-react:
-        specifier: ^0.511.0
-        version: 0.511.0(react@19.1.10)
+        specifier: ^1.62.0
+        version: 1.62.0(@types/react@19.2.17)(react@19.1.10)
       next:
         specifier: 15.3.9
         version: 15.3.9(@babel/core@7.29.7(supports-color@8.1.1))(@playwright/test@1.62.0)(@types/node@22.20.1)(babel-plugin-react-compiler@1.0.0)(react-dom@19.1.10(react@19.1.10))(react@19.1.10)
@@ -370,8 +370,8 @@ importers:
         specifier: ^2.1.1
         version: 2.1.1
       lucide-react:
-        specifier: ^0.511.0
-        version: 0.511.0(react@19.1.10)
+        specifier: ^1.62.0
+        version: 1.62.0(@types/react@19.2.17)(react@19.1.10)
       react:
         specifier: 19.1.10
         version: 19.1.10
@@ -3005,10 +3005,12 @@ packages:
   '@xmldom/xmldom@0.8.13':
     resolution: {integrity: sha512-KRYzxepc14G/CEpEGc3Yn+JKaAeT63smlDr+vjB8jRfgTBBI9wRj/nkQEO+ucV8p8I9bfKLWp37uHgFrbntPvw==}
     engines: {node: '>=10.0.0'}
+    deprecated: this version has critical issues, please update to the latest version
 
   '@xmldom/xmldom@0.9.10':
     resolution: {integrity: sha512-A9gOqLdi6cV4ibazAjcQufGj0B1y/vDqYrcuP6d/6x8P27gRS8643Dj9o1dEKtB6O7fwxb2FgBmJS2mX7gpvdw==}
     engines: {node: '>=14.6'}
+    deprecated: this version has critical issues, please update to the latest version
 
   abort-controller@3.0.0:
     resolution: {integrity: sha512-h8lQ8tacZYnR3vNQTgibj+tODHI5/+l06Au2Pcriv/Gmet0eaj4TwWH41sO9wnHDiQsEj19q0drzdWdeAHtweg==}
@@ -4942,10 +4944,14 @@ packages:
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
 
-  lucide-react@0.511.0:
-    resolution: {integrity: sha512-VK5a2ydJ7xm8GvBeKLS9mu1pVK6ucef9780JVUjw6bAjJL/QXnd4Y0p7SPeOUMC27YhzNCZvm5d/QX0Tp3rc0w==}
+  lucide-react@1.62.0:
+    resolution: {integrity: sha512-2i8QZZhkgYMA3oJvKYpCltHh54VnT/3rIPkDLHbzr3IJQBaCz8+7j7V2k2rczYd2aCqcBaMmNlWQ2KKeDfcxmw==}
     peerDependencies:
+      '@types/react': '*'
       react: 19.1.10
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
 
   lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
@@ -5699,6 +5705,7 @@ packages:
 
   react-native-edge-to-edge@1.6.0:
     resolution: {integrity: sha512-2WCNdE3Qd6Fwg9+4BpbATUxCLcouF6YRY7K+J36KJ4l3y+tWN6XCqAC4DuoGblAAbb2sLkhEDp4FOlbOIot2Og==}
+    deprecated: This package is deprecated. Set edgeToEdgeEnabled=true in android/gradle.properties instead.
     peerDependencies:
       react: 19.1.10
       react-native: '*'
@@ -11632,9 +11639,11 @@ snapshots:
     dependencies:
       yallist: 3.1.1
 
-  lucide-react@0.511.0(react@19.1.10):
+  lucide-react@1.62.0(@types/react@19.2.17)(react@19.1.10):
     dependencies:
       react: 19.1.10
+    optionalDependencies:
+      '@types/react': 19.2.17
 
   lz-string@1.5.0: {}
 
