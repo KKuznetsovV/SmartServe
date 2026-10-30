@@ -15,16 +15,16 @@ test('reload and a new tab keep the session on /reports', async ({ page, context
   await login(page)
   await page.goto('/reports')
   await expect(page).toHaveURL(/\/reports/)
-  await expect(page.getByRole('heading', { name: /דוחות|Reports/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /^(דוחות|Reports)$/ })).toBeVisible()
 
   await page.reload()
   await expect(page).toHaveURL(/\/reports/)
-  await expect(page.getByRole('heading', { name: /דוחות|Reports/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /^(דוחות|Reports)$/ })).toBeVisible()
 
   const tab = await context.newPage()
   await tab.goto('/reports')
   await expect(tab).toHaveURL(/\/reports/)
-  await expect(tab.getByRole('heading', { name: /דוחות|Reports/ })).toBeVisible()
+  await expect(tab.getByRole('heading', { name: /^(דוחות|Reports)$/ })).toBeVisible()
   await tab.close()
 })
 
@@ -38,5 +38,5 @@ test('logged-out deep link to /staff returns there after login', async ({ page }
   await page.locator('form').getByRole('button').click()
 
   await expect(page).toHaveURL(/\/staff/)
-  await expect(page.getByRole('heading', { name: /צוות|Staff/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /^(צוות|Staff)$/ })).toBeVisible()
 })
