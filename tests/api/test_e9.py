@@ -62,6 +62,8 @@ async def test_e9_failed_commit_is_not_broadcast(
     first, second, first_id, second_id = await _connect_distinct_workers(_ws_url(location_id))
     try:
         assert first_id != second_id
+        # Create/add enqueue outbox events that may arrive after the sockets open.
+        await asyncio.gather(_drain_until_quiet(first), _drain_until_quiet(second))
         failed = await client.post(
             f"/orders/{order['id']}/submit",
             headers={**bearer(token), "X-Fail-Commit": "1"},
@@ -134,6 +136,18 @@ async def _wait_for_order(ws: websockets.ClientConnection, order_id: str, timeou
         if payload.get("orderId") == order_id or payload.get("id") == order_id:
             return msg
     raise AssertionError(f"no websocket event for order {order_id}")
+
+
+async def _drain_until_quiet(ws: websockets.ClientConnection, timeout: float = 2.0) -> None:
+    deadline = asyncio.get_event_loop().time() + timeout
+    while True:
+        remaining = deadline - asyncio.get_event_loop().time()
+        if remaining <= 0:
+            return
+        try:
+            await asyncio.wait_for(ws.recv(), timeout=remaining)
+        except TimeoutError:
+            return
 
 
 async def _assert_no_domain_events(ws: websockets.ClientConnection, timeout: float = 3.0) -> None:

@@ -926,5 +926,8 @@ fixes* list, and these manual follow-ups that need the owner:
   delete-orphan"` on the ORM relationships, `ON DELETE CASCADE` in a catalog migration, and a
   `tests/api` case that an item with a modifier group can be trashed then permanently deleted (204)
   with the groups gone afterwards.
+- E6: recomputing from non-cancelled lines makes `test_q4_cancelling_item_lowers_total` pass, so its
+  strict xfail was removed here (otherwise CI XPASS-fails). Q4 still owns emitting `order.updated` on
+  cancel.
 
 (Add items here as you find them. Don't fix them in an unrelated branch.)
