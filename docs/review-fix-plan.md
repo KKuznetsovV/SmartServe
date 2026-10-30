@@ -41,7 +41,7 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 24 | Q6 | `fix/q6-split-line-integrity` | merged | https://github.com/KKuznetsovV/SmartServe/pull/100 |
 | 25 | Q5 | `fix/q5-payment-rules` | merged | https://github.com/KKuznetsovV/SmartServe/pull/101 |
 | 26 | Q2 | `fix/q2-table-name` | merged | https://github.com/KKuznetsovV/SmartServe/pull/103 |
-| 27 | Q3 | `fix/q3-print-on-send` | todo | |
+| 27 | Q3 | `fix/q3-print-on-send` | merged | https://github.com/KKuznetsovV/SmartServe/pull/105 |
 | 28 | NUM | `feat/daily-order-numbers` | todo | |
 | 29 | AI | `fix/ai-dry-run-preview` | todo | |
 | 30 | S4 | `fix/s4-device-pairing-and-realtime-auth` | todo | |
