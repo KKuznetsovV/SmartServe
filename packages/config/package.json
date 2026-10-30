@@ -7,6 +7,6 @@
     "./eslint": "./eslint.mjs"
   },
   "dependencies": {
-    "@eslint/eslintrc": "^3.3.6"
+    "@eslint/eslintrc": "^3.3.7"
   }
 }
