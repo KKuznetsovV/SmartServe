@@ -1,4 +1,4 @@
-import type { Order, OrderItem } from '@smartserve/types'
+import type { Order, OrderItem, OrderItemModifierInput } from '@smartserve/types'
 
 import type { Http } from './client'
 
@@ -19,16 +19,18 @@ export function createOrdersResource(http: Http) {
       orderId: string,
       item: Omit<
         OrderItem,
-        'id' | 'orderId' | 'status' | 'sortOrder' | 'fireCourse' | 'discountAmount' | 'isComped'
+        'id' | 'orderId' | 'status' | 'sortOrder' | 'fireCourse' | 'discountAmount' | 'isComped' | 'modifiers'
       > &
-        Partial<Pick<OrderItem, 'fireCourse'>>,
+        Partial<Pick<OrderItem, 'fireCourse'>> & { modifiers?: OrderItemModifierInput[] },
     ) => http.post<OrderItem>(`/orders/${orderId}/items`, item),
     updateItemStatus: (orderId: string, itemId: string, status: string) =>
       http.patch<OrderItem>(`/orders/${orderId}/items/${itemId}/status`, { status }),
     updateItem: (
       orderId: string,
       itemId: string,
-      data: Partial<Pick<OrderItem, 'qty' | 'notes' | 'modifiers' | 'fireCourse'>>,
+      data: Partial<Pick<OrderItem, 'qty' | 'notes' | 'fireCourse'>> & {
+        modifiers?: OrderItemModifierInput[]
+      },
     ) => http.patch<OrderItem>(`/orders/${orderId}/items/${itemId}`, data),
     reorderItems: (orderId: string, ids: string[]) =>
       http.post<void>(`/orders/${orderId}/items/reorder`, { ids }),

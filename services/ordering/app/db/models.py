@@ -1,11 +1,11 @@
 """SQLAlchemy ORM models — ordering service owns Table/Order/OrderItem.
 
-Business/Location/User/MenuItem/MenuCategory/Discount are trimmed, read-only mirrors of
-tables owned by `auth` and `catalog` respectively — same physical Postgres instance, no
-schema separation (see docs/microservices-plan.md §4). Alembic migrations for THIS service
-only manage tables ordering owns (`tables`/`orders`/`order_items`); the mirror tables above
-must never be created/altered by ordering's migration chain — they already exist as owned
-by the other services.
+Business/Location/User/MenuItem/MenuCategory/ModifierGroup/Modifier/Discount are trimmed,
+read-only mirrors of tables owned by `auth` and `catalog` respectively — same physical
+Postgres instance, no schema separation (see docs/microservices-plan.md §4). Alembic
+migrations for THIS service only manage tables ordering owns (`tables`/`orders`/`order_items`);
+the mirror tables above must never be created/altered by ordering's migration chain — they
+already exist as owned by the other services.
 """
 
 import uuid
@@ -110,6 +110,38 @@ class MenuItem(Base):
     # working regardless of the item's current trash state, since historical order data is
     # never retroactively affected by trashing/deleting a menu item.
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    modifier_groups: Mapped[list[ModifierGroup]] = relationship(back_populates="item")
+
+
+class ModifierGroup(Base):
+    """Read-only mirror of catalog.modifier_groups — ordering never writes this table."""
+
+    __tablename__ = "modifier_groups"
+
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
+    item_id: Mapped[str] = mapped_column(ForeignKey("menu_items.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    required: Mapped[bool] = mapped_column(Boolean, default=False)
+    min_select: Mapped[int] = mapped_column(Integer, default=0)
+    max_select: Mapped[int] = mapped_column(Integer, default=1)
+
+    item: Mapped[MenuItem] = relationship(back_populates="modifier_groups")
+    modifiers: Mapped[list[Modifier]] = relationship(back_populates="group")
+
+
+class Modifier(Base):
+    """Read-only mirror of catalog.modifiers — ordering never writes this table."""
+
+    __tablename__ = "modifiers"
+
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
+    group_id: Mapped[str] = mapped_column(ForeignKey("modifier_groups.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    price_delta: Mapped[float] = mapped_column(Float, default=0.0)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    group: Mapped[ModifierGroup] = relationship(back_populates="modifiers")
 
 
 class Discount(Base):

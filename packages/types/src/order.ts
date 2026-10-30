@@ -18,22 +18,26 @@ export type OrderStatus = z.infer<typeof OrderStatus>
 export const OrderItemStatus = z.enum(['held', 'pending', 'preparing', 'ready', 'served', 'cancelled'])
 export type OrderItemStatus = z.infer<typeof OrderItemStatus>
 
+export const OrderItemModifierInputSchema = z.object({
+  modifierId: z.string().uuid(),
+})
+export type OrderItemModifierInput = z.infer<typeof OrderItemModifierInputSchema>
+
+export const OrderItemModifierSchema = z.object({
+  modifierId: z.string().uuid(),
+  name: z.string(),
+  priceDelta: z.number(),
+})
+export type OrderItemModifier = z.infer<typeof OrderItemModifierSchema>
+
 export const OrderItemSchema = z.object({
   id: z.string().uuid(),
   orderId: z.string().uuid(),
   menuItemId: z.string().uuid(),
   menuItemName: z.string(),
-  qty: z.number().int().min(1),
+  qty: z.number().int().min(1).max(99),
   unitPrice: z.number().min(0),
-  modifiers: z
-    .array(
-      z.object({
-        modifierId: z.string().uuid(),
-        name: z.string(),
-        priceDelta: z.number(),
-      }),
-    )
-    .default([]),
+  modifiers: z.array(OrderItemModifierSchema).default([]),
   notes: z.string().optional(),
   status: OrderItemStatus.default('pending'),
   sortOrder: z.number().int().default(0),

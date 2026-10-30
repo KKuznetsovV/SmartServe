@@ -1,7 +1,8 @@
 """Alembic migration environment for the ordering service.
 
 Ordering's SQLAlchemy `Base.metadata` also contains trimmed, read-only mirror models
-(`Business`, `Location`, `User`, `MenuItem`, `MenuCategory`, `Discount`) for tables owned by
+(`Business`, `Location`, `User`, `MenuItem`, `MenuCategory`, `ModifierGroup`, `Modifier`,
+`Discount`) for tables owned by
 `auth`/`catalog` — all services share the same physical Postgres database with no schema
 separation (see docs/microservices-plan.md §4). This service's migration chain must only
 ever create/alter the tables ordering itself owns (`tables`, `orders`, `order_items`); the

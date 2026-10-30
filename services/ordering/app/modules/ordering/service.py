@@ -9,7 +9,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models import Discount, Location, MenuCategory, MenuItem, Order, OrderItem, Table, User
+from app.db.models import Discount, Location, MenuCategory, MenuItem, ModifierGroup, Order, OrderItem, Table, User
 from app.modules.ordering.schemas import (
     ApplyDiscountIn,
     AssignGuestsRequest,
@@ -19,6 +19,7 @@ from app.modules.ordering.schemas import (
     OrderItemCreate,
     OrderItemDeleteRequest,
     OrderItemDiscountRequest,
+    OrderItemModifierIn,
     OrderItemStatusUpdate,
     OrderItemUpdate,
 )
@@ -198,6 +199,55 @@ class OrderService:
         await self.db.flush()
         return await self.get_order(order.id)
 
+    async def _get_active_menu_item(self, menu_item_id: str) -> MenuItem:
+        result = await self.db.execute(
+            select(MenuItem)
+            .where(MenuItem.id == menu_item_id, MenuItem.active, MenuItem.deleted_at.is_(None))
+            .options(selectinload(MenuItem.modifier_groups).selectinload(ModifierGroup.modifiers))
+        )
+        menu_item = result.scalar_one_or_none()
+        if not menu_item:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Menu item not found or unavailable")
+        return menu_item
+
+    def _snapshot_modifiers(self, menu_item: MenuItem, selections: list[OrderItemModifierIn]) -> list[dict]:
+        by_id: dict[str, tuple] = {}
+        for group in menu_item.modifier_groups:
+            for modifier in group.modifiers:
+                by_id[modifier.id] = (modifier, group)
+
+        counts: dict[str, int] = {group.id: 0 for group in menu_item.modifier_groups}
+        snapshots: list[dict] = []
+        for selection in selections:
+            found = by_id.get(selection.modifier_id)
+            if found is None:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Modifier does not belong to this item",
+                )
+            modifier, group = found
+            if not modifier.active:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Modifier is inactive",
+                )
+            counts[group.id] += 1
+            snapshots.append({"modifier_id": modifier.id, "name": modifier.name, "price_delta": modifier.price_delta})
+
+        for group in menu_item.modifier_groups:
+            selected = counts[group.id]
+            if group.required and selected == 0:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Required modifier group '{group.name}' has no selection",
+                )
+            if selected < group.min_select or selected > group.max_select:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Modifier group '{group.name}' requires between {group.min_select} and {group.max_select} selections",
+                )
+        return snapshots
+
     async def add_item(self, order_id: str, data: OrderItemCreate, business_id: str | None = None) -> OrderItem:
         order = await self.get_order(order_id, business_id)
         if order.status not in ("open", "submitted"):
@@ -206,20 +256,15 @@ class OrderService:
                 detail="Cannot add items to an order that is already being prepared",
             )
 
-        item_result = await self.db.execute(
-            select(MenuItem).where(MenuItem.id == data.menu_item_id, MenuItem.active, MenuItem.deleted_at.is_(None))
-        )
-        menu_item = item_result.scalar_one_or_none()
-        if not menu_item:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Menu item not found or unavailable")
+        menu_item = await self._get_active_menu_item(data.menu_item_id)
         if not menu_item.in_stock:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Menu item is out of stock")
 
         category_result = await self.db.execute(select(MenuCategory).where(MenuCategory.id == menu_item.category_id))
         category = category_result.scalar_one_or_none()
 
-        modifier_total = sum(m.price_delta for m in data.modifiers)
-        unit_price = menu_item.price + modifier_total
+        snapshots = self._snapshot_modifiers(menu_item, data.modifiers)
+        unit_price = menu_item.price + sum(m["price_delta"] for m in snapshots)
         fire_course = data.fire_course if data.fire_course is not None else menu_item.default_fire_course
 
         order_item = OrderItem(
@@ -230,7 +275,7 @@ class OrderService:
             category_name=category.name if category else None,
             qty=data.qty,
             unit_price=unit_price,
-            modifiers=[m.model_dump() for m in data.modifiers],
+            modifiers=snapshots,
             notes=data.notes,
             status="held" if fire_course > 1 else "pending",
             sort_order=len(order.items),
@@ -259,16 +304,27 @@ class OrderService:
         if item.status in ("served", "cancelled"):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Cannot edit a '{item.status}' item")
 
-        menu_item_result = await self.db.execute(select(MenuItem).where(MenuItem.id == item.menu_item_id))
-        menu_item = menu_item_result.scalar_one_or_none()
+        menu_item = None
+        if item.menu_item_id:
+            loaded = await self.db.execute(
+                select(MenuItem)
+                .where(MenuItem.id == item.menu_item_id)
+                .options(selectinload(MenuItem.modifier_groups).selectinload(ModifierGroup.modifiers))
+            )
+            menu_item = loaded.scalar_one_or_none()
         tax_rate = menu_item.tax_rate if menu_item else 0.0
-        base_price = menu_item.price if menu_item else item.unit_price - sum(m["price_delta"] for m in item.modifiers)
+        base_price = (
+            menu_item.price if menu_item else item.unit_price - sum(m.get("price_delta", 0) for m in item.modifiers)
+        )
 
         old_total = item.unit_price * item.qty
 
         if data.modifiers is not None:
-            item.modifiers = [m.model_dump() for m in data.modifiers]
-            item.unit_price = base_price + sum(m.price_delta for m in data.modifiers)
+            if not menu_item:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Menu item not found")
+            snapshots = self._snapshot_modifiers(menu_item, data.modifiers)
+            item.modifiers = snapshots
+            item.unit_price = base_price + sum(m["price_delta"] for m in snapshots)
         if data.qty is not None:
             item.qty = data.qty
         if data.notes is not None:
@@ -452,7 +508,12 @@ class OrderService:
             if data.discount_type == "percent" and data.discount_value is not None:
                 item.discount_amount = round(line_total * data.discount_value / 100, 2)
             elif data.discount_type == "fixed" and data.discount_value is not None:
-                item.discount_amount = min(data.discount_value, line_total)
+                if data.discount_value > line_total:
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail="Fixed discount cannot exceed the line total",
+                    )
+                item.discount_amount = data.discount_value
             else:
                 item.discount_amount = 0.0
 
