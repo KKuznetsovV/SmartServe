@@ -1,81 +1,16 @@
 version: 2
 updates:
   - package-ecosystem: pip
-    directory: /services/auth
+    directories:
+      - /services/*
+      - /services/_shared
     schedule:
-      interval: weekly
-    groups:
-      pip-minor-patch:
+      interval: monthly
+    open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: "*"
         update-types:
-          - minor
-          - patch
-  - package-ecosystem: pip
-    directory: /services/catalog
-    schedule:
-      interval: weekly
-    groups:
-      pip-minor-patch:
-        update-types:
-          - minor
-          - patch
-  - package-ecosystem: pip
-    directory: /services/ordering
-    schedule:
-      interval: weekly
-    groups:
-      pip-minor-patch:
-        update-types:
-          - minor
-          - patch
-  - package-ecosystem: pip
-    directory: /services/payments
-    schedule:
-      interval: weekly
-    groups:
-      pip-minor-patch:
-        update-types:
-          - minor
-          - patch
-  - package-ecosystem: pip
-    directory: /services/staff
-    schedule:
-      interval: weekly
-    groups:
-      pip-minor-patch:
-        update-types:
-          - minor
-          - patch
-  - package-ecosystem: pip
-    directory: /services/printing
-    schedule:
-      interval: weekly
-    groups:
-      pip-minor-patch:
-        update-types:
-          - minor
-          - patch
-  - package-ecosystem: pip
-    directory: /services/reporting
-    schedule:
-      interval: weekly
-    groups:
-      pip-minor-patch:
-        update-types:
-          - minor
-          - patch
-  - package-ecosystem: pip
-    directory: /services/ai
-    schedule:
-      interval: weekly
-    groups:
-      pip-minor-patch:
-        update-types:
-          - minor
-          - patch
-  - package-ecosystem: pip
-    directory: /services/_shared
-    schedule:
-      interval: weekly
+          - version-update:semver-major
     groups:
       pip-minor-patch:
         update-types:
@@ -84,7 +19,12 @@ updates:
   - package-ecosystem: npm
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
+    open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
     groups:
       npm-minor-patch:
         update-types:
@@ -93,7 +33,12 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
+    open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
     groups:
       github-actions-minor-patch:
         update-types:
