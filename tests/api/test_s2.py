@@ -4,7 +4,6 @@ from httpx import AsyncClient
 from conftest import bearer
 
 
-@pytest.mark.xfail(strict=True, reason="S2")
 async def test_s2_manager_role_hierarchy(
     client: AsyncClient, manager_a: dict, waiter_a: dict, owner_a: dict
 ) -> None:
