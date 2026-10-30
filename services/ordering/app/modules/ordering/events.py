@@ -6,13 +6,49 @@ from datetime import UTC, datetime
 from typing import Any
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import inspect, select
 
-from app.db.models import Order
+from app.db.models import Order, OrderItem
 from app.db.session import AsyncSessionLocal
 from app.modules.ordering.ws_router import broadcast
 
 logger = structlog.get_logger()
+
+
+def order_event_payload(order: Order, business_id: str) -> dict[str, Any]:
+    """Bump `orders.version` and build the projection payload for one order event."""
+    order.version = int(order.version or 0) + 1
+    occurred_at = datetime.now(UTC)
+    items: list[dict[str, Any]] = []
+    if "items" not in inspect(order).unloaded:
+        for item in order.items:
+            items.append(_item_snapshot(item))
+    created_at = order.created_at.isoformat() if order.created_at else occurred_at.isoformat()
+    return {
+        "orderId": order.id,
+        "locationId": order.location_id,
+        "businessId": business_id,
+        "channel": order.channel,
+        "status": order.status,
+        "total": order.total,
+        "createdBy": order.created_by,
+        "createdAt": created_at,
+        "version": order.version,
+        "occurredAt": occurred_at.isoformat(),
+        "items": items,
+    }
+
+
+def _item_snapshot(item: OrderItem) -> dict[str, Any]:
+    return {
+        "id": item.id,
+        "menuItemId": item.menu_item_id,
+        "menuItemName": item.menu_item_name,
+        "categoryId": item.category_id,
+        "categoryName": item.category_name,
+        "qty": item.qty,
+        "unitPrice": item.unit_price,
+    }
 
 
 async def handle_payment_completed(routing_key: str, payload: dict[str, Any]) -> None:
@@ -34,6 +70,7 @@ async def handle_payment_completed(routing_key: str, payload: dict[str, Any]) ->
             return
         if order.status not in ("paid", "cancelled"):
             order.status = "paid"
+            order.version = int(order.version or 0) + 1
             await db.commit()
 
 

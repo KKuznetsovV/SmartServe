@@ -6,7 +6,7 @@ from smartserve_shared.security import create_access_token, hash_password
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.db.models import Location, Order, OrderItem, User
+from app.db.models import Location, ReportingOrder, ReportingOrderItem, User
 from app.db.session import Base, get_db
 from app.main import app
 
@@ -79,8 +79,8 @@ async def create_paid_order(
     status: str = "paid",
     created_by: str | None = None,
     item_meta: list[tuple[str | None, str | None, str | None]] | None = None,
-) -> Order:
-    """Build an order + its line items directly against the shared DB.
+) -> ReportingOrder:
+    """Build a projected order + line items on reporting-owned tables.
 
     items is a list of (menu_item_name, qty, unit_price) — reporting only ever reads the
     denormalized name/qty/price snapshot columns, never joins to a MenuItem row.
@@ -89,14 +89,14 @@ async def create_paid_order(
     tuples for tests that need item/category grouping — defaults to all-None per item.
     """
     total = sum(qty * price for _, qty, price in items)
-    order = Order(location_id=location_id, channel=channel, status=status, total=total, created_by=created_by)
+    order = ReportingOrder(location_id=location_id, channel=channel, status=status, total=total, created_by=created_by)
     db.add(order)
     await db.flush()
 
     for i, (name, qty, price) in enumerate(items):
         menu_item_id, category_id, category_name = item_meta[i] if item_meta else (None, None, None)
         db.add(
-            OrderItem(
+            ReportingOrderItem(
                 order_id=order.id,
                 menu_item_name=name,
                 qty=qty,
