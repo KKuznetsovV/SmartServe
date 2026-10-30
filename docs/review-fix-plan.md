@@ -28,7 +28,7 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 14 | Q1 | `fix/q1-hydration-auth-guard` | merged | https://github.com/KKuznetsovV/SmartServe/pull/67 |
 | 15 | S10 | `fix/s10-locale-cookie-validation` | merged | https://github.com/KKuznetsovV/SmartServe/pull/73 |
 | 16 | Q7 | `fix/q7-dashboard-links` | merged | https://github.com/KKuznetsovV/SmartServe/pull/74 |
-| 17 | E4 | `refactor/e4-single-owner-tables` | in progress | https://github.com/KKuznetsovV/SmartServe/pull/76 https://github.com/KKuznetsovV/SmartServe/pull/78 https://github.com/KKuznetsovV/SmartServe/pull/79 |
+| 17 | E4 | `refactor/e4-single-owner-tables` | merged | https://github.com/KKuznetsovV/SmartServe/pull/76 https://github.com/KKuznetsovV/SmartServe/pull/78 https://github.com/KKuznetsovV/SmartServe/pull/79 |
 | 18 | E5 | `feat/e5-transactional-outbox` | todo | |
 | 19 | E9 | `feat/e9-redis-ws-fanout` | todo | |
 | 20 | E6 | `fix/e6-atomic-order-totals` | todo | |
