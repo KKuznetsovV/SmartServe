@@ -96,12 +96,13 @@ export default function StaffPage() {
     }
 
     if (editing) {
-      const { password: _pw, ...editData } = clean
-      if (editData.role === editing.role) {
-        delete editData.role
+      const { password: _pw, role, active, ...rest } = clean
+      const editData: Partial<User> & { pin?: string } = { ...rest }
+      if (role !== editing.role) {
+        editData.role = role
       }
-      if (!canDeactivate(editing)) {
-        delete editData.active
+      if (canDeactivate(editing) && active !== undefined) {
+        editData.active = active
       }
       await updateStaff.mutateAsync({ id: editing.id, businessId: editing.businessId, data: editData })
     } else {
