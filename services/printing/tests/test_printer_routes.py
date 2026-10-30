@@ -21,6 +21,7 @@ async def test_add_and_list_routes(
     client: AsyncClient,
     db: AsyncSession,
     location_id: str,
+    menu_item_id: str,
     manager_user: tuple[User, str],
 ):
     _, token = manager_user
@@ -29,19 +30,19 @@ async def test_add_and_list_routes(
 
     resp = await client.post(
         "/api/v1/printer-routes",
-        json={"printerId": printer_id, "itemId": "item-1"},
+        json={"printerId": printer_id, "itemId": menu_item_id},
         headers=headers,
     )
     assert resp.status_code == 201
     route = resp.json()
     assert route["printerId"] == printer_id
-    assert route["itemId"] == "item-1"
+    assert route["itemId"] == menu_item_id
 
     resp = await client.get(f"/api/v1/locations/{location_id}/printer-routes", headers=headers)
     assert resp.status_code == 200
     routes = resp.json()
     assert len(routes) == 1
-    assert routes[0]["itemId"] == "item-1"
+    assert routes[0]["itemId"] == menu_item_id
 
 
 @pytest.mark.asyncio
@@ -49,6 +50,7 @@ async def test_add_route_is_idempotent(
     client: AsyncClient,
     db: AsyncSession,
     location_id: str,
+    menu_item_id: str,
     manager_user: tuple[User, str],
 ):
     _, token = manager_user
@@ -57,12 +59,12 @@ async def test_add_route_is_idempotent(
 
     first = await client.post(
         "/api/v1/printer-routes",
-        json={"printerId": printer_id, "itemId": "item-1"},
+        json={"printerId": printer_id, "itemId": menu_item_id},
         headers=headers,
     )
     second = await client.post(
         "/api/v1/printer-routes",
-        json={"printerId": printer_id, "itemId": "item-1"},
+        json={"printerId": printer_id, "itemId": menu_item_id},
         headers=headers,
     )
     assert first.json()["id"] == second.json()["id"]
@@ -76,6 +78,7 @@ async def test_delete_route(
     client: AsyncClient,
     db: AsyncSession,
     location_id: str,
+    menu_item_id: str,
     manager_user: tuple[User, str],
 ):
     _, token = manager_user
@@ -84,7 +87,7 @@ async def test_delete_route(
 
     create_resp = await client.post(
         "/api/v1/printer-routes",
-        json={"printerId": printer_id, "itemId": "item-1"},
+        json={"printerId": printer_id, "itemId": menu_item_id},
         headers=headers,
     )
     route_id = create_resp.json()["id"]

@@ -3,6 +3,7 @@
 from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
+from smartserve_shared.tenancy import verify_location_owned
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -20,17 +21,6 @@ from app.modules.catalog.schemas import (
 )
 
 
-async def verify_location_owned(db: AsyncSession, location_id: str, business_id: str) -> Location:
-    """Raise 404 unless `location_id` belongs to `business_id`. Mirrors
-    services/reporting's `verify_location_owned` — never trust a location_id path/body
-    param alone for a tenant-scoped operation."""
-    result = await db.execute(select(Location).where(Location.id == location_id))
-    location = result.scalar_one_or_none()
-    if not location or location.business_id != business_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
-    return location
-
-
 class MenuService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -39,7 +29,7 @@ class MenuService:
 
     async def list_categories(self, location_id: str, business_id: str | None = None) -> list[MenuCategory]:
         if business_id is not None:
-            await verify_location_owned(self.db, location_id, business_id)
+            await verify_location_owned(self.db, location_id, business_id, Location)
         result = await self.db.execute(
             select(MenuCategory).where(MenuCategory.location_id == location_id).order_by(MenuCategory.sort_order)
         )
@@ -57,7 +47,7 @@ class MenuService:
 
     async def create_category(self, data: MenuCategoryCreate, business_id: str | None = None) -> MenuCategory:
         if business_id is not None:
-            await verify_location_owned(self.db, data.location_id, business_id)
+            await verify_location_owned(self.db, data.location_id, business_id, Location)
         if data.parent_id:
             await self._validate_parent(data.parent_id, data.location_id)
         cat = MenuCategory(**data.model_dump())
@@ -101,7 +91,7 @@ class MenuService:
 
     async def reorder_categories(self, location_id: str, ids: list[str], business_id: str | None = None) -> None:
         if business_id is not None:
-            await verify_location_owned(self.db, location_id, business_id)
+            await verify_location_owned(self.db, location_id, business_id, Location)
         for order, cat_id in enumerate(ids):
             await self.db.execute(
                 update(MenuCategory)
@@ -125,7 +115,7 @@ class MenuService:
     async def list_trashed_items(self, location_id: str, business_id: str | None = None) -> list[MenuItem]:
         """Items currently in trash for a location — powers the menu editor's trash view."""
         if business_id is not None:
-            await verify_location_owned(self.db, location_id, business_id)
+            await verify_location_owned(self.db, location_id, business_id, Location)
         result = await self.db.execute(
             select(MenuItem)
             .join(MenuCategory, MenuItem.category_id == MenuCategory.id)
@@ -244,7 +234,7 @@ class MenuService:
             if data.category_id:
                 await self.get_category(data.category_id, business_id)
             else:
-                await verify_location_owned(self.db, data.location_id, business_id)
+                await verify_location_owned(self.db, data.location_id, business_id, Location)
 
         q = (
             select(MenuItem)
@@ -283,7 +273,7 @@ class MenuService:
 
     async def list_all_items(self, location_id: str, business_id: str | None = None) -> list[MenuItem]:
         if business_id is not None:
-            await verify_location_owned(self.db, location_id, business_id)
+            await verify_location_owned(self.db, location_id, business_id, Location)
         result = await self.db.execute(
             select(MenuItem)
             .join(MenuCategory, MenuItem.category_id == MenuCategory.id)

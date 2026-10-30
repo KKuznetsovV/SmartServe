@@ -4,7 +4,6 @@ from httpx import AsyncClient
 from conftest import add_item, bearer, create_order, submit_order
 
 
-@pytest.mark.xfail(strict=True, reason="S1")
 async def test_s1_business_b_cannot_reach_a_resources(
     client: AsyncClient, waiter_a: dict, owner_a: dict, owner_b: dict, catalog: dict
 ) -> None:

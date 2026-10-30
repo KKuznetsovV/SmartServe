@@ -1,11 +1,11 @@
 """Table CRUD logic for the tables endpoint."""
 
 from fastapi import HTTPException, status
+from smartserve_shared.tenancy import verify_location_owned
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Location, Table
-from app.modules.ordering.service import verify_location_owned
 from app.modules.ordering.table_schemas import TableCreate, TableUpdate
 
 
@@ -15,13 +15,13 @@ class TableService:
 
     async def list_tables(self, location_id: str, business_id: str | None = None) -> list[Table]:
         if business_id is not None:
-            await verify_location_owned(self.db, location_id, business_id)
+            await verify_location_owned(self.db, location_id, business_id, Location)
         result = await self.db.execute(select(Table).where(Table.location_id == location_id, Table.active))
         return list(result.scalars().all())
 
     async def create_table(self, data: TableCreate, business_id: str | None = None) -> Table:
         if business_id is not None:
-            await verify_location_owned(self.db, data.location_id, business_id)
+            await verify_location_owned(self.db, data.location_id, business_id, Location)
         table = Table(**data.model_dump())
         self.db.add(table)
         await self.db.flush()

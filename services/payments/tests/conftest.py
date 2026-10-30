@@ -6,7 +6,7 @@ from smartserve_shared.security import create_access_token, hash_password
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.db.models import Order, User
+from app.db.models import Location, Order, User
 from app.db.session import Base, get_db
 from app.main import app
 
@@ -69,7 +69,10 @@ async def create_order(db: AsyncSession, total: float, status: str = "submitted"
     docs/microservices-plan.md §4 — so tests build the order fixture directly instead
     of round-tripping through the now-extracted ordering service.
     """
-    order = Order(status=status, total=total)
+    location = Location(business_id="biz-fixture", name="Test")
+    db.add(location)
+    await db.flush()
+    order = Order(status=status, total=total, location_id=location.id)
     db.add(order)
     await db.flush()
     return order

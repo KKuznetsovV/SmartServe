@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import StaticPool
 
 import app.db.session as session_module
-from app.db.models import Order, Payment, User
+from app.db.models import Location, Order, Payment, User
 from app.db.session import Base
 from app.main import app
 
@@ -61,7 +61,10 @@ async def test_payment_persists_across_fresh_sessions(fresh_session_client):
             password_hash=hash_password("password123"),
         )
         setup_session.add(user)
-        order = Order(status="submitted", total=100.0)
+        location = Location(business_id="biz-fixture", name="Test")
+        setup_session.add(location)
+        await setup_session.flush()
+        order = Order(status="submitted", total=100.0, location_id=location.id)
         setup_session.add(order)
         await setup_session.commit()
         token = create_access_token(user.id, {"business_id": user.business_id, "role": user.role})

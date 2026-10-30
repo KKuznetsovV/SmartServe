@@ -5,7 +5,7 @@ Order.location_id is a plain string (not a ForeignKey to the local Location mirr
 reports only filter by the id value, never join to it — the Location mirror exists purely
 so `GET .../reports/*` endpoints can verify a `location_id` path param actually belongs to
 the caller's own business before running any query (see `verify_location_owned` in
-app/modules/reports/service.py). OrderItem.order_id stays a real ForeignKey to the
+smartserve_shared.tenancy). OrderItem.order_id stays a real ForeignKey to the
 locally-mirrored orders.id (needed for the join in the top-items/category/server queries).
 
 Reporting's own Alembic chain (see alembic/) only ever creates/alters `event_log` — the

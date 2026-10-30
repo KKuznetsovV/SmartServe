@@ -1,9 +1,7 @@
 """SQLAlchemy ORM models — staff service owns Shift; mutates the shared users table for
 staff CRUD (User is a trimmed, read-only-elsewhere mirror of the table owned by `auth` —
 same physical Postgres instance, schema-per-service mapping only, see
-docs/microservices-plan.md §4). Shift.location_id is a plain string (not a ForeignKey)
-since Location isn't needed/mirrored here — shifts only ever look it up by value, never
-traverse a relationship to it.
+docs/microservices-plan.md §4). Location is a trimmed mirror used only for tenant checks.
 """
 
 import uuid
@@ -39,6 +37,17 @@ class User(Base):
     language: Mapped[str] = mapped_column(String(5), default="he")
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+# ─── Location (owned by auth, trimmed mirror) ─────────────────────────────────
+
+
+class Location(Base):
+    __tablename__ = "locations"
+
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
+    business_id: Mapped[str] = mapped_column(String(), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
 
 
 # ─── Shifts (owned here) ───────────────────────────────────────────────────────

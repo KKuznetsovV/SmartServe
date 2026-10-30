@@ -1,10 +1,11 @@
 """Payment service — abstract provider pattern, ready for Cardcom/Tranzila integration."""
 
 from fastapi import HTTPException, status
+from smartserve_shared.tenancy import verify_location_owned
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Order, Payment
+from app.db.models import Location, Order, Payment
 from app.modules.payments.schemas import PaymentCreate
 
 VALID_PAYMENT_METHODS = {"cash", "card", "tap", "mobile", "voucher"}
@@ -16,7 +17,15 @@ class PaymentService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def create_payment(self, data: PaymentCreate) -> tuple[Payment, Order]:
+    async def _owned_order(self, order_id: str, business_id: str) -> Order:
+        order_result = await self.db.execute(select(Order).where(Order.id == order_id))
+        order = order_result.scalar_one_or_none()
+        if not order:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+        await verify_location_owned(self.db, order.location_id, business_id, Location)
+        return order
+
+    async def create_payment(self, data: PaymentCreate, business_id: str) -> tuple[Payment, Order]:
         if data.method not in VALID_PAYMENT_METHODS:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -27,10 +36,7 @@ class PaymentService:
         if data.tip_amount < 0:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Tip amount cannot be negative")
 
-        order_result = await self.db.execute(select(Order).where(Order.id == data.order_id))
-        order = order_result.scalar_one_or_none()
-        if not order:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+        order = await self._owned_order(data.order_id, business_id)
         if order.status == "paid":
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Order already paid")
 
@@ -63,13 +69,15 @@ class PaymentService:
         await self.db.flush()
         return payment, order
 
-    async def get_payment(self, payment_id: str) -> Payment:
+    async def get_payment(self, payment_id: str, business_id: str) -> Payment:
         result = await self.db.execute(select(Payment).where(Payment.id == payment_id))
         payment = result.scalar_one_or_none()
         if not payment:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
+        await self._owned_order(payment.order_id, business_id)
         return payment
 
-    async def list_by_order(self, order_id: str) -> list[Payment]:
+    async def list_by_order(self, order_id: str, business_id: str) -> list[Payment]:
+        await self._owned_order(order_id, business_id)
         result = await self.db.execute(select(Payment).where(Payment.order_id == order_id))
         return list(result.scalars().all())

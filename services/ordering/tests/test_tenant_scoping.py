@@ -64,9 +64,7 @@ async def test_list_orders_rejects_other_business(
     client: AsyncClient, location: Location, other_manager: tuple[User, str]
 ):
     _, token = other_manager
-    resp = await client.get(
-        f"/api/v1/locations/{location.id}/orders", headers={"Authorization": f"Bearer {token}"}
-    )
+    resp = await client.get(f"/api/v1/locations/{location.id}/orders", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 404
 
 
@@ -97,18 +95,14 @@ async def test_add_order_item_rejects_other_business(
 
 
 @pytest.mark.asyncio
-async def test_submit_order_rejects_other_business(
-    client: AsyncClient, order: Order, other_manager: tuple[User, str]
-):
+async def test_submit_order_rejects_other_business(client: AsyncClient, order: Order, other_manager: tuple[User, str]):
     _, token = other_manager
     resp = await client.post(f"/api/v1/orders/{order.id}/submit", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_cancel_order_rejects_other_business(
-    client: AsyncClient, order: Order, other_manager: tuple[User, str]
-):
+async def test_cancel_order_rejects_other_business(client: AsyncClient, order: Order, other_manager: tuple[User, str]):
     _, token = other_manager
     resp = await client.post(f"/api/v1/orders/{order.id}/cancel", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 404
@@ -119,9 +113,7 @@ async def test_list_tables_rejects_other_business(
     client: AsyncClient, location: Location, other_manager: tuple[User, str]
 ):
     _, token = other_manager
-    resp = await client.get(
-        f"/api/v1/locations/{location.id}/tables", headers={"Authorization": f"Bearer {token}"}
-    )
+    resp = await client.get(f"/api/v1/locations/{location.id}/tables", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 404
 
 
@@ -139,9 +131,7 @@ async def test_create_table_rejects_other_business_location(
 
 
 @pytest.mark.asyncio
-async def test_update_table_rejects_other_business(
-    client: AsyncClient, table: Table, other_manager: tuple[User, str]
-):
+async def test_update_table_rejects_other_business(client: AsyncClient, table: Table, other_manager: tuple[User, str]):
     _, token = other_manager
     resp = await client.patch(
         f"/api/v1/tables/{table.id}",
@@ -152,9 +142,7 @@ async def test_update_table_rejects_other_business(
 
 
 @pytest.mark.asyncio
-async def test_delete_table_rejects_other_business(
-    client: AsyncClient, table: Table, other_manager: tuple[User, str]
-):
+async def test_delete_table_rejects_other_business(client: AsyncClient, table: Table, other_manager: tuple[User, str]):
     _, token = other_manager
     resp = await client.delete(f"/api/v1/tables/{table.id}", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 404

@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import StaticPool
 
 import app.db.session as session_module
-from app.db.models import Shift, User
+from app.db.models import Location, Shift, User
 from app.db.session import Base
 from app.main import app
 
@@ -49,15 +49,17 @@ async def _manager_headers(session_factory) -> tuple[dict[str, str], str]:
             password_hash=hash_password("password123"),
         )
         setup_session.add(user)
+        location = Location(business_id="biz-fixture", name="Main")
+        setup_session.add(location)
         await setup_session.commit()
         token = create_access_token(user.id, {"business_id": user.business_id, "role": user.role})
-        return {"Authorization": f"Bearer {token}"}, user.id
+        return {"Authorization": f"Bearer {token}"}, user.id, location.id
 
 
 @pytest.mark.asyncio
 async def test_created_staff_persists_across_fresh_sessions(fresh_session_client):
     client, session_factory = fresh_session_client
-    headers, _ = await _manager_headers(session_factory)
+    headers, *_ = await _manager_headers(session_factory)
 
     resp = await client.post(
         "/api/v1/staff",
@@ -80,8 +82,7 @@ async def test_created_staff_persists_across_fresh_sessions(fresh_session_client
 @pytest.mark.asyncio
 async def test_opened_shift_persists_across_fresh_sessions(fresh_session_client):
     client, session_factory = fresh_session_client
-    headers, _ = await _manager_headers(session_factory)
-    location_id = "loc-fixture"
+    headers, _, location_id = await _manager_headers(session_factory)
 
     resp = await client.post(
         f"/api/v1/locations/{location_id}/shifts/open",
