@@ -37,6 +37,8 @@ async def test_create_order_publishes_order_created(
     _, routing_key, payload = mock_publish.await_args.args
     assert routing_key == "order.created"
     assert payload["orderId"] == order_id
+    assert payload["version"] == 1
+    assert "occurredAt" in payload
     assert payload["locationId"] == location.id
     assert payload["businessId"] == user.business_id
     assert payload["createdBy"] == resp.json()["createdBy"]
@@ -68,6 +70,8 @@ async def test_submit_order_publishes_order_updated(
     assert routing_key == "order.updated"
     assert payload["orderId"] == order_id
     assert payload["status"] == "submitted"
+    assert payload["version"] == 2
+    assert "occurredAt" in payload
     assert payload["businessId"] == user.business_id
 
 
@@ -105,9 +109,10 @@ async def test_fire_course_publishes_order_item_fired(
         resp = await client.post(f"/api/v1/orders/{order_id}/fire-course", json={"course": 2}, headers=headers)
     assert resp.status_code == 200
 
-    mock_publish.assert_awaited_once()
-    _, routing_key, payload = mock_publish.await_args.args
-    assert routing_key == "order.item_fired"
+    keys = [call.args[1] for call in mock_publish.await_args_list]
+    assert "order.item_fired" in keys
+    assert "order.updated" in keys
+    payload = next(call.args[2] for call in mock_publish.await_args_list if call.args[1] == "order.item_fired")
     assert payload["orderId"] == order_id
     assert payload["itemId"] == item_resp["id"]
     assert payload["menuItemId"] == item.id
@@ -137,7 +142,9 @@ async def test_handle_payment_completed_marks_order_paid(events_engine):
 
     async with session_factory() as session:
         result = await session.execute(select(Order).where(Order.id == order_id))
-        assert result.scalar_one().status == "paid"
+        paid = result.scalar_one()
+        assert paid.status == "paid"
+        assert paid.version == 1
 
 
 @pytest.mark.asyncio

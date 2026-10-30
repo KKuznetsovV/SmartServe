@@ -1,16 +1,8 @@
-"""SQLAlchemy ORM models — reporting service owns denormalized reads over Order +
-OrderItem, trimmed to just the columns the summary/report aggregation queries need. User
-and Location are trimmed, read-only-elsewhere mirrors (see docs/microservices-plan.md §4).
-Order.location_id is a plain string (not a ForeignKey to the local Location mirror) since
-reports only filter by the id value, never join to it — the Location mirror exists purely
-so `GET .../reports/*` endpoints can verify a `location_id` path param actually belongs to
-the caller's own business before running any query (see `verify_location_owned` in
-smartserve_shared.tenancy). OrderItem.order_id stays a real ForeignKey to the
-locally-mirrored orders.id (needed for the join in the top-items/category/server queries).
+"""SQLAlchemy ORM models for the reporting service.
 
-Reporting's own Alembic chain (see alembic/) only ever creates/alters `event_log` — the
-Order/OrderItem/User/Location classes below are read-only mappings onto tables owned and
-migrated by `ordering`/`auth` and must never be given their own DDL here.
+Reporting owns `event_log`, `reporting_orders` and `reporting_order_items`. User and Location
+are trimmed, read-only mirrors of auth tables (see docs/microservices-plan.md §4). Location
+exists so report endpoints can verify a `location_id` belongs to the caller's business.
 """
 
 import uuid
@@ -28,9 +20,6 @@ def _uuid() -> str:
 
 def _now() -> datetime:
     return datetime.now(UTC)
-
-
-# ─── User / Location (owned by auth, trimmed mirror) ──────────────────────────
 
 
 class User(Base):
@@ -56,35 +45,31 @@ class Location(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
 
-# ─── Orders (owned by ordering, trimmed read-only mirror for aggregation) ──────
-
-
-class Order(Base):
-    __tablename__ = "orders"
+class ReportingOrder(Base):
+    __tablename__ = "reporting_orders"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
-    location_id: Mapped[str] = mapped_column(String(), nullable=False)
+    location_id: Mapped[str] = mapped_column(String(), nullable=False, index=True)
     channel: Mapped[str] = mapped_column(String(50), default="dine_in")
     status: Mapped[str] = mapped_column(String(50), default="open")
     total: Mapped[float] = mapped_column(Float, default=0.0)
     created_by: Mapped[str | None] = mapped_column(String(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
-class OrderItem(Base):
-    __tablename__ = "order_items"
+class ReportingOrderItem(Base):
+    __tablename__ = "reporting_order_items"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
-    order_id: Mapped[str] = mapped_column(ForeignKey("orders.id"), nullable=False)
+    order_id: Mapped[str] = mapped_column(ForeignKey("reporting_orders.id"), nullable=False, index=True)
     menu_item_id: Mapped[str | None] = mapped_column(String(), nullable=True)
     menu_item_name: Mapped[str] = mapped_column(String(255), nullable=False)
     category_id: Mapped[str | None] = mapped_column(String(), nullable=True)
     category_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     qty: Mapped[int] = mapped_column(Integer, default=1)
     unit_price: Mapped[float] = mapped_column(Float, nullable=False)
-
-
-# ─── Event log (owned here) ────────────────────────────────────────────────────
 
 
 class EventLog(Base):

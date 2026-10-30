@@ -1,12 +1,11 @@
 """Alembic migration environment for the reporting service.
 
 Reporting's SQLAlchemy `Base.metadata` also contains trimmed, read-only mirror models
-(`User`, `Location`, `Order`, `OrderItem`) for tables owned/migrated by `auth`/`ordering` —
-all services share the same physical Postgres database with no schema separation (see
-docs/microservices-plan.md §4). This service's migration chain must only ever create/alter
-`event_log`, the one table reporting truly owns; the `include_object` filter below enforces
-that so `alembic revision --autogenerate` never tries to manage a table another service
-owns/migrates.
+(`User`, `Location`) for tables owned/migrated by `auth` — all services share the same
+physical Postgres database with no schema separation (see docs/microservices-plan.md §4).
+This service's migration chain must only ever create/alter tables reporting owns; the
+`include_object` filter below enforces that so `alembic revision --autogenerate` never
+tries to manage a table another service owns/migrates.
 """
 
 import asyncio
@@ -29,9 +28,9 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 # Tables this service's Alembic chain is allowed to create/alter. Everything else on
-# Base.metadata (users, locations, orders, order_items) is a read-only mirror owned and
-# migrated by another service (auth/ordering) and must be left alone here.
-REPORTING_OWNED_TABLES = {"event_log"}
+# Base.metadata (users, locations) is a read-only mirror owned and migrated by auth
+# and must be left alone here.
+REPORTING_OWNED_TABLES = {"event_log", "reporting_orders", "reporting_order_items"}
 
 
 include_object = owned_include_object(REPORTING_OWNED_TABLES)

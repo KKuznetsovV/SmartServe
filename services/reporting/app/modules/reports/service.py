@@ -6,7 +6,9 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import EventLog, Order, OrderItem, User
+from app.db.models import EventLog, User
+from app.db.models import ReportingOrder as Order
+from app.db.models import ReportingOrderItem as OrderItem
 from app.modules.reports.schemas import (
     ClosedOrderOut,
     ClosedOrdersReportOut,
