@@ -10,7 +10,7 @@ import asyncio
 
 import structlog
 from smartserve_shared.security import hash_password
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.db.models import Business, Location, User
 from app.db.session import AsyncSessionLocal
@@ -38,13 +38,13 @@ async def _ensure_user(
     pin: str | None = None,
 ) -> User:
     if email:
-        existing = await db.execute(select(User).where(User.email == email))
+        existing = await db.execute(select(User).where(func.lower(User.email) == email.lower()))
         user = existing.scalar_one_or_none()
         if user:
             return user
     user = User(
         business_id=business_id,
-        email=email,
+        email=email.lower() if email else None,
         name=name,
         role=role,
         password_hash=hash_password(password) if password else None,
@@ -56,7 +56,7 @@ async def _ensure_user(
 
 async def seed(*, with_second_tenant: bool = False) -> None:
     async with AsyncSessionLocal() as db:
-        existing = await db.execute(select(User).where(User.email == DEMO_EMAIL))
+        existing = await db.execute(select(User).where(func.lower(User.email) == DEMO_EMAIL))
         owner = existing.scalar_one_or_none()
         if owner is None:
             biz = Business(name="Demo Restaurant", country="IL", currency="ILS")
@@ -103,7 +103,7 @@ async def seed(*, with_second_tenant: bool = False) -> None:
             logger.info("demo tenant already present, skipping")
 
         if with_second_tenant:
-            other = await db.execute(select(User).where(User.email == OTHER_EMAIL))
+            other = await db.execute(select(User).where(func.lower(User.email) == OTHER_EMAIL))
             if other.scalar_one_or_none() is None:
                 biz = Business(name="Other Restaurant", country="IL", currency="ILS")
                 db.add(biz)

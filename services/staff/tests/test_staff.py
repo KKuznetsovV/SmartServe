@@ -44,7 +44,7 @@ async def test_create_staff_rejects_duplicate_email(
     )
     resp = await client.post(
         "/api/v1/staff",
-        json={"name": "Waiter Two", "email": "dup@test.com", "role": "waiter"},
+        json={"name": "Waiter Two", "email": "DUP@test.com", "role": "waiter"},
         headers=headers,
     )
     assert resp.status_code == 409
@@ -72,12 +72,12 @@ async def test_get_and_update_staff(
 
     update_resp = await client.patch(
         f"/api/v1/staff/{user_id}",
-        json={"role": "manager", "active": False},
+        json={"role": "cashier", "active": False},
         headers=headers,
     )
     assert update_resp.status_code == 200
     updated = update_resp.json()
-    assert updated["role"] == "manager"
+    assert updated["role"] == "cashier"
     assert updated["active"] is False
 
 

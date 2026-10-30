@@ -9,7 +9,7 @@ references such as `orders.location_id`.
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -53,6 +53,7 @@ class Location(Base):
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (Index("ix_users_email_lower", text("lower(email)"), unique=True),)
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     business_id: Mapped[str] = mapped_column(ForeignKey("businesses.id"), nullable=False)

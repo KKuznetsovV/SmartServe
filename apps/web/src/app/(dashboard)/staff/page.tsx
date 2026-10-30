@@ -15,9 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
-import type { User, UserRole } from '@smartserve/types'
-
-const ROLES: UserRole[] = ['owner', 'manager', 'cashier', 'waiter', 'kitchen']
+import { assignableRoles, type User, type UserRole } from '@smartserve/types'
 
 const ROLE_VARIANT: Record<UserRole, 'default' | 'secondary' | 'outline'> = {
   owner: 'default',
@@ -34,11 +32,11 @@ const createSchema = z.object({
   language: z.enum(['he', 'en']),
   active: z.boolean().optional(),
   password: z.string().min(8).optional().or(z.literal('')),
-  pin: z.string().length(4).regex(/^\d{4}$/, 'Must be 4 digits').optional().or(z.literal('')),
+  pin: z.string().regex(/^\d{4,6}$/, 'Must be 4 to 6 digits').optional().or(z.literal('')),
 })
 
 const editSchema = createSchema.omit({ password: true }).extend({
-  pin: z.string().length(4).regex(/^\d{4}$/, 'Must be 4 digits').optional().or(z.literal('')),
+  pin: z.string().regex(/^\d{4,6}$/, 'Must be 4 to 6 digits').optional().or(z.literal('')),
 })
 
 type CreateForm = z.infer<typeof createSchema>
@@ -48,6 +46,8 @@ export default function StaffPage() {
   const t = useTranslations('staff')
   const tCommon = useTranslations('common')
   const activeBusinessId = useAuthStore((s) => s.activeBusinessId)
+  const currentUser = useAuthStore((s) => s.user)
+  const pickerRoles = assignableRoles((currentUser?.role as UserRole | undefined) ?? 'waiter')
   const { data: staff, isLoading } = useStaff(activeBusinessId)
   const createStaff = useCreateStaff()
   const updateStaff = useUpdateStaff()
@@ -64,7 +64,8 @@ export default function StaffPage() {
 
   function openCreate() {
     setEditing(null)
-    reset({ name: '', email: '', role: 'waiter', language: 'he', password: '', pin: '' })
+    const defaultRole = pickerRoles.includes('waiter') ? 'waiter' : (pickerRoles[0] ?? 'waiter')
+    reset({ name: '', email: '', role: defaultRole, language: 'he', password: '', pin: '' })
     setDialogOpen(true)
   }
 
@@ -74,7 +75,15 @@ export default function StaffPage() {
     setDialogOpen(true)
   }
 
+  function canDeactivate(u: User) {
+    if (!currentUser) return false
+    if (u.id === currentUser.id) return false
+    if (u.role === 'owner' && currentUser.role === 'manager') return false
+    return true
+  }
+
   function toggleActive(u: User) {
+    if (!canDeactivate(u)) return
     updateStaff.mutate({ id: u.id, businessId: u.businessId, data: { active: !u.active } })
   }
 
@@ -87,7 +96,14 @@ export default function StaffPage() {
     }
 
     if (editing) {
-      const { password: _pw, ...editData } = clean
+      const { password: _pw, role, active, ...rest } = clean
+      const editData: Partial<User> & { pin?: string } = { ...rest }
+      if (role !== editing.role) {
+        editData.role = role
+      }
+      if (canDeactivate(editing) && active !== undefined) {
+        editData.active = active
+      }
       await updateStaff.mutateAsync({ id: editing.id, businessId: editing.businessId, data: editData })
     } else {
       if (!activeBusinessId) return
@@ -118,15 +134,17 @@ export default function StaffPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className={u.active ? 'text-destructive hover:text-destructive' : ''}
-              disabled={updateStaff.isPending}
-              onClick={() => toggleActive(u)}
-            >
-              {u.active ? t('deactivate') : t('reactivate')}
-            </Button>
+            {canDeactivate(u) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className={u.active ? 'text-destructive hover:text-destructive' : ''}
+                disabled={updateStaff.isPending}
+                onClick={() => toggleActive(u)}
+              >
+                {u.active ? t('deactivate') : t('reactivate')}
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => openEdit(u)}>
               {tCommon('edit')}
             </Button>
@@ -190,7 +208,10 @@ export default function StaffPage() {
               <div className="space-y-1">
                 <Label>{t('role')}</Label>
                 <Select {...register('role')}>
-                  {ROLES.map((r) => (
+                  {(editing && !pickerRoles.includes(editing.role as UserRole)
+                    ? [editing.role as UserRole, ...pickerRoles]
+                    : pickerRoles
+                  ).map((r) => (
                     <option key={r} value={r}>
                       {t(`role_${r}` as `role_${UserRole}`)}
                     </option>
@@ -221,7 +242,7 @@ export default function StaffPage() {
               <Label>{editing ? t('pinEditHint') : t('pinCreateHint')}</Label>
               <Input
                 type="password"
-                maxLength={4}
+                maxLength={6}
                 inputMode="numeric"
                 {...register('pin')}
                 placeholder="····"
@@ -229,7 +250,7 @@ export default function StaffPage() {
               {errors.pin && <p className="text-xs text-destructive">{errors.pin.message}</p>}
             </div>
 
-            {editing && (
+            {editing && canDeactivate(editing) && (
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="active" {...register('active')} />
                 <Label htmlFor="active">{t('active')}</Label>

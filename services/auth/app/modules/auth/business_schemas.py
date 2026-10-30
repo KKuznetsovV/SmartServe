@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from smartserve_shared.roles import Role
 from smartserve_shared.schemas import BaseSchema as BaseModel
 
 
@@ -44,7 +45,7 @@ class UserOut(BaseModel):
     business_id: str
     email: str | None = None
     name: str
-    role: str
+    role: Role
     language: str
     active: bool
 

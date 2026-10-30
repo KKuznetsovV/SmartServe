@@ -3,6 +3,20 @@ import { z } from 'zod'
 export const UserRole = z.enum(['owner', 'manager', 'cashier', 'waiter', 'kitchen'])
 export type UserRole = z.infer<typeof UserRole>
 
+export const ROLE_RANK: Record<UserRole, number> = {
+  owner: 4,
+  manager: 3,
+  cashier: 2,
+  waiter: 1,
+  kitchen: 0,
+}
+
+export function assignableRoles(actor: UserRole): UserRole[] {
+  return UserRole.options.filter(
+    (role) => ROLE_RANK[role] < ROLE_RANK[actor] || (actor === 'owner' && role === 'owner'),
+  )
+}
+
 export const UserSchema = z.object({
   id: z.string().uuid(),
   businessId: z.string().uuid(),
@@ -23,7 +37,7 @@ export type Login = z.infer<typeof LoginSchema>
 export const PinLoginSchema = z.object({
   locationId: z.string().uuid(),
   userId: z.string().uuid(),
-  pin: z.string().length(4).regex(/^\d{4}$/),
+  pin: z.string().min(4).max(6).regex(/^\d{4,6}$/),
 })
 export type PinLogin = z.infer<typeof PinLoginSchema>
 

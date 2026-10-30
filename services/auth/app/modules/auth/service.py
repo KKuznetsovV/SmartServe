@@ -2,7 +2,7 @@
 
 from fastapi import HTTPException, status
 from smartserve_shared.security import create_access_token, create_refresh_token, decode_token, verify_password
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Location, User
@@ -14,7 +14,7 @@ class AuthService:
         self.db = db
 
     async def login(self, email: str, password: str) -> TokenResponse:
-        result = await self.db.execute(select(User).where(User.email == email, User.active))
+        result = await self.db.execute(select(User).where(func.lower(User.email) == email.lower(), User.active))
         user = result.scalar_one_or_none()
         if not user or not user.password_hash or not verify_password(password, user.password_hash):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")

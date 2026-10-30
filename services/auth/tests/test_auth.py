@@ -90,3 +90,15 @@ async def test_refresh_rejects_deactivated_user(client: AsyncClient, db: AsyncSe
 
     resp = await client.post("/api/v1/auth/refresh", json={"refreshToken": refresh_token})
     assert resp.status_code == 401
+
+
+async def test_login_matches_email_case_insensitively(client: AsyncClient, owner_user: tuple[User, str]):
+    user, _ = owner_user
+    resp = await client.post("/api/v1/auth/login", json={"email": user.email.upper(), "password": "password123"})
+    assert resp.status_code == 200
+
+
+async def test_pin_login_rejects_short_pin(client: AsyncClient, location: Location, db: AsyncSession):
+    user = await _make_pin_user(db, location.business_id, "1234", "Waiter A")
+    resp = await client.post("/api/v1/auth/pin", json={"locationId": location.id, "userId": user.id, "pin": "1"})
+    assert resp.status_code == 422

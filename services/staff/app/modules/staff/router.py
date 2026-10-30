@@ -18,7 +18,7 @@ async def create_staff(
     db: DbSession,
     current_user: User = Depends(require_manager),
 ):
-    staff = await StaffService(db).create_staff(current_user.business_id, data)
+    staff = await StaffService(db).create_staff(current_user, data)
     await mq.publish(
         request.app.state.mq_connection,
         "staff.created",
@@ -49,7 +49,7 @@ async def update_staff(
     db: DbSession,
     current_user: User = Depends(require_manager),
 ):
-    staff = await StaffService(db).update_staff(user_id, data, current_user.business_id)
+    staff = await StaffService(db).update_staff(current_user, user_id, data)
     await mq.publish(
         request.app.state.mq_connection,
         "staff.updated",
