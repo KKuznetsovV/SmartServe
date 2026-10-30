@@ -122,14 +122,16 @@ class MenuItem(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, default=None)
 
     category: Mapped[MenuCategory] = relationship(back_populates="items")
-    modifier_groups: Mapped[list[ModifierGroup]] = relationship(back_populates="item")
+    modifier_groups: Mapped[list[ModifierGroup]] = relationship(
+        back_populates="item", cascade="all, delete-orphan", passive_deletes=True
+    )
 
 
 class ModifierGroup(Base):
     __tablename__ = "modifier_groups"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
-    item_id: Mapped[str] = mapped_column(ForeignKey("menu_items.id"), nullable=False)
+    item_id: Mapped[str] = mapped_column(ForeignKey("menu_items.id", ondelete="CASCADE"), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     name_he: Mapped[str | None] = mapped_column(String(255))
     required: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -137,14 +139,16 @@ class ModifierGroup(Base):
     max_select: Mapped[int] = mapped_column(Integer, default=1)
 
     item: Mapped[MenuItem] = relationship(back_populates="modifier_groups")
-    modifiers: Mapped[list[Modifier]] = relationship(back_populates="group")
+    modifiers: Mapped[list[Modifier]] = relationship(
+        back_populates="group", cascade="all, delete-orphan", passive_deletes=True
+    )
 
 
 class Modifier(Base):
     __tablename__ = "modifiers"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
-    group_id: Mapped[str] = mapped_column(ForeignKey("modifier_groups.id"), nullable=False)
+    group_id: Mapped[str] = mapped_column(ForeignKey("modifier_groups.id", ondelete="CASCADE"), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     name_he: Mapped[str | None] = mapped_column(String(255))
     price_delta: Mapped[float] = mapped_column(Float, default=0.0)

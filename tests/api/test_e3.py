@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 
 from httpx import AsyncClient
@@ -34,36 +35,21 @@ async def test_e3_delete_category_with_items_is_409(
 
 async def test_e3_commit_failure_is_not_2xx(client: AsyncClient, owner_a: dict) -> None:
     headers = bearer(owner_a["token"])
-    location_id = owner_a["locationId"]
-    suffix = uuid.uuid4().hex[:8]
-    created = await client.post(
-        "/menu/categories",
-        headers=headers,
-        json={"locationId": location_id, "name": f"E3 fail cat {suffix}"},
+    code = f"E3{uuid.uuid4().hex[:10]}"
+    body = {
+        "businessId": owner_a["businessId"],
+        "code": code,
+        "name": "E3 unique",
+        "type": "percent",
+        "value": 5,
+    }
+    first, second = await asyncio.gather(
+        client.post("/discounts", headers=headers, json=body),
+        client.post("/discounts", headers=headers, json=body),
     )
-    created.raise_for_status()
-    item = await client.post(
-        "/menu/items",
-        headers=headers,
-        json={"categoryId": created.json()["id"], "name": f"E3 fail item {suffix}", "price": 10},
-    )
-    item.raise_for_status()
-    item_id = item.json()["id"]
-
-    group = await client.post(
-        "/menu/modifier-groups",
-        headers=headers,
-        json={"itemId": item_id, "name": f"E3 group {suffix}"},
-    )
-    group.raise_for_status()
-
-    trashed = await client.delete(f"/menu/items/{item_id}", headers=headers)
-    assert trashed.status_code == 204
-
-    deleted = await client.delete(f"/menu/items/{item_id}/permanent", headers=headers)
-    assert deleted.status_code // 100 != 2
-    assert deleted.status_code == 409
-
-    trash = await client.get(f"/menu/locations/{location_id}/trash", headers=headers)
-    trash.raise_for_status()
-    assert any(row["id"] == item_id for row in trash.json())
+    statuses = {first.status_code, second.status_code}
+    assert 201 in statuses
+    for resp in (first, second):
+        if resp.status_code != 201:
+            assert resp.status_code // 100 != 2
+            assert resp.status_code == 409
