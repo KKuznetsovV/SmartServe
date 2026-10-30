@@ -264,7 +264,7 @@ class OrderService:
         category = category_result.scalar_one_or_none()
 
         snapshots = self._snapshot_modifiers(menu_item, data.modifiers)
-        unit_price = menu_item.price + sum(m["price_delta"] for m in snapshots)
+        unit_price = max(0.0, menu_item.price + sum(m["price_delta"] for m in snapshots))
         fire_course = data.fire_course if data.fire_course is not None else menu_item.default_fire_course
 
         order_item = OrderItem(
@@ -324,7 +324,7 @@ class OrderService:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Menu item not found")
             snapshots = self._snapshot_modifiers(menu_item, data.modifiers)
             item.modifiers = snapshots
-            item.unit_price = base_price + sum(m["price_delta"] for m in snapshots)
+            item.unit_price = max(0.0, base_price + sum(m["price_delta"] for m in snapshots))
         if data.qty is not None:
             item.qty = data.qty
         if data.notes is not None:

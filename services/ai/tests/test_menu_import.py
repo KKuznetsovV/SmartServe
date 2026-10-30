@@ -94,6 +94,46 @@ async def test_menu_import_apply(client, manager_token, monkeypatch):
     assert await app.state.redis.get("ai:import:sess-1") is None
 
 
+async def test_menu_import_apply_catalog_422_is_readable(client, manager_token, monkeypatch):
+    await app.state.redis.setex(
+        "ai:import:sess-q8",
+        1800,
+        json.dumps({
+            "business_id": "biz-1",
+            "location_id": "loc-1",
+            "items": [{"name": "Pizza", "price": -50, "category": "Mains"}],
+            "history": [],
+        }),
+    )
+
+    async def fake_catalog_get(path, *, forward_token=None, **kwargs):
+        return httpx.Response(200, json=[{"id": "cat-1", "name": "Mains", "parentId": None}])
+
+    async def fake_catalog_post(path, *, forward_token=None, **kwargs):
+        request = httpx.Request("POST", "http://catalog/api/v1/menu/items")
+        return httpx.Response(
+            422,
+            json={"detail": "Price must be at least 0"},
+            request=request,
+        )
+
+    async def fake_printing_get(path, *, forward_token=None, **kwargs):
+        return httpx.Response(200, json=[])
+
+    monkeypatch.setattr(catalog_client, "get", fake_catalog_get)
+    monkeypatch.setattr(catalog_client, "post", fake_catalog_post)
+    monkeypatch.setattr(printing_client, "get", fake_printing_get)
+
+    resp = await client.post(
+        "/api/v1/ai/menu-import/apply",
+        json={"sessionId": "sess-q8"},
+        headers={"Authorization": f"Bearer {manager_token}"},
+    )
+    assert resp.status_code == 422
+    assert "0" in str(resp.json()["detail"])
+    assert resp.status_code != 502
+
+
 async def test_menu_import_apply_unknown_session(client, manager_token):
     resp = await client.post(
         "/api/v1/ai/menu-import/apply",

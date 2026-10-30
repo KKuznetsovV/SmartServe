@@ -18,6 +18,7 @@ from app.modules.catalog.schemas import (
     ModifierGroupOut,
     ModifierGroupUpdate,
     ModifierOut,
+    ReorderRequest,
     StockUpdate,
 )
 from app.modules.catalog.service import MenuService
@@ -68,11 +69,11 @@ async def delete_category(
 @router.post("/locations/{location_id}/categories/reorder", status_code=204)
 async def reorder_categories(
     location_id: str,
-    body: dict,
+    body: ReorderRequest,
     db: DbSession,
     current_user: User = Depends(require_manager),
 ):
-    await MenuService(db).reorder_categories(location_id, body["ids"], current_user.business_id)
+    await MenuService(db).reorder_categories(location_id, body.ids, current_user.business_id)
 
 
 # ── Items ─────────────────────────────────────────────────────────────────────
@@ -185,11 +186,11 @@ async def list_location_stock(
 @router.post("/categories/{category_id}/items/reorder", status_code=204)
 async def reorder_items(
     category_id: str,
-    body: dict,
+    body: ReorderRequest,
     db: DbSession,
     current_user: User = Depends(require_manager),
 ):
-    await MenuService(db).reorder_items(category_id, body["ids"], current_user.business_id)
+    await MenuService(db).reorder_items(category_id, body.ids, current_user.business_id)
 
 
 @router.delete("/items/{item_id}", status_code=204)

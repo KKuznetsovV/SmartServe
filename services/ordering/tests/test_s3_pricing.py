@@ -158,3 +158,31 @@ async def test_modifier_must_belong_to_item_and_required_group(
     )
     assert ok.status_code == 201
     assert ok.json()["unitPrice"] == pytest.approx(15.0)
+
+
+@pytest.mark.asyncio
+async def test_unit_price_never_goes_below_zero(
+    client: AsyncClient,
+    db: AsyncSession,
+    manager_user: tuple[User, str],
+    location: Location,
+):
+    _, token = manager_user
+    item = MenuItem(category_id="cat-1", name="Burger", price=5.0)
+    db.add(item)
+    await db.flush()
+    group = ModifierGroup(item_id=item.id, name="Extras", required=False, min_select=0, max_select=1)
+    db.add(group)
+    await db.flush()
+    no_cheese = Modifier(group_id=group.id, name="No cheese", price_delta=-10.0)
+    db.add(no_cheese)
+    await db.flush()
+
+    order_id = await _open_order(client, token, location.id)
+    resp = await client.post(
+        f"/api/v1/orders/{order_id}/items",
+        json={"menuItemId": item.id, "qty": 1, "modifiers": [{"modifierId": no_cheese.id}]},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 201
+    assert resp.json()["unitPrice"] == pytest.approx(0.0)

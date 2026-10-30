@@ -1,10 +1,8 @@
-import pytest
 from httpx import AsyncClient
 
 from conftest import bearer
 
 
-@pytest.mark.xfail(strict=True, reason="Q8")
 async def test_q8_catalog_validation(client: AsyncClient, owner_a: dict) -> None:
     headers = bearer(owner_a["token"])
     location_id = owner_a["locationId"]
