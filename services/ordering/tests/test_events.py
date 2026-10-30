@@ -21,7 +21,7 @@ async def test_create_order_publishes_order_created(
     location: Location,
     manager_user: tuple[User, str],
 ):
-    _, token = manager_user
+    user, token = manager_user
     headers = {"Authorization": f"Bearer {token}"}
 
     with patch("smartserve_shared.mq.publish", new_callable=AsyncMock) as mock_publish:
@@ -38,6 +38,7 @@ async def test_create_order_publishes_order_created(
     assert routing_key == "order.created"
     assert payload["orderId"] == order_id
     assert payload["locationId"] == location.id
+    assert payload["businessId"] == user.business_id
     assert payload["createdBy"] == resp.json()["createdBy"]
 
 
@@ -47,7 +48,7 @@ async def test_submit_order_publishes_order_updated(
     location: Location,
     manager_user: tuple[User, str],
 ):
-    _, token = manager_user
+    user, token = manager_user
     headers = {"Authorization": f"Bearer {token}"}
 
     order_id = (
@@ -67,6 +68,7 @@ async def test_submit_order_publishes_order_updated(
     assert routing_key == "order.updated"
     assert payload["orderId"] == order_id
     assert payload["status"] == "submitted"
+    assert payload["businessId"] == user.business_id
 
 
 @pytest.mark.asyncio
@@ -76,7 +78,7 @@ async def test_fire_course_publishes_order_item_fired(
     location: Location,
     manager_user: tuple[User, str],
 ):
-    _, token = manager_user
+    user, token = manager_user
     headers = {"Authorization": f"Bearer {token}"}
 
     item = MenuItem(category_id="cat-1", name="Steak", price=80.0, tax_rate=0.17, default_fire_course=2)
@@ -109,6 +111,7 @@ async def test_fire_course_publishes_order_item_fired(
     assert payload["orderId"] == order_id
     assert payload["itemId"] == item_resp["id"]
     assert payload["menuItemId"] == item.id
+    assert payload["businessId"] == user.business_id
 
 
 @pytest_asyncio.fixture

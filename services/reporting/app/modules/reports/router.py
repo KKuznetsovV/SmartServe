@@ -106,8 +106,9 @@ async def export_report_csv(
 @router.get("/events", response_model=list[EventLogOut])
 async def list_events(
     db: DbSession,
+    current_user: User = Depends(require_manager),
     routing_key: str | None = Query(None),
     limit: int = Query(100, ge=1, le=500),
-    _: User = Depends(require_manager),
+    since: datetime | None = Query(None),
 ):
-    return await ReportService(db).list_events(routing_key, limit)
+    return await ReportService(db).list_events(current_user.business_id, routing_key, limit, since)

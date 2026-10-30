@@ -39,6 +39,23 @@ async def test_handle_any_event_always_logs_to_event_log(events_engine):
         assert len(logs) == 1
         assert logs[0].routing_key == "staff.created"
         assert json.loads(logs[0].payload) == {"userId": "u-1", "role": "waiter"}
+        assert logs[0].business_id is None
+
+
+@pytest.mark.asyncio
+async def test_handle_any_event_stores_payload_business_id(events_engine):
+    session_factory = async_sessionmaker(events_engine, class_=AsyncSession, expire_on_commit=False)
+
+    with patch("app.modules.reports.events.AsyncSessionLocal", session_factory):
+        await handle_any_event(
+            "payment.completed",
+            {"orderId": "o-1", "businessId": "biz-a", "amount": 10.0},
+        )
+
+    async with session_factory() as session:
+        result = await session.execute(select(EventLog))
+        log = result.scalar_one()
+        assert log.business_id == "biz-a"
 
 
 @pytest.mark.asyncio

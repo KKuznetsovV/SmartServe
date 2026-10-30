@@ -96,4 +96,5 @@ class EventLog(Base):
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     routing_key: Mapped[str] = mapped_column(String(255), nullable=False)
     payload: Mapped[str] = mapped_column(String(), nullable=False)
+    business_id: Mapped[str | None] = mapped_column(String(), nullable=True, index=True)
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

@@ -13,7 +13,7 @@ async def test_create_staff_publishes_staff_created(
     client: AsyncClient,
     manager_user: tuple[User, str],
 ):
-    _, token = manager_user
+    user, token = manager_user
     headers = {"Authorization": f"Bearer {token}"}
 
     with patch("smartserve_shared.mq.publish", new_callable=AsyncMock) as mock_publish:
@@ -30,6 +30,7 @@ async def test_create_staff_publishes_staff_created(
     assert routing_key == "staff.created"
     assert payload["userId"] == user_id
     assert payload["role"] == "waiter"
+    assert payload["businessId"] == user.business_id
 
 
 @pytest.mark.asyncio
@@ -37,7 +38,7 @@ async def test_update_staff_publishes_staff_updated(
     client: AsyncClient,
     manager_user: tuple[User, str],
 ):
-    _, token = manager_user
+    user, token = manager_user
     headers = {"Authorization": f"Bearer {token}"}
 
     created = (
@@ -57,3 +58,4 @@ async def test_update_staff_publishes_staff_updated(
     assert routing_key == "staff.updated"
     assert payload["userId"] == created["id"]
     assert payload["name"] == "Robert"
+    assert payload["businessId"] == user.business_id

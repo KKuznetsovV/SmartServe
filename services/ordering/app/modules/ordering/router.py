@@ -62,6 +62,7 @@ async def create_order(
         {
             "orderId": order.id,
             "locationId": order.location_id,
+            "businessId": current_user.business_id,
             "channel": order.channel,
             "status": order.status,
             "total": order.total,
@@ -145,7 +146,13 @@ async def submit_order(
     current_user: User = Depends(require_staff),
 ):
     order = await OrderService(db).transition_order(order_id, "submitted", current_user.business_id)
-    payload = {"orderId": order.id, "locationId": order.location_id, "status": order.status, "total": order.total}
+    payload = {
+        "orderId": order.id,
+        "locationId": order.location_id,
+        "businessId": current_user.business_id,
+        "status": order.status,
+        "total": order.total,
+    }
     await mq.publish(request.app.state.mq_connection, "order.updated", payload)
     await broadcast_event(order.location_id, "order.updated", payload)
     return order
@@ -159,7 +166,13 @@ async def cancel_order(
     current_user: User = Depends(require_staff),
 ):
     order = await OrderService(db).transition_order(order_id, "cancelled", current_user.business_id)
-    payload = {"orderId": order.id, "locationId": order.location_id, "status": order.status, "total": order.total}
+    payload = {
+        "orderId": order.id,
+        "locationId": order.location_id,
+        "businessId": current_user.business_id,
+        "status": order.status,
+        "total": order.total,
+    }
     await mq.publish(request.app.state.mq_connection, "order.updated", payload)
     await broadcast_event(order.location_id, "order.updated", payload)
     return order
@@ -237,6 +250,7 @@ async def fire_course(
                 "menuItemId": item.menu_item_id,
                 "menuItemName": item.menu_item_name,
                 "locationId": result.location_id,
+                "businessId": current_user.business_id,
                 "course": data.course,
             },
         )
