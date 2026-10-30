@@ -5,13 +5,16 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import uuid
 
 import pytest
 import websockets
 from httpx import AsyncClient
 
-from conftest import API_BASE_URL, add_item, create_order, submit_order
+from conftest import add_item, bearer, create_order, submit_order
 from test_s4 import _ws_url
+
+_CONTROL_TYPES = {"hello", "ping"}
 
 
 @pytest.mark.stack
@@ -23,12 +26,9 @@ async def test_e9_two_sockets_see_submitted_order(
 
     location_id = waiter_a["locationId"]
     token = waiter_a["token"]
-    url = _ws_url(location_id)
-
-    async with (
-        websockets.connect(url, open_timeout=10) as first,
-        websockets.connect(url, open_timeout=10) as second,
-    ):
+    first, second, first_id, second_id = await _connect_distinct_workers(_ws_url(location_id))
+    try:
+        assert first_id != second_id
         order = await create_order(client, token, location_id)
         await add_item(client, token, order["id"], catalog["burgerId"])
         submitted = await submit_order(client, token, order["id"])
@@ -43,6 +43,78 @@ async def test_e9_two_sockets_see_submitted_order(
             assert "total" not in payload
             assert "notes" not in payload
             assert "createdBy" not in payload
+    finally:
+        await first.close()
+        await second.close()
+
+
+@pytest.mark.stack
+async def test_e9_failed_commit_is_not_broadcast(client: AsyncClient, owner_a: dict, waiter_a: dict) -> None:
+    if os.environ.get("SMARTSERVE_STACK") != "1":
+        pytest.skip("stack-only: set SMARTSERVE_STACK=1 in the compose API suite")
+
+    location_id = waiter_a["locationId"]
+    first, second, first_id, second_id = await _connect_distinct_workers(_ws_url(location_id))
+    try:
+        assert first_id != second_id
+        headers = bearer(owner_a["token"])
+        code = f"E9{uuid.uuid4().hex[:10]}"
+        body = {
+            "businessId": owner_a["businessId"],
+            "code": code,
+            "name": "E9 unique",
+            "type": "percent",
+            "value": 5,
+        }
+        created, raced = await asyncio.gather(
+            client.post("/discounts", headers=headers, json=body),
+            client.post("/discounts", headers=headers, json=body),
+        )
+        statuses = {created.status_code, raced.status_code}
+        assert 201 in statuses
+        assert 409 in statuses
+
+        await asyncio.gather(_assert_no_domain_events(first), _assert_no_domain_events(second))
+    finally:
+        await first.close()
+        await second.close()
+
+
+async def _connect_distinct_workers(
+    url: str, *, attempts: int = 20
+) -> tuple[websockets.ClientConnection, websockets.ClientConnection, str, str]:
+    first = await websockets.connect(url, open_timeout=10)
+    first_id = await _worker_id(first)
+    try:
+        for _ in range(attempts):
+            candidate = await websockets.connect(url, open_timeout=10)
+            candidate_id = await _worker_id(candidate)
+            if candidate_id != first_id:
+                return first, candidate, first_id, candidate_id
+            await candidate.close()
+    except Exception:
+        await first.close()
+        raise
+    await first.close()
+    raise AssertionError(f"could not land sockets on different workers after {attempts} attempts (kept {first_id})")
+
+
+async def _worker_id(ws: websockets.ClientConnection) -> str:
+    header = ""
+    response = getattr(ws, "response", None)
+    if response is not None:
+        header = response.headers.get("X-Worker-Id") or response.headers.get("x-worker-id") or ""
+    raw = await asyncio.wait_for(ws.recv(), timeout=5)
+    if isinstance(raw, bytes):
+        raw = raw.decode()
+    msg = json.loads(raw)
+    assert msg.get("type") == "hello", msg
+    hello_id = str(msg.get("workerId") or "")
+    worker = header or hello_id
+    assert worker
+    if header and hello_id:
+        assert header == hello_id
+    return worker
 
 
 async def _wait_for_order(ws: websockets.ClientConnection, order_id: str, timeout: float = 15.0) -> dict:
@@ -53,9 +125,29 @@ async def _wait_for_order(ws: websockets.ClientConnection, order_id: str, timeou
         if isinstance(raw, bytes):
             raw = raw.decode()
         msg = json.loads(raw)
-        if msg.get("type") == "ping":
+        if msg.get("type") in _CONTROL_TYPES:
             continue
         payload = msg.get("payload") or {}
         if payload.get("orderId") == order_id or payload.get("id") == order_id:
             return msg
     raise AssertionError(f"no websocket event for order {order_id}")
+
+
+async def _assert_no_domain_events(ws: websockets.ClientConnection, timeout: float = 3.0) -> None:
+    deadline = asyncio.get_event_loop().time() + timeout
+    while True:
+        remaining = deadline - asyncio.get_event_loop().time()
+        if remaining <= 0:
+            return
+        try:
+            raw = await asyncio.wait_for(ws.recv(), timeout=remaining)
+        except TimeoutError:
+            return
+        if isinstance(raw, bytes):
+            raw = raw.decode()
+        msg = json.loads(raw)
+        kind = str(msg.get("type") or "")
+        if kind in _CONTROL_TYPES:
+            continue
+        if kind.startswith("order.") or "discount" in kind:
+            raise AssertionError(f"unexpected websocket event after failed commit: {msg}")

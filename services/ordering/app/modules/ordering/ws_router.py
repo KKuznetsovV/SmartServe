@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import os
 from collections import defaultdict
 from typing import Any
 
@@ -58,9 +59,11 @@ def unregister(location_id: str, websocket: WebSocket) -> None:
 
 @router.websocket("/{location_id}")
 async def websocket_endpoint(websocket: WebSocket, location_id: str) -> None:
-    await websocket.accept()
+    worker_id = str(os.getpid())
+    await websocket.accept(headers=[(b"x-worker-id", worker_id.encode())])
     register(location_id, websocket)
-    logger.info("WebSocket connected", location_id=location_id)
+    await websocket.send_json({"type": "hello", "workerId": worker_id, "locationId": location_id})
+    logger.info("WebSocket connected", location_id=location_id, worker_id=worker_id)
     ping_task = asyncio.create_task(_ping_loop(websocket, location_id))
     try:
         while True:
