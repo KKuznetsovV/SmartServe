@@ -39,7 +39,7 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 22 | VAT | `feat/vat-inclusive-pricing` | merged | https://github.com/KKuznetsovV/SmartServe/pull/96 |
 | 23 | Q4 | `fix/q4-cancelled-item-totals` | merged | https://github.com/KKuznetsovV/SmartServe/pull/98 |
 | 24 | Q6 | `fix/q6-split-line-integrity` | merged | https://github.com/KKuznetsovV/SmartServe/pull/100 |
-| 25 | Q5 | `fix/q5-payment-rules` | in progress | |
+| 25 | Q5 | `fix/q5-payment-rules` | merged | https://github.com/KKuznetsovV/SmartServe/pull/101 |
 | 26 | Q2 | `fix/q2-table-name` | todo | |
 | 27 | Q3 | `fix/q3-print-on-send` | todo | |
 | 28 | NUM | `feat/daily-order-numbers` | todo | |
