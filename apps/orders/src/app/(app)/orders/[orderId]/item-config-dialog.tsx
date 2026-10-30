@@ -9,12 +9,12 @@ import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { formatPrice } from '@/lib/utils'
-import type { MenuItem, Modifier, ModifierGroup } from '@smartserve/types'
+import type { MenuItem, Modifier, ModifierGroup, OrderItemModifierInput } from '@smartserve/types'
 
 export interface ItemConfigResult {
   qty: number
   notes?: string
-  modifiers: { modifierId: string; name: string; priceDelta: number }[]
+  modifiers: OrderItemModifierInput[]
   unitPrice: number
   fireCourse?: number
 }
@@ -97,12 +97,17 @@ export function ItemConfigDialog({
   function handleConfirm() {
     if (!item || !canSubmit) return
     const modifiers = modifierGroups.flatMap((g) =>
-      (selectedModifiers[g.id] ?? []).flatMap((modId) => {
-        const mod = g.modifiers.find((m) => m.id === modId)
-        return mod ? [{ modifierId: mod.id, name: mod.name, priceDelta: mod.priceDelta }] : []
-      }),
+      (selectedModifiers[g.id] ?? []).map((modId) => ({ modifierId: modId })),
     )
-    const unitPrice = item.price + modifiers.reduce((sum, m) => sum + m.priceDelta, 0)
+    const unitPrice =
+      item.price +
+      modifierGroups.reduce((sum, g) => {
+        const selected = new Set(selectedModifiers[g.id] ?? [])
+        return (
+          sum +
+          g.modifiers.filter((m) => selected.has(m.id)).reduce((acc, m) => acc + m.priceDelta, 0)
+        )
+      }, 0)
     onConfirm({ qty, notes: notes || undefined, modifiers, unitPrice, fireCourse })
   }
 
@@ -171,7 +176,12 @@ export function ItemConfigDialog({
                     −
                   </Button>
                   <span className="w-8 text-center">{qty}</span>
-                  <Button type="button" variant="outline" size="icon" onClick={() => setQty((q) => q + 1)}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setQty((q) => Math.min(99, q + 1))}
+                  >
                     +
                   </Button>
                 </div>

@@ -21,8 +21,8 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 07 | E3 | `fix/e3-commit-before-response` | merged | https://github.com/KKuznetsovV/SmartServe/pull/10 |
 | 08 | S1 | `fix/s1-tenant-scoping` | merged | https://github.com/KKuznetsovV/SmartServe/pull/11 |
 | 09 | S6 | `fix/s6-scope-audit-log` | merged | https://github.com/KKuznetsovV/SmartServe/pull/13 |
-| 10 | S2 | `fix/s2-role-hierarchy` | in progress | https://github.com/KKuznetsovV/SmartServe/pull/14 |
-| 11 | S3 | `fix/s3-server-side-pricing` | todo | |
+| 10 | S2 | `fix/s2-role-hierarchy` | merged | https://github.com/KKuznetsovV/SmartServe/pull/14 |
+| 11 | S3 | `fix/s3-server-side-pricing` | in progress | https://github.com/KKuznetsovV/SmartServe/pull/15 |
 | 12 | Q8 | `fix/q8-catalog-validation` | todo | |
 | 13 | S7 | `chore/s7-upgrade-next-and-dependabot` | todo | |
 | 14 | Q1 | `fix/q1-hydration-auth-guard` | todo | |

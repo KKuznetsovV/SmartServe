@@ -1,10 +1,18 @@
 from datetime import datetime
+from typing import Literal
 
+from pydantic import Field, model_validator
 from smartserve_shared.schemas import BaseSchema as BaseModel
 
 
 class ApplyDiscountIn(BaseModel):
     code: str
+
+
+class OrderItemModifierIn(BaseModel):
+    """Client may send only the id; name and price come from the catalog."""
+
+    modifier_id: str
 
 
 class OrderItemModifier(BaseModel):
@@ -39,10 +47,10 @@ class OrderItemOut(BaseModel):
 
 class OrderItemCreate(BaseModel):
     menu_item_id: str
-    qty: int = 1
-    modifiers: list[OrderItemModifier] = []
+    qty: int = Field(1, ge=1, le=99)
+    modifiers: list[OrderItemModifierIn] = []
     notes: str | None = None
-    fire_course: int | None = None
+    fire_course: int | None = Field(None, ge=1, le=5)
 
 
 class OrderItemStatusUpdate(BaseModel):
@@ -50,10 +58,10 @@ class OrderItemStatusUpdate(BaseModel):
 
 
 class OrderItemUpdate(BaseModel):
-    qty: int | None = None
+    qty: int | None = Field(None, ge=1, le=99)
     notes: str | None = None
-    modifiers: list[OrderItemModifier] | None = None
-    fire_course: int | None = None
+    modifiers: list[OrderItemModifierIn] | None = None
+    fire_course: int | None = Field(None, ge=1, le=5)
 
 
 class OrderOut(BaseModel):
@@ -82,7 +90,7 @@ class OrderCreate(BaseModel):
     location_id: str
     table_id: str | None = None
     channel: str = "dine_in"
-    guest_count: int | None = None
+    guest_count: int | None = Field(None, ge=1)
     notes: str | None = None
 
 
@@ -92,8 +100,8 @@ class OrderStatusUpdate(BaseModel):
 
 class GuestAssignment(BaseModel):
     item_id: str
-    guest_number: int | None = None  # None clears the tag (item goes back to "shared")
-    quantity: int | None = None  # None = whole item; otherwise split off this many units first
+    guest_number: int | None = Field(None, ge=1)  # None clears the tag (item goes back to "shared")
+    quantity: int | None = Field(None, ge=1)  # None = whole item; otherwise split off this many units first
 
 
 class AssignGuestsRequest(BaseModel):
@@ -108,13 +116,25 @@ class ItemSelection(BaseModel):
     """
 
     item_id: str
-    quantity: int | None = None  # None = whole item
+    quantity: int | None = Field(None, ge=1)  # None = whole item
 
 
 class OrderItemDiscountRequest(BaseModel):
     items: list[ItemSelection]
-    discount_type: str | None = None  # "percent" | "fixed"; both None clears the discount
+    discount_type: Literal["percent", "fixed"] | None = None  # both None clears the discount
     discount_value: float | None = None
+
+    @model_validator(mode="after")
+    def validate_discount_bounds(self) -> OrderItemDiscountRequest:
+        if self.discount_type is None:
+            return self
+        if self.discount_value is None:
+            raise ValueError("discountValue is required when discountType is set")
+        if self.discount_type == "percent" and not (0 < self.discount_value <= 100):
+            raise ValueError("Percent discount must be above 0 and at most 100")
+        if self.discount_type == "fixed" and self.discount_value <= 0:
+            raise ValueError("Fixed discount must be above 0")
+        return self
 
 
 class OrderItemCompRequest(BaseModel):
@@ -134,7 +154,7 @@ class OrderItemDeleteRequest(BaseModel):
 
 
 class OrderFireCourseRequest(BaseModel):
-    course: int
+    course: int = Field(..., ge=1, le=5)
 
 
 class OrderWithItemsOut(OrderOut):

@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { useTranslations } from 'next-intl'
 import { apiClient } from '@/lib/api'
 import type { ItemSelection } from '@smartserve/api-client'
-import type { Order, OrderItem } from '@smartserve/types'
+import type { Order, OrderItem, OrderItemModifierInput } from '@smartserve/types'
 
 export function useOrders(locationId: string | null, status?: string) {
   return useQuery({
@@ -49,9 +49,9 @@ export function useAddOrderItem() {
       locationId: string
       item: Omit<
         OrderItem,
-        'id' | 'orderId' | 'status' | 'sortOrder' | 'fireCourse' | 'discountAmount' | 'isComped'
+        'id' | 'orderId' | 'status' | 'sortOrder' | 'fireCourse' | 'discountAmount' | 'isComped' | 'modifiers'
       > &
-        Partial<Pick<OrderItem, 'fireCourse'>>
+        Partial<Pick<OrderItem, 'fireCourse'>> & { modifiers?: OrderItemModifierInput[] }
     }) => apiClient.orders.addItem(orderId, item),
     onSuccess: (_, { orderId, locationId }) => {
       qc.invalidateQueries({ queryKey: ['order', orderId] })
@@ -99,7 +99,9 @@ export function useUpdateOrderItem() {
     }: {
       orderId: string
       itemId: string
-      data: Partial<Pick<OrderItem, 'qty' | 'notes' | 'modifiers' | 'fireCourse'>>
+      data: Partial<Pick<OrderItem, 'qty' | 'notes' | 'fireCourse'>> & {
+        modifiers?: OrderItemModifierInput[]
+      }
     }) => apiClient.orders.updateItem(orderId, itemId, data),
     onSuccess: (item) => {
       qc.invalidateQueries({ queryKey: ['order', item.orderId] })
