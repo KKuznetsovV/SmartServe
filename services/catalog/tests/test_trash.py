@@ -154,6 +154,38 @@ async def test_permanently_delete_item_requires_trash_first(
 
 
 @pytest.mark.asyncio
+async def test_permanently_delete_item_cascades_modifier_groups(
+    client: AsyncClient,
+    db: AsyncSession,
+    business: Business,
+    manager_user: tuple[User, str],
+):
+    _, token = manager_user
+    location = Location(business_id=business.id, name="Main")
+    db.add(location)
+    await db.flush()
+    headers = {"Authorization": f"Bearer {token}"}
+    _, item_id = await _create_category_and_item(client, headers, location.id)
+    group = await client.post(
+        "/api/v1/menu/modifier-groups",
+        json={"itemId": item_id, "name": "Size", "modifiers": [{"name": "Large", "priceDelta": 2}]},
+        headers=headers,
+    )
+    assert group.status_code == 201
+    group_id = group.json()["id"]
+
+    assert (await client.delete(f"/api/v1/menu/items/{item_id}", headers=headers)).status_code == 204
+    assert (await client.delete(f"/api/v1/menu/items/{item_id}/permanent", headers=headers)).status_code == 204
+
+    leftover = await client.patch(
+        f"/api/v1/menu/modifier-groups/{group_id}",
+        json={"name": "gone"},
+        headers=headers,
+    )
+    assert leftover.status_code == 404
+
+
+@pytest.mark.asyncio
 async def test_bulk_price_update_excludes_trashed_items(
     client: AsyncClient,
     db: AsyncSession,
