@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { MapPin } from 'lucide-react'
 import { useTranslations } from 'next-intl'
@@ -8,22 +8,43 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Spinner } from '@/components/ui/spinner'
 import { useDeviceStore } from '@/lib/device-store'
+import { useAuthReady } from '@/hooks/use-auth-ready'
 import { LocaleToggle } from '@/components/layout/locale-toggle'
 import { ThemeToggle } from '@/components/layout/theme-toggle'
 
 export default function SetupPage() {
   const router = useRouter()
   const t = useTranslations('setup')
+  const { ready, deviceConfigured } = useAuthReady()
   const locationId = useDeviceStore((s) => s.locationId)
   const setLocationId = useDeviceStore((s) => s.setLocationId)
   const [value, setValue] = useState(locationId ?? '')
+
+  useEffect(() => {
+    if (locationId && value === '') setValue(locationId)
+  }, [locationId, value])
+
+  useEffect(() => {
+    if (ready && deviceConfigured) {
+      router.replace('/login')
+    }
+  }, [ready, deviceConfigured, router])
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!value.trim()) return
     setLocationId(value.trim())
     router.push('/login')
+  }
+
+  if (!ready || deviceConfigured) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    )
   }
 
   return (

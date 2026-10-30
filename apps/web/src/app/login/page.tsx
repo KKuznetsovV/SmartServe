@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { ChefHat } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslations } from 'next-intl'
+import { safeInternalPath } from '@smartserve/ui'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { apiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
+import { useAuthReady } from '@/hooks/use-auth-ready'
 import { LocaleToggle } from '@/components/layout/locale-toggle'
 import { ThemeToggle } from '@/components/layout/theme-toggle'
 
@@ -25,12 +27,35 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <Spinner />
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
+  )
+}
+
+function LoginForm() {
   const t = useTranslations('auth')
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const { ready, authenticated } = useAuthReady()
   const setAuth = useAuthStore((s) => s.setAuth)
   const setTokens = useAuthStore((s) => s.setTokens)
   const setActiveLocation = useAuthStore((s) => s.setActiveLocation)
   const [loading, setLoading] = useState(false)
+  const afterLogin = safeInternalPath(searchParams.get('next'), '/menu')
+
+  useEffect(() => {
+    if (ready && authenticated) {
+      router.replace(afterLogin)
+    }
+  }, [ready, authenticated, afterLogin, router])
 
   const {
     register,
@@ -55,12 +80,20 @@ export default function LoginPage() {
         }
       }
 
-      router.push('/menu')
+      router.push(afterLogin)
     } catch (e) {
       toast.error((e as Error).message ?? t('invalidCredentials'))
     } finally {
       setLoading(false)
     }
+  }
+
+  if (!ready || authenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    )
   }
 
   return (

@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { ChefHat, Lock, Delete } from 'lucide-react'
 import { useTranslations } from 'next-intl'
@@ -9,23 +9,42 @@ import type { PinStaff } from '@smartserve/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
+import { safeInternalPath } from '@smartserve/ui'
 import { apiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import { useDeviceStore } from '@/lib/device-store'
+import { useAuthReady } from '@/hooks/use-auth-ready'
 import { LocaleToggle } from '@/components/layout/locale-toggle'
 import { ThemeToggle } from '@/components/layout/theme-toggle'
 
 const PIN_LENGTH = 4
 
 export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <Spinner />
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
+  )
+}
+
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const t = useTranslations('auth')
   const tCommon = useTranslations('common')
   const tRoles = useTranslations('roles')
+  const { ready, authenticated, deviceConfigured } = useAuthReady()
   const locationId = useDeviceStore((s) => s.locationId)
   const setAuth = useAuthStore((s) => s.setAuth)
   const setTokens = useAuthStore((s) => s.setTokens)
   const setActiveLocation = useAuthStore((s) => s.setActiveLocation)
+  const afterLogin = safeInternalPath(searchParams.get('next'), '/orders')
 
   const [staff, setStaff] = useState<PinStaff[]>([])
   const [loadingStaff, setLoadingStaff] = useState(true)
@@ -34,18 +53,32 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    if (!locationId) {
+    if (!ready) return
+    if (!deviceConfigured) {
       router.replace('/setup')
       return
     }
+    if (authenticated) {
+      router.replace(afterLogin)
+    }
+  }, [ready, deviceConfigured, authenticated, afterLogin, router])
+
+  useEffect(() => {
+    if (!ready || !deviceConfigured || !locationId || authenticated) return
     apiClient.auth
       .pinStaff(locationId)
       .then(setStaff)
       .catch(() => toast.error(t('failedLoadStaff')))
       .finally(() => setLoadingStaff(false))
-  }, [locationId, router])
+  }, [ready, deviceConfigured, locationId, authenticated, router, t])
 
-  if (!locationId) return null
+  if (!ready || !deviceConfigured || authenticated || !locationId) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    )
+  }
 
   const submitPin = async (value: string) => {
     if (!selected) return
@@ -56,7 +89,7 @@ export default function LoginPage() {
       const user = await apiClient.auth.me()
       setAuth(tokens.accessToken, tokens.refreshToken, user)
       setActiveLocation(user.businessId, locationId)
-      router.push('/orders')
+      router.push(afterLogin)
     } catch {
       toast.error(t('invalidPin'))
       setPin('')
