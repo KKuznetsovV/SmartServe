@@ -36,7 +36,7 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 19b | E9b | `fix/e9b-ws-worker-id` | merged | https://github.com/KKuznetsovV/SmartServe/pull/90 |
 | 20 | E6 | `fix/e6-atomic-order-totals` | merged | https://github.com/KKuznetsovV/SmartServe/pull/92 |
 | 21 | E7 | `refactor/e7-decimal-money` | merged | https://github.com/KKuznetsovV/SmartServe/pull/94 |
-| 22 | VAT | `feat/vat-inclusive-pricing` | in progress | |
+| 22 | VAT | `feat/vat-inclusive-pricing` | merged | https://github.com/KKuznetsovV/SmartServe/pull/96 |
 | 23 | Q4 | `fix/q4-cancelled-item-totals` | todo | |
 | 24 | Q6 | `fix/q6-split-line-integrity` | todo | |
 | 25 | Q5 | `fix/q5-payment-rules` | todo | |
