@@ -22,7 +22,6 @@ from app.modules.ordering.schemas import (
     ReorderRequest,
 )
 from app.modules.ordering.service import OrderService
-from app.modules.ordering.ws_router import broadcast_event
 
 router = APIRouter()
 
@@ -94,17 +93,6 @@ async def update_item_status(
     item = await OrderService(db).update_item_status(order_id, item_id, data, current_user.business_id)
     order = await OrderService(db).get_order(order_id, current_user.business_id)
     await _publish_order_event(db, order, current_user.business_id, "order.updated")
-    await broadcast_event(
-        order.location_id,
-        "order.item_status_changed",
-        {
-            "orderId": order.id,
-            "itemId": item.id,
-            "status": item.status,
-            "orderStatus": order.status,
-            "locationId": order.location_id,
-        },
-    )
     return item
 
 
@@ -154,8 +142,7 @@ async def submit_order(
     current_user: User = Depends(require_staff),
 ):
     order = await OrderService(db).transition_order(order_id, "submitted", current_user.business_id)
-    payload = await _publish_order_event(db, order, current_user.business_id, "order.updated")
-    await broadcast_event(order.location_id, "order.updated", payload)
+    await _publish_order_event(db, order, current_user.business_id, "order.updated")
     return order
 
 
@@ -167,8 +154,7 @@ async def cancel_order(
     current_user: User = Depends(require_staff),
 ):
     order = await OrderService(db).transition_order(order_id, "cancelled", current_user.business_id)
-    payload = await _publish_order_event(db, order, current_user.business_id, "order.updated")
-    await broadcast_event(order.location_id, "order.updated", payload)
+    await _publish_order_event(db, order, current_user.business_id, "order.updated")
     return order
 
 
@@ -262,8 +248,7 @@ async def fire_course(
             },
             business_id=current_user.business_id,
         )
-    payload = await _publish_order_event(db, result, current_user.business_id, "order.updated")
-    await broadcast_event(result.location_id, "order.updated", payload)
+    await _publish_order_event(db, result, current_user.business_id, "order.updated")
     return result
 
 

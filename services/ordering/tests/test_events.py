@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.db.models import Business, Location, MenuItem, Order, Outbox, User
 from app.db.session import Base
-from app.modules.ordering.events import handle_catalog_item_updated, handle_payment_completed
+from app.modules.ordering.events import handle_payment_completed, handle_realtime, slim_ws_payload
 
 
 @pytest.mark.asyncio
@@ -178,61 +178,57 @@ async def test_handle_payment_completed_missing_order_id_is_noop(events_engine):
 
 
 @pytest.mark.asyncio
-async def test_handle_catalog_item_updated_broadcasts_to_location():
-    with patch("app.modules.ordering.events.broadcast", new_callable=AsyncMock) as mock_broadcast:
-        await handle_catalog_item_updated(
+async def test_handle_realtime_publishes_slim_catalog_event():
+    with patch("app.modules.ordering.events.publish_ws", new_callable=AsyncMock) as mock_publish:
+        await handle_realtime(
             "catalog.item_updated",
-            {"locationId": "loc-1", "itemId": "item-1", "price": 45.0},
+            {"locationId": "loc-1", "itemId": "item-1", "price": 45.0, "createdBy": "staff-1"},
             None,  # type: ignore[arg-type]
         )
 
-    mock_broadcast.assert_awaited_once()
-    location_id, event = mock_broadcast.await_args.args
+    mock_publish.assert_awaited_once()
+    location_id, event = mock_publish.await_args.args
     assert location_id == "loc-1"
     assert event["type"] == "menu.item_updated"
-    assert event["locationId"] == "loc-1"
-    assert event["payload"]["itemId"] == "item-1"
-    assert "timestamp" in event
+    assert event["payload"] == {"itemId": "item-1", "locationId": "loc-1"}
+    assert "price" not in event["payload"]
+    assert "createdBy" not in event["payload"]
 
 
 @pytest.mark.asyncio
-async def test_handle_catalog_item_updated_missing_location_id_is_noop():
-    with patch("app.modules.ordering.events.broadcast", new_callable=AsyncMock) as mock_broadcast:
-        await handle_catalog_item_updated("catalog.item_updated", {"itemId": "item-1"}, None)  # type: ignore[arg-type]
+async def test_handle_realtime_missing_location_id_is_noop():
+    with patch("app.modules.ordering.events.publish_ws", new_callable=AsyncMock) as mock_publish:
+        await handle_realtime("catalog.item_updated", {"itemId": "item-1"}, None)  # type: ignore[arg-type]
 
-    mock_broadcast.assert_not_awaited()
+    mock_publish.assert_not_awaited()
 
 
-@pytest.mark.asyncio
-async def test_submit_order_broadcasts_websocket_event(
-    client: AsyncClient,
-    location: Location,
-    manager_user: tuple[User, str],
-):
-    _, token = manager_user
-    headers = {"Authorization": f"Bearer {token}"}
-    order_id = (
-        await client.post(
-            "/api/v1/orders",
-            json={"locationId": location.id, "channel": "dine_in", "guestCount": 2},
-            headers=headers,
-        )
-    ).json()["id"]
-
-    with patch("app.modules.ordering.router.broadcast_event", new_callable=AsyncMock) as mock_broadcast:
-        resp = await client.post(f"/api/v1/orders/{order_id}/submit", headers=headers)
-
-    assert resp.status_code == 200
-    mock_broadcast.assert_awaited_once()
-    location_id, event_type, payload = mock_broadcast.await_args.args
-    assert location_id == location.id
-    assert event_type == "order.updated"
-    assert payload["orderId"] == order_id
-    assert payload["status"] == "submitted"
+def test_slim_ws_payload_drops_totals_notes_and_staff():
+    payload = slim_ws_payload(
+        "order.updated",
+        {
+            "orderId": "o-1",
+            "locationId": "loc-1",
+            "status": "submitted",
+            "total": 99.0,
+            "notes": "secret",
+            "createdBy": "user-1",
+            "tableName": "T1",
+            "orderNumber": 12,
+        },
+    )
+    assert payload == {
+        "orderId": "o-1",
+        "id": "o-1",
+        "locationId": "loc-1",
+        "status": "submitted",
+        "tableName": "T1",
+        "orderNumber": 12,
+    }
 
 
 @pytest.mark.asyncio
-async def test_item_status_change_broadcasts_websocket_event(
+async def test_item_status_change_enqueues_order_updated(
     client: AsyncClient,
     db: AsyncSession,
     location: Location,
@@ -260,19 +256,12 @@ async def test_item_status_change_broadcasts_websocket_event(
     ).json()["id"]
     await client.post(f"/api/v1/orders/{order_id}/submit", headers=headers)
 
-    with patch("app.modules.ordering.router.broadcast_event", new_callable=AsyncMock) as mock_broadcast:
-        resp = await client.patch(
-            f"/api/v1/orders/{order_id}/items/{item_id}/status",
-            json={"status": "preparing"},
-            headers=headers,
-        )
-
+    resp = await client.patch(
+        f"/api/v1/orders/{order_id}/items/{item_id}/status",
+        json={"status": "preparing"},
+        headers=headers,
+    )
     assert resp.status_code == 200
-    mock_broadcast.assert_awaited_once()
-    location_id, event_type, payload = mock_broadcast.await_args.args
-    assert location_id == location.id
-    assert event_type == "order.item_status_changed"
-    assert payload["orderId"] == order_id
-    assert payload["itemId"] == item_id
-    assert payload["status"] == "preparing"
-    assert payload["orderStatus"] == "preparing"
+    db.expire_all()
+    rows = list((await db.execute(select(Outbox).where(Outbox.routing_key == "order.updated"))).scalars().all())
+    assert any(json.loads(row.payload)["orderId"] == order_id for row in rows)

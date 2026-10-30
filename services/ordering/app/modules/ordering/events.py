@@ -10,9 +10,11 @@ from sqlalchemy import inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Order, OrderItem
-from app.modules.ordering.ws_router import broadcast
+from app.modules.ordering.ws_router import publish_ws
 
 logger = structlog.get_logger()
+
+_WS_FIELDS = ("orderId", "id", "itemId", "status", "orderNumber", "tableName", "locationId")
 
 
 def order_event_payload(order: Order, business_id: str) -> dict[str, Any]:
@@ -73,26 +75,38 @@ async def handle_payment_completed(routing_key: str, payload: dict[str, Any], db
         order.version = int(order.version or 0) + 1
 
 
-async def handle_catalog_item_updated(routing_key: str, payload: dict[str, Any], _db: AsyncSession) -> None:
-    """`catalog` publishes this on every menu item create/update/stock/bulk-price change.
+def ws_event_type(routing_key: str) -> str:
+    if routing_key == "catalog.item_updated":
+        return "menu.item_updated"
+    return routing_key
 
-    `ordering` owns the only real-time websocket hub connected frontends already have a
-    live connection to (`/api/v1/ws/{location_id}`, the sole path the gateway proxies for
-    websockets — see docs/microservices-plan.md §5), so cross-domain updates are relayed
-    here rather than every domain standing up its own websocket endpoint. This keeps "one
-    websocket connection per location" true for frontends regardless of which service's
-    data actually changed.
-    """
+
+def slim_ws_payload(routing_key: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """Ids, status, orderNumber and tableName only — no totals, notes or staff ids."""
+    if routing_key == "catalog.item_updated":
+        return {key: payload[key] for key in ("itemId", "locationId") if payload.get(key)}
+    body = {key: payload[key] for key in _WS_FIELDS if payload.get(key) not in (None, "")}
+    if "orderId" in body and "id" not in body:
+        body["id"] = body["orderId"]
+    return body
+
+
+async def handle_realtime(routing_key: str, payload: dict[str, Any], _db: AsyncSession) -> None:
+    """Committed `order.*` and `catalog.item_updated` events fan out over Redis `ws:{locationId}`."""
     location_id = payload.get("locationId")
-    if not location_id:
-        logger.warning("ordering.events: catalog.item_updated missing locationId", payload=payload)
+    if not isinstance(location_id, str) or not location_id:
+        logger.warning("ordering.events: realtime event missing locationId", routing_key=routing_key)
         return
-    await broadcast(
+    await publish_ws(
         location_id,
         {
-            "type": "menu.item_updated",
+            "type": ws_event_type(routing_key),
             "locationId": location_id,
-            "payload": payload,
+            "payload": slim_ws_payload(routing_key, payload),
             "timestamp": datetime.now(UTC).isoformat(),
         },
     )
+
+
+async def handle_catalog_item_updated(routing_key: str, payload: dict[str, Any], db: AsyncSession) -> None:
+    await handle_realtime(routing_key, payload, db)

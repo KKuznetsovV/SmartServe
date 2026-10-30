@@ -222,7 +222,7 @@ REST API with OpenAPI auto-documentation at `/docs`.
 - `POST /ai/confirm` — confirm and execute a previewed action
 
 ### WebSocket
-- `ws://api/ws/{location_id}` — real-time order/KDS events
+- `ws://api/ws/{location_id}` — real-time order/KDS events. Ordering workers subscribe to Redis `ws:{locationId}` (fed by the committed outbox) and push to local sockets.
 
 ---
 
