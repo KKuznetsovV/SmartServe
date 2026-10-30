@@ -10,8 +10,10 @@ already exist as owned by the other services.
 
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 
 from smartserve_shared.mirrors import ReadOnlyMirror
+from smartserve_shared.money import MONEY_NUMERIC, RATE_NUMERIC
 from smartserve_shared.outbox import declare_outbox, declare_processed_events
 from sqlalchemy import (
     JSON,
@@ -111,8 +113,8 @@ class MenuItem(ReadOnlyMirror, Base):
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     category_id: Mapped[str] = mapped_column(String(), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    price: Mapped[float] = mapped_column(Float, nullable=False)
-    tax_rate: Mapped[float] = mapped_column(Float, default=0.17)
+    price: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, nullable=False)
+    tax_rate: Mapped[Decimal] = mapped_column(RATE_NUMERIC, default=Decimal("0.17"))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     in_stock: Mapped[bool] = mapped_column(Boolean, default=True)
     default_fire_course: Mapped[int] = mapped_column(Integer, default=1)
@@ -164,7 +166,7 @@ class Modifier(ReadOnlyMirror, Base):
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     group_id: Mapped[str] = mapped_column(String(), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    price_delta: Mapped[float] = mapped_column(Float, default=0.0)
+    price_delta: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     group: Mapped[ModifierGroup] = relationship(
@@ -182,8 +184,8 @@ class Discount(ReadOnlyMirror, Base):
     code: Mapped[str] = mapped_column(String(50), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     type: Mapped[str] = mapped_column(String(20), default="percent")
-    value: Mapped[float] = mapped_column(Float, nullable=False)
-    min_order_amount: Mapped[float] = mapped_column(Float, default=0.0)
+    value: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, nullable=False)
+    min_order_amount: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
@@ -239,10 +241,10 @@ class Order(Base):
     status: Mapped[str] = mapped_column(String(50), default="open")
     guest_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     fired_courses: Mapped[list] = mapped_column(JSON, default=list)
-    subtotal: Mapped[float] = mapped_column(Float, default=0.0)
-    tax_amount: Mapped[float] = mapped_column(Float, default=0.0)
-    discount_amount: Mapped[float] = mapped_column(Float, default=0.0)
-    total: Mapped[float] = mapped_column(Float, default=0.0)
+    subtotal: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
+    tax_amount: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
+    discount_amount: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
+    total: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
     notes: Mapped[str | None] = mapped_column(Text)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
@@ -273,7 +275,7 @@ class OrderItem(Base):
     category_id: Mapped[str | None] = mapped_column(String(), nullable=True)
     category_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     qty: Mapped[int] = mapped_column(Integer, default=1)
-    unit_price: Mapped[float] = mapped_column(Float, nullable=False)
+    unit_price: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, nullable=False)
     modifiers: Mapped[list] = mapped_column(JSON, default=list)
     notes: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(50), default="pending")
@@ -281,8 +283,8 @@ class OrderItem(Base):
     fire_course: Mapped[int] = mapped_column(Integer, default=1)
     guest_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     discount_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
-    discount_value: Mapped[float | None] = mapped_column(Float, nullable=True)
-    discount_amount: Mapped[float] = mapped_column(Float, default=0.0)
+    discount_value: Mapped[Decimal | None] = mapped_column(MONEY_NUMERIC, nullable=True)
+    discount_amount: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
     is_comped: Mapped[bool] = mapped_column(Boolean, default=False)
     comped_by: Mapped[str | None] = mapped_column(String(), nullable=True)
 

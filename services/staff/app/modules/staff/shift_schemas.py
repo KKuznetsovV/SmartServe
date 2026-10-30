@@ -1,15 +1,17 @@
 from datetime import datetime
+from decimal import Decimal
 
+from smartserve_shared.money import Money, OptionalMoney
 from smartserve_shared.schemas import BaseSchema as BaseModel
 
 
 class ShiftOpen(BaseModel):
-    opening_cash: float = 0.0
+    opening_cash: Money = Decimal("0.00")
     notes: str | None = None
 
 
 class ShiftClose(BaseModel):
-    closing_cash: float = 0.0
+    closing_cash: Money = Decimal("0.00")
     notes: str | None = None
 
 
@@ -20,8 +22,8 @@ class ShiftOut(BaseModel):
     closed_by: str | None = None
     opened_at: datetime
     closed_at: datetime | None = None
-    opening_cash: float
-    closing_cash: float | None = None
+    opening_cash: Money
+    closing_cash: OptionalMoney = None
     status: str
     notes: str | None = None
 

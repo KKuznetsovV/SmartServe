@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import structlog
+from smartserve_shared.money import money
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -93,7 +94,7 @@ async def _project_order(db, payload: dict[str, Any]) -> None:
             location_id=payload.get("locationId", ""),
             channel=payload.get("channel", "dine_in"),
             status=payload.get("status", "open"),
-            total=payload.get("total", 0.0),
+            total=money(payload.get("total") or 0),
             created_by=payload.get("createdBy"),
             created_at=created_dt,
             version=incoming_version,
@@ -108,7 +109,7 @@ async def _project_order(db, payload: dict[str, Any]) -> None:
         if "status" in payload:
             row.status = payload["status"]
         if "total" in payload:
-            row.total = payload["total"]
+            row.total = money(payload["total"] or 0)
         if "createdBy" in payload:
             row.created_by = payload["createdBy"]
         row.version = incoming_version
@@ -130,7 +131,7 @@ async def _project_order(db, payload: dict[str, Any]) -> None:
                     category_id=item.get("categoryId"),
                     category_name=item.get("categoryName"),
                     qty=int(item.get("qty") or 1),
-                    unit_price=float(item.get("unitPrice") or 0.0),
+                    unit_price=money(item.get("unitPrice") or 0),
                 )
             )
 

@@ -2,6 +2,7 @@
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from smartserve_shared.money import money
 from smartserve_shared.security import create_access_token, hash_password
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -99,8 +100,10 @@ async def create_paid_order(
     item_meta, if given, is a parallel list of (menu_item_id, category_id, category_name)
     tuples for tests that need item/category grouping — defaults to all-None per item.
     """
-    total = sum(qty * price for _, qty, price in items)
-    order = ReportingOrder(location_id=location_id, channel=channel, status=status, total=total, created_by=created_by)
+    total = sum((money(price) * qty for _, qty, price in items), money(0))
+    order = ReportingOrder(
+        location_id=location_id, channel=channel, status=status, total=total, created_by=created_by
+    )
     db.add(order)
     await db.flush()
 
@@ -111,7 +114,7 @@ async def create_paid_order(
                 order_id=order.id,
                 menu_item_name=name,
                 qty=qty,
-                unit_price=price,
+                unit_price=money(price),
                 menu_item_id=menu_item_id,
                 category_id=category_id,
                 category_name=category_name,

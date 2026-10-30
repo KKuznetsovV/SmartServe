@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 import anthropic
 from fastapi import Depends, File, Form, HTTPException, Request, UploadFile, status
 from httpx import HTTPStatusError
+from smartserve_shared.money import money
 from smartserve_shared.outbox import enqueue
 from smartserve_shared.routing import APIRouter
 
@@ -360,7 +361,7 @@ async def menu_import_apply(
             name=name,
             name_he=raw.get("nameHe"),
             description=raw.get("description"),
-            price=float(raw.get("price") or 0),
+            price=money(raw.get("price") or 0),
         )
         items_created += 1
 

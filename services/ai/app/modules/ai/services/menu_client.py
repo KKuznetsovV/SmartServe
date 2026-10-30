@@ -5,10 +5,12 @@ shape of the equivalent MenuService/PrinterService method; results are plain dic
 camelCase keys since that's how those services serialize responses (response_model_by_alias).
 """
 
+from decimal import Decimal
 from typing import Any
 
 from fastapi import HTTPException, status
 from httpx import HTTPStatusError, Request, Response
+from smartserve_shared.money import money
 
 from app.clients import catalog_client, printing_client
 
@@ -92,7 +94,7 @@ class MenuClient:
         *,
         category_id: str,
         name: str,
-        price: float,
+        price: object,
         name_he: str | None = None,
         description: str | None = None,
     ) -> dict[str, Any]:
@@ -101,7 +103,7 @@ class MenuClient:
             "name": name,
             "name_he": name_he,
             "description": description,
-            "price": price,
+            "price": float(money(price)),
         }
         resp = await _catalog(catalog_client.post("/api/v1/menu/items", json=body, forward_token=self._token))
         return resp.json()
@@ -117,14 +119,14 @@ class MenuClient:
         *,
         location_id: str,
         category_id: str | None,
-        change_pct: float | None,
-        change_abs: float | None,
+        change_pct: Decimal | float | None,
+        change_abs: Decimal | float | None,
     ) -> int:
         body = {
             "location_id": location_id,
             "category_id": category_id,
-            "change_pct": change_pct,
-            "change_abs": change_abs,
+            "change_pct": None if change_pct is None else float(Decimal(str(change_pct))),
+            "change_abs": None if change_abs is None else float(money(change_abs)),
         }
         resp = await _catalog(
             catalog_client.post("/api/v1/menu/items/bulk-price", json=body, forward_token=self._token)

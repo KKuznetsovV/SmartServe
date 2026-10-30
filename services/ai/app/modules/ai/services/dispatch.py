@@ -1,8 +1,11 @@
 """Executes confirmed AI commands via HTTP calls to services/catalog — ai owns no local
 DB/models (see app/modules/ai/services/menu_client.py and docs/microservices-plan.md §4)."""
 
+from decimal import Decimal
+
 import anthropic
 from fastapi import HTTPException, status
+from smartserve_shared.money import money
 
 from app.core.config import settings
 from app.modules.ai.services.client import create_message, parse_json_reply
@@ -65,15 +68,15 @@ async def dispatch_intent(
         category_hint = params.get("category_hint") or params.get("category")
         idx = fuzzy_match(category_hint, [c["name"] for c in categories])
         category = categories[idx] if idx is not None else categories[0]
-        item = await menu.create_item(category_id=category["id"], name=name, price=float(price))
-        return f"Created '{item['name']}' ({item['price']:.2f}) in '{category['name']}'"
+        item = await menu.create_item(category_id=category["id"], name=name, price=money(price))
+        return f"Created '{item['name']}' ({money(item['price']):.2f}) in '{category['name']}'"
 
     if intent == "menu.update_item":
         item = await _resolve_item(params, location_id, menu)
         fields: dict = {}
         if "price" in params or "new_price" in params:
             # guarded by the `in` check above, so the value is never actually None here
-            fields["price"] = float(params.get("price", params.get("new_price")))  # type: ignore[arg-type]
+            fields["price"] = money(params.get("price", params.get("new_price")))  # type: ignore[arg-type]
         if "description" in params:
             fields["description"] = params["description"]
         # a rename needs a *different* key than the identifying hint _resolve_item already
@@ -101,8 +104,8 @@ async def dispatch_intent(
         count = await menu.bulk_price_update(
             location_id=location_id,
             category_id=category_id,
-            change_pct=float(change_pct) if change_pct is not None else None,
-            change_abs=float(change_abs) if change_abs is not None else None,
+            change_pct=Decimal(str(change_pct)) if change_pct is not None else None,
+            change_abs=money(change_abs) if change_abs is not None else None,
         )
         return f"Updated prices for {count} item(s)"
 

@@ -1,20 +1,21 @@
 from datetime import datetime
 
+from smartserve_shared.money import Money
 from smartserve_shared.schemas import BaseSchema
 
 
 class TopItemOut(BaseSchema):
     menu_item_name: str
     qty: int
-    revenue: float
+    revenue: Money
 
 
 class ReportSummaryOut(BaseSchema):
     period: str
-    total_revenue: float
+    total_revenue: Money
     order_count: int
-    avg_order_value: float
-    revenue_by_channel: dict[str, float]
+    avg_order_value: Money
+    revenue_by_channel: dict[str, Money]
     top_items: list[TopItemOut]
     orders_by_status: dict[str, int]
 
@@ -32,7 +33,7 @@ class SalesReportGroupOut(BaseSchema):
     group_id: str | None = None
     group_label: str
     qty: int
-    revenue: float
+    revenue: Money
 
 
 class SalesReportOut(BaseSchema):
@@ -41,7 +42,7 @@ class SalesReportOut(BaseSchema):
     end: datetime
     rows: list[SalesReportGroupOut]
     total_qty: int
-    total_revenue: float
+    total_revenue: Money
 
 
 class ServerSalesOut(BaseSchema):
@@ -49,7 +50,7 @@ class ServerSalesOut(BaseSchema):
     server_name: str
     order_count: int
     qty: int | None = None  # only meaningful when filtered by item_id/category_id
-    revenue: float
+    revenue: Money
 
 
 class ServerSalesReportOut(BaseSchema):
@@ -64,7 +65,7 @@ class ClosedOrderOut(BaseSchema):
     id: str
     status: str
     channel: str
-    total: float
+    total: Money
     created_by: str | None = None
     created_by_name: str | None = None
     created_at: datetime

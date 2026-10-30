@@ -1,8 +1,10 @@
 """Menu service — all business logic for categories, items, and modifiers."""
 
 from datetime import UTC, datetime
+from decimal import Decimal
 
 from fastapi import HTTPException, status
+from smartserve_shared.money import money
 from smartserve_shared.tenancy import verify_location_owned
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -268,10 +270,10 @@ class MenuService:
 
         for item in items:
             if data.change_pct is not None:
-                next_price = round(item.price * (1 + data.change_pct / 100), 2)
+                next_price = money(money(item.price) * (Decimal("1") + Decimal(str(data.change_pct)) / Decimal("100")))
             else:
-                next_price = round(item.price + (data.change_abs or 0), 2)
-            item.price = max(0.0, next_price)
+                next_price = money(money(item.price) + money(data.change_abs or 0))
+            item.price = max(money(0), next_price)
 
         await self.db.flush()
         return len(items)

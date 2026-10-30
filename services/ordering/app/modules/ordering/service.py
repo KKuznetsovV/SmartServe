@@ -1,8 +1,10 @@
 """Order service — lifecycle management for orders and items."""
 
 from datetime import UTC, datetime
+from decimal import Decimal
 
 from fastapi import HTTPException, status
+from smartserve_shared.money import money, rate
 from smartserve_shared.security import verify_password
 from smartserve_shared.tenancy import verify_location_owned
 from sqlalchemy import inspect, select, update
@@ -108,7 +110,7 @@ class OrderService:
         now = datetime.now(UTC)
         if discount.expires_at and discount.expires_at < now:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Discount code has expired")
-        if order.subtotal < discount.min_order_amount:
+        if money(order.subtotal) < money(discount.min_order_amount):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Order subtotal must be at least {discount.min_order_amount}",
@@ -187,9 +189,9 @@ class OrderService:
             notes=data.notes,
             created_by=created_by,
             status="open",
-            subtotal=0.0,
-            tax_amount=0.0,
-            total=0.0,
+            subtotal=money(0),
+            tax_amount=money(0),
+            total=money(0),
         )
         self.db.add(order)
         await self.db.flush()
@@ -229,7 +231,13 @@ class OrderService:
                     detail="Modifier is inactive",
                 )
             counts[group.id] += 1
-            snapshots.append({"modifier_id": modifier.id, "name": modifier.name, "price_delta": modifier.price_delta})
+            snapshots.append(
+                {
+                    "modifier_id": modifier.id,
+                    "name": modifier.name,
+                    "price_delta": float(money(modifier.price_delta)),
+                }
+            )
 
         for group in menu_item.modifier_groups:
             selected = counts[group.id]
@@ -261,7 +269,9 @@ class OrderService:
         category = category_result.scalar_one_or_none()
 
         snapshots = self._snapshot_modifiers(menu_item, data.modifiers)
-        unit_price = max(0.0, menu_item.price + sum(m["price_delta"] for m in snapshots))
+        unit_price = money(
+            max(Decimal("0"), money(menu_item.price) + sum((money(m["price_delta"]) for m in snapshots), money(0)))
+        )
         fire_course = data.fire_course if data.fire_course is not None else menu_item.default_fire_course
 
         order_item = OrderItem(
@@ -310,7 +320,9 @@ class OrderService:
             )
             menu_item = loaded.scalar_one_or_none()
         base_price = (
-            menu_item.price if menu_item else item.unit_price - sum(m.get("price_delta", 0) for m in item.modifiers)
+            money(menu_item.price)
+            if menu_item
+            else money(item.unit_price) - sum((money(m.get("price_delta", 0)) for m in item.modifiers), money(0))
         )
 
         if data.modifiers is not None:
@@ -318,7 +330,9 @@ class OrderService:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Menu item not found")
             snapshots = self._snapshot_modifiers(menu_item, data.modifiers)
             item.modifiers = snapshots
-            item.unit_price = max(0.0, base_price + sum(m["price_delta"] for m in snapshots))
+            item.unit_price = money(
+                max(Decimal("0"), money(base_price) + sum((money(m["price_delta"]) for m in snapshots), money(0)))
+            )
         if data.qty is not None:
             item.qty = data.qty
         if data.notes is not None:
@@ -495,19 +509,19 @@ class OrderService:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order item not found")
             item = await self._split_item_for_quantity(order, item, selection.quantity)
             item.discount_type = data.discount_type
-            item.discount_value = data.discount_value
-            line_total = item.unit_price * item.qty
+            item.discount_value = money(data.discount_value) if data.discount_value is not None else None
+            line_total = money(money(item.unit_price) * item.qty)
             if data.discount_type == "percent" and data.discount_value is not None:
-                item.discount_amount = round(line_total * data.discount_value / 100, 2)
+                item.discount_amount = money(line_total * money(data.discount_value) / Decimal("100"))
             elif data.discount_type == "fixed" and data.discount_value is not None:
-                if data.discount_value > line_total:
+                if money(data.discount_value) > line_total:
                     raise HTTPException(
                         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                         detail="Fixed discount cannot exceed the line total",
                     )
-                item.discount_amount = data.discount_value
+                item.discount_amount = money(data.discount_value)
             else:
-                item.discount_amount = 0.0
+                item.discount_amount = money(0)
 
         await self.recompute_totals(order)
         await self.db.flush()
@@ -608,29 +622,33 @@ class OrderService:
         and the order-level discount. Call after every mutation of an order or its lines."""
         items = [] if "items" in inspect(order).unloaded else list(order.items)
         menu_item_ids = {item.menu_item_id for item in items}
-        tax_rates: dict[str, float] = {}
+        tax_rates: dict[str, Decimal] = {}
         if menu_item_ids:
             result = await self.db.execute(select(MenuItem.id, MenuItem.tax_rate).where(MenuItem.id.in_(menu_item_ids)))
-            tax_rates = {row[0]: row[1] for row in result.all()}
+            tax_rates = {row[0]: rate(row[1]) for row in result.all()}
 
-        subtotal = 0.0
-        tax_amount = 0.0
+        subtotal = money(0)
+        tax_amount = money(0)
         for item in items:
             if item.status == "cancelled":
                 continue
-            net = 0.0 if item.is_comped else max(0.0, item.unit_price * item.qty - item.discount_amount)
+            net = (
+                money(0)
+                if item.is_comped
+                else money(max(Decimal("0"), money(item.unit_price) * item.qty - money(item.discount_amount)))
+            )
             subtotal += net
-            tax_amount += net * tax_rates.get(item.menu_item_id, 0.0)
+            tax_amount += money(net * tax_rates.get(item.menu_item_id, Decimal("0")))
 
-        order_discount = 0.0
+        order_discount = money(0)
         if order.discount_id:
             discount = await self.db.get(Discount, order.discount_id)
             if discount is not None:
                 if discount.type == "percent":
-                    order_discount = round(subtotal * discount.value / 100, 2)
+                    order_discount = money(subtotal * money(discount.value) / Decimal("100"))
                 else:
-                    order_discount = min(float(discount.value), subtotal)
-        order.discount_amount = round(order_discount, 2)
-        order.subtotal = round(subtotal, 2)
-        order.tax_amount = round(tax_amount, 2)
-        order.total = round(order.subtotal + order.tax_amount - order.discount_amount, 2)
+                    order_discount = min(money(discount.value), subtotal)
+        order.discount_amount = money(order_discount)
+        order.subtotal = money(subtotal)
+        order.tax_amount = money(tax_amount)
+        order.total = money(order.subtotal + order.tax_amount - order.discount_amount)

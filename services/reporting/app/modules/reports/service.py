@@ -3,6 +3,7 @@ import io
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 
+from smartserve_shared.money import money
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -58,8 +59,9 @@ class ReportService:
             .where(Order.created_at >= since)
         )
         total_revenue, order_count = revenue_q.one()
-
-        avg_order_value = (total_revenue / order_count) if order_count else 0.0
+        total_revenue = money(total_revenue or 0)
+        order_count = int(order_count)
+        avg_order_value = money(total_revenue / order_count) if order_count else money(0)
 
         # Revenue by channel (paid orders)
         channel_q = await self.db.execute(
@@ -69,7 +71,7 @@ class ReportService:
             .where(Order.created_at >= since)
             .group_by(Order.channel)
         )
-        revenue_by_channel: dict[str, float] = {row[0]: row[1] for row in channel_q}
+        revenue_by_channel = {row[0]: money(row[1] or 0) for row in channel_q}
 
         # Order counts by status (all orders in period)
         status_q = await self.db.execute(
@@ -95,13 +97,13 @@ class ReportService:
             .order_by(func.sum(OrderItem.qty).desc())
             .limit(10)
         )
-        top_items = [TopItemOut(menu_item_name=row[0], qty=int(row[1]), revenue=float(row[2])) for row in items_q]
+        top_items = [TopItemOut(menu_item_name=row[0], qty=int(row[1]), revenue=money(row[2] or 0)) for row in items_q]
 
         return ReportSummaryOut(
             period=period,
-            total_revenue=float(total_revenue),
-            order_count=int(order_count),
-            avg_order_value=round(avg_order_value, 2),
+            total_revenue=total_revenue,
+            order_count=order_count,
+            avg_order_value=avg_order_value,
             revenue_by_channel=revenue_by_channel,
             top_items=top_items,
             orders_by_status=orders_by_status,
@@ -149,7 +151,7 @@ class ReportService:
             )
             total_qty, total_revenue = totals_q.one()
             rows = (
-                [SalesReportGroupOut(group_label="Whole menu", qty=int(total_qty), revenue=float(total_revenue))]
+                [SalesReportGroupOut(group_label="Whole menu", qty=int(total_qty), revenue=money(total_revenue or 0))]
                 if total_qty
                 else []
             )
@@ -159,7 +161,7 @@ class ReportService:
                 end=end,
                 rows=rows,
                 total_qty=int(total_qty),
-                total_revenue=float(total_revenue),
+                total_revenue=money(total_revenue or 0),
             )
 
         if group_by == "category":
@@ -184,7 +186,7 @@ class ReportService:
                 group_id=row[0],
                 group_label=row[1] or "Uncategorized",
                 qty=int(row[2]),
-                revenue=float(row[3]),
+                revenue=money(row[3] or 0),
             )
             for row in rows_q
         ]
@@ -194,7 +196,7 @@ class ReportService:
             end=end,
             rows=rows,
             total_qty=sum(r.qty for r in rows),
-            total_revenue=round(sum(r.revenue for r in rows), 2),
+            total_revenue=money(sum((r.revenue for r in rows), money(0))),
         )
 
     async def sales_by_server(
@@ -242,7 +244,7 @@ class ReportService:
                     server_name=row[1] or "Unassigned",
                     order_count=int(row[2]),
                     qty=int(row[3] or 0),
-                    revenue=float(row[4] or 0.0),
+                    revenue=money(row[4] or 0),
                 )
                 for row in result
             ]
@@ -271,7 +273,7 @@ class ReportService:
                     server_id=row[0],
                     server_name=row[1] or "Unassigned",
                     order_count=int(row[2]),
-                    revenue=float(row[3]),
+                    revenue=money(row[3] or 0),
                 )
                 for row in result
             ]
@@ -314,7 +316,7 @@ class ReportService:
                 id=order.id,
                 status=order.status,
                 channel=order.channel,
-                total=order.total,
+                total=money(order.total),
                 created_by=order.created_by,
                 created_by_name=name,
                 created_at=order.created_at,

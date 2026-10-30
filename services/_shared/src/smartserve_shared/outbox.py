@@ -14,6 +14,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from smartserve_shared.money import json_default
 from sqlalchemy import DateTime, Index, Integer, String, Text, UniqueConstraint, delete, select
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -129,7 +130,7 @@ async def enqueue(
         body["occurredAt"] = occurred_at.isoformat()
     row = model(
         routing_key=routing_key,
-        payload=json.dumps(body),
+        payload=json.dumps(body, default=json_default),
         event_id=event_id,
         business_id=biz,
         occurred_at=occurred_at,

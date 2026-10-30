@@ -7,13 +7,14 @@ Business/Location/User are trimmed, read-only mirrors of tables owned by `auth`
 
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 
 from smartserve_shared.mirrors import ReadOnlyMirror
+from smartserve_shared.money import MONEY_NUMERIC, RATE_NUMERIC
 from smartserve_shared.outbox import declare_outbox
 from sqlalchemy import (
     Boolean,
     DateTime,
-    Float,
     ForeignKey,
     Integer,
     String,
@@ -119,8 +120,8 @@ class MenuItem(Base):
     name_he: Mapped[str | None] = mapped_column(String(255))
     description: Mapped[str | None] = mapped_column(Text)
     description_he: Mapped[str | None] = mapped_column(Text)
-    price: Mapped[float] = mapped_column(Float, nullable=False)
-    tax_rate: Mapped[float] = mapped_column(Float, default=0.17)
+    price: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, nullable=False)
+    tax_rate: Mapped[Decimal] = mapped_column(RATE_NUMERIC, default=Decimal("0.17"))
     image_url: Mapped[str | None] = mapped_column(Text)
     preparation_time_min: Mapped[int] = mapped_column(Integer, default=10)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
@@ -165,7 +166,7 @@ class Modifier(Base):
     group_id: Mapped[str] = mapped_column(ForeignKey("modifier_groups.id", ondelete="CASCADE"), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     name_he: Mapped[str | None] = mapped_column(String(255))
-    price_delta: Mapped[float] = mapped_column(Float, default=0.0)
+    price_delta: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     group: Mapped[ModifierGroup] = relationship(back_populates="modifiers")
@@ -181,8 +182,8 @@ class Discount(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     # "percent" applies value as a percentage of order total; "fixed" subtracts a flat amount
     type: Mapped[str] = mapped_column(String(20), default="percent")
-    value: Mapped[float] = mapped_column(Float, nullable=False)
-    min_order_amount: Mapped[float] = mapped_column(Float, default=0.0)
+    value: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, nullable=False)
+    min_order_amount: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
