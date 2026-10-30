@@ -1,6 +1,14 @@
 packages:
   - "apps/*"
   - "packages/*"
+# Nested copies bundled by next@15.3.9. Review if a 15.3 patch ships them.
+overrides:
+  react: 19.1.10
+  react-dom: 19.1.10
+  postcss@8.4.31: 8.5.25
+  nanoid@3: 3.3.18
+  source-map-js: 1.2.2
+  sharp: 0.35.5
 onlyBuiltDependencies:
   - '@parcel/watcher'
   - '@swc/core'

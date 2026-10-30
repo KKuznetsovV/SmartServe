@@ -23,8 +23,8 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 09 | S6 | `fix/s6-scope-audit-log` | merged | https://github.com/KKuznetsovV/SmartServe/pull/13 |
 | 10 | S2 | `fix/s2-role-hierarchy` | merged | https://github.com/KKuznetsovV/SmartServe/pull/14 |
 | 11 | S3 | `fix/s3-server-side-pricing` | merged | https://github.com/KKuznetsovV/SmartServe/pull/15 |
-| 12 | Q8 | `fix/q8-catalog-validation` | in progress | https://github.com/KKuznetsovV/SmartServe/pull/16 |
-| 13 | S7 | `chore/s7-upgrade-next-and-dependabot` | todo | |
+| 12 | Q8 | `fix/q8-catalog-validation` | merged | https://github.com/KKuznetsovV/SmartServe/pull/16 |
+| 13 | S7 | `chore/s7-upgrade-next-and-dependabot` | in progress | |
 | 14 | Q1 | `fix/q1-hydration-auth-guard` | todo | |
 | 15 | S10 | `fix/s10-locale-cookie-validation` | todo | |
 | 16 | Q7 | `fix/q7-dashboard-links` | todo | |
