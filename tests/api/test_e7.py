@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from httpx import AsyncClient
 
-from conftest import add_item, bearer, create_order, get_order
+from conftest import add_item, bearer, create_order, get_order, submit_order
 
 
 async def _category(client: AsyncClient, token: str, location_id: str, name: str) -> str:
@@ -53,8 +53,8 @@ async def test_e7_percent_discount_half_up(client: AsyncClient, owner_a: dict, w
 async def test_e7_exact_payment_and_one_cent_short(client: AsyncClient, waiter_a: dict, catalog: dict) -> None:
     order = await create_order(client, waiter_a["token"], waiter_a["locationId"])
     await add_item(client, waiter_a["token"], order["id"], catalog["colaId"])
-    opened = await get_order(client, waiter_a["token"], order["id"])
-    total = Decimal(str(opened["total"]))
+    submitted = await submit_order(client, waiter_a["token"], order["id"])
+    total = Decimal(str(submitted["total"]))
     short = await client.post(
         "/payments",
         headers=bearer(waiter_a["token"]),
