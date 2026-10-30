@@ -56,6 +56,8 @@ export const OrderSchema = z.object({
   locationId: z.string().uuid(),
   tableId: z.string().uuid().optional(),
   tableName: z.string().optional(),
+  orderNumber: z.number().int().optional(),
+  businessDate: z.string().optional(),
   discountId: z.string().uuid().optional(),
   discountAmount: z.number().min(0).default(0),
   channel: OrderChannel.default('dine_in'),

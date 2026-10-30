@@ -333,7 +333,7 @@ export default function OrderDetailPage({ params }: Props) {
             ← {t('back')}
           </Button>
           <h1 className="text-2xl font-bold">
-            {t('orderNumber')} <span className="font-mono text-xl">#{order.id.slice(0, 8)}</span>
+            {t('orderNumber')} <span className="font-mono text-xl">#{order.orderNumber ?? order.id.slice(0, 8)}</span>
           </h1>
           <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
             <span>{order.tableName ?? tOrders(`channel.${order.channel}`)}</span>
