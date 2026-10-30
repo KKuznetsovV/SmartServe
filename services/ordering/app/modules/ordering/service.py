@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from fastapi import HTTPException, status
 from smartserve_shared.security import verify_password
 from smartserve_shared.tenancy import verify_location_owned
-from sqlalchemy import select, update
+from sqlalchemy import inspect, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -85,7 +85,7 @@ class OrderService:
         the shared `discounts`/`locations` tables directly (same DB, read-only lookups; see
         docs/microservices-plan.md §4).
         """
-        order = await self.get_order(order_id, business_id)
+        order = await self.get_order(order_id, business_id, for_update=True)
         if order.status not in {"open", "submitted"}:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot apply discount to this order")
 
@@ -114,14 +114,8 @@ class OrderService:
                 detail=f"Order subtotal must be at least {discount.min_order_amount}",
             )
 
-        if discount.type == "percent":
-            discount_amount = round(order.subtotal * discount.value / 100, 2)
-        else:
-            discount_amount = min(discount.value, order.subtotal)
-
         order.discount_id = discount.id
-        order.discount_amount = discount_amount
-        order.total = round(order.subtotal + order.tax_amount - discount_amount, 2)
+        await self.recompute_totals(order)
         await self.db.flush()
         return order
 
@@ -154,8 +148,10 @@ class OrderService:
         result = await self.db.execute(q)
         return list(result.scalars().all())
 
-    async def get_order(self, order_id: str, business_id: str | None = None) -> Order:
+    async def get_order(self, order_id: str, business_id: str | None = None, *, for_update: bool = False) -> Order:
         q = select(Order).where(Order.id == order_id).options(selectinload(Order.items))
+        if for_update:
+            q = q.with_for_update(of=Order)
         if business_id is not None:
             q = q.join(Location, Order.location_id == Location.id).where(Location.business_id == business_id)
         result = await self.db.execute(q)
@@ -197,6 +193,7 @@ class OrderService:
         )
         self.db.add(order)
         await self.db.flush()
+        await self.recompute_totals(order)
         return await self.get_order(order.id)
 
     async def _get_active_menu_item(self, menu_item_id: str) -> MenuItem:
@@ -249,7 +246,7 @@ class OrderService:
         return snapshots
 
     async def add_item(self, order_id: str, data: OrderItemCreate, business_id: str | None = None) -> OrderItem:
-        order = await self.get_order(order_id, business_id)
+        order = await self.get_order(order_id, business_id, for_update=True)
         if order.status not in ("open", "submitted"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -282,9 +279,9 @@ class OrderService:
             fire_course=fire_course,
         )
         self.db.add(order_item)
-
-        # Recalculate order totals
-        await self._recalculate_totals(order, menu_item.tax_rate, unit_price * data.qty)
+        await self.db.flush()
+        order.items.append(order_item)
+        await self.recompute_totals(order)
         await self.db.flush()
         return order_item
 
@@ -292,7 +289,7 @@ class OrderService:
         self, order_id: str, item_id: str, data: OrderItemUpdate, business_id: str | None = None
     ) -> OrderItem:
         """Adjust quantity, notes, or modifiers/customization of an item already on the order."""
-        order = await self.get_order(order_id, business_id)
+        order = await self.get_order(order_id, business_id, for_update=True)
         if order.status not in ("open", "submitted"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -312,12 +309,9 @@ class OrderService:
                 .options(selectinload(MenuItem.modifier_groups).selectinload(ModifierGroup.modifiers))
             )
             menu_item = loaded.scalar_one_or_none()
-        tax_rate = menu_item.tax_rate if menu_item else 0.0
         base_price = (
             menu_item.price if menu_item else item.unit_price - sum(m.get("price_delta", 0) for m in item.modifiers)
         )
-
-        old_total = item.unit_price * item.qty
 
         if data.modifiers is not None:
             if not menu_item:
@@ -336,15 +330,14 @@ class OrderService:
                 item.status = "held"
             item.fire_course = data.fire_course
 
-        new_total = item.unit_price * item.qty
-        await self._recalculate_totals(order, tax_rate, new_total - old_total)
+        await self.recompute_totals(order)
         await self.db.flush()
         return item
 
     async def update_item_status(
         self, order_id: str, item_id: str, data: OrderItemStatusUpdate, business_id: str | None = None
     ) -> OrderItem:
-        order = await self.get_order(order_id, business_id)
+        order = await self.get_order(order_id, business_id, for_update=True)
         item = next((i for i in order.items if i.id == item_id), None)
         if not item:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order item not found")
@@ -357,6 +350,7 @@ class OrderService:
 
         item.status = data.status
         self._sync_kds_order_status(order)
+        await self.recompute_totals(order)
         await self.db.flush()
         return item
 
@@ -394,17 +388,17 @@ class OrderService:
         order.updated_at = datetime.now(UTC)
 
     async def reorder_items(self, order_id: str, ids: list[str], business_id: str | None = None) -> None:
-        if business_id is not None:
-            await self.get_order(order_id, business_id)
-        for order, item_id in enumerate(ids):
+        order = await self.get_order(order_id, business_id, for_update=True)
+        for sort_order, item_id in enumerate(ids):
             await self.db.execute(
                 update(OrderItem)
                 .where(OrderItem.id == item_id, OrderItem.order_id == order_id)
-                .values(sort_order=order)
+                .values(sort_order=sort_order)
             )
+        self.db.expire(order, ["items"])
 
     async def remove_item(self, order_id: str, item_id: str, business_id: str | None = None) -> None:
-        order = await self.get_order(order_id, business_id)
+        order = await self.get_order(order_id, business_id, for_update=True)
         if order.status != "open":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -414,21 +408,16 @@ class OrderService:
         if not item:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order item not found")
 
-        menu_item_result = await self.db.execute(select(MenuItem).where(MenuItem.id == item.menu_item_id))
-        menu_item = menu_item_result.scalar_one_or_none()
-        tax_rate = menu_item.tax_rate if menu_item else 0.0
-        item_total = -(item.unit_price * item.qty)
-
         # Remove from the already-loaded in-memory collection too — deleting the
         # row alone doesn't sync the parent's cached `items` list within the same
         # session, which would otherwise still show the deleted item on refetch.
         order.items.remove(item)
         await self.db.delete(item)
         await self.db.flush()
-        await self._recalculate_totals(order, tax_rate, item_total)
+        await self.recompute_totals(order)
 
     async def transition_order(self, order_id: str, new_status: str, business_id: str | None = None) -> Order:
-        order = await self.get_order(order_id, business_id)
+        order = await self.get_order(order_id, business_id, for_update=True)
         if new_status not in VALID_ORDER_TRANSITIONS.get(order.status, set()):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -436,12 +425,13 @@ class OrderService:
             )
         order.status = new_status
         order.updated_at = datetime.now(UTC)
+        await self.recompute_totals(order)
         await self.db.flush()
         return order
 
     async def fire_course(self, order_id: str, data: OrderFireCourseRequest, business_id: str | None = None) -> Order:
         """Release all 'held' items of the given fire course so the kitchen can start them."""
-        order = await self.get_order(order_id, business_id)
+        order = await self.get_order(order_id, business_id, for_update=True)
         if order.status not in ("submitted", "preparing", "ready"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -461,13 +451,14 @@ class OrderService:
             order.fired_courses = [*order.fired_courses, data.course]
         order.updated_at = datetime.now(UTC)
         self._sync_kds_order_status(order)
+        await self.recompute_totals(order)
         await self.db.flush()
         return await self.get_order(order_id)
 
     async def assign_guests(self, order_id: str, data: AssignGuestsRequest, business_id: str | None = None) -> Order:
         """Optionally tag items with a guest number so a table's single order/check can
         still be organized or paid per-guest — this never creates a separate Order."""
-        order = await self.get_order(order_id, business_id)
+        order = await self.get_order(order_id, business_id, for_update=True)
         if order.status in ("paid", "cancelled"):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot edit a closed order")
 
@@ -480,6 +471,7 @@ class OrderService:
             item.guest_number = assignment.guest_number
 
         order.updated_at = datetime.now(UTC)
+        await self.recompute_totals(order)
         await self.db.flush()
         return await self.get_order(order_id)
 
@@ -488,7 +480,7 @@ class OrderService:
     ) -> Order:
         """Apply (or clear, when both fields are None) a manual %/fixed discount to one or
         more items on the order — distinct from the order-level discount-code feature."""
-        order = await self.get_order(order_id, business_id)
+        order = await self.get_order(order_id, business_id, for_update=True)
         if order.status in ("paid", "cancelled"):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot edit a closed order")
         if data.discount_type is not None and data.discount_type not in ("percent", "fixed"):
@@ -517,7 +509,7 @@ class OrderService:
             else:
                 item.discount_amount = 0.0
 
-        await self._recompute_totals(order)
+        await self.recompute_totals(order)
         await self.db.flush()
         return await self.get_order(order_id)
 
@@ -526,7 +518,7 @@ class OrderService:
     ) -> Order:
         """Mark (or unmark) items as 'on the house' — the item stays on the order and visible
         to the kitchen, but contributes nothing to the bill."""
-        order = await self.get_order(order_id, business_id)
+        order = await self.get_order(order_id, business_id, for_update=True)
         if order.status in ("paid", "cancelled"):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot edit a closed order")
 
@@ -539,7 +531,7 @@ class OrderService:
             item.is_comped = data.comped
             item.comped_by = comped_by_user_id if data.comped else None
 
-        await self._recompute_totals(order)
+        await self.recompute_totals(order)
         await self.db.flush()
         return await self.get_order(order_id)
 
@@ -547,7 +539,7 @@ class OrderService:
         """Permanently remove one or more items. Items on an order still 'open' (not yet sent
         to the kitchen) can be removed freely; once submitted, a manager PIN + reason is
         required since the kitchen may already be preparing them."""
-        order = await self.get_order(order_id, business_id)
+        order = await self.get_order(order_id, business_id, for_update=True)
         if order.status in ("paid", "cancelled"):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot edit a closed order")
 
@@ -575,7 +567,7 @@ class OrderService:
             await self.db.delete(item)
         await self.db.flush()
 
-        await self._recompute_totals(order)
+        await self.recompute_totals(order)
         order.updated_at = datetime.now(UTC)
         await self.db.flush()
         return await self.get_order(order_id)
@@ -611,15 +603,11 @@ class OrderService:
         order.items.append(split_item)
         return split_item
 
-    async def _recalculate_totals(self, order: Order, tax_rate: float, item_total: float) -> None:
-        order.subtotal = round(order.subtotal + item_total, 2)
-        order.tax_amount = round(order.subtotal * tax_rate, 2)
-        order.total = round(order.subtotal + order.tax_amount - order.discount_amount, 2)
-
-    async def _recompute_totals(self, order: Order) -> None:
-        """Full recompute from all non-cancelled items — used by bulk item actions
-        (discount/comp/delete) where several items with distinct tax rates change at once."""
-        menu_item_ids = {item.menu_item_id for item in order.items}
+    async def recompute_totals(self, order: Order) -> None:
+        """Derive subtotal, tax and total from non-cancelled lines, comps, line discounts
+        and the order-level discount. Call after every mutation of an order or its lines."""
+        items = [] if "items" in inspect(order).unloaded else list(order.items)
+        menu_item_ids = {item.menu_item_id for item in items}
         tax_rates: dict[str, float] = {}
         if menu_item_ids:
             result = await self.db.execute(select(MenuItem.id, MenuItem.tax_rate).where(MenuItem.id.in_(menu_item_ids)))
@@ -627,13 +615,22 @@ class OrderService:
 
         subtotal = 0.0
         tax_amount = 0.0
-        for item in order.items:
+        for item in items:
             if item.status == "cancelled":
                 continue
             net = 0.0 if item.is_comped else max(0.0, item.unit_price * item.qty - item.discount_amount)
             subtotal += net
             tax_amount += net * tax_rates.get(item.menu_item_id, 0.0)
 
+        order_discount = 0.0
+        if order.discount_id:
+            discount = await self.db.get(Discount, order.discount_id)
+            if discount is not None:
+                if discount.type == "percent":
+                    order_discount = round(subtotal * discount.value / 100, 2)
+                else:
+                    order_discount = min(float(discount.value), subtotal)
+        order.discount_amount = round(order_discount, 2)
         order.subtotal = round(subtotal, 2)
         order.tax_amount = round(tax_amount, 2)
         order.total = round(order.subtotal + order.tax_amount - order.discount_amount, 2)

@@ -3,7 +3,8 @@ from __future__ import annotations
 import inspect
 
 import pytest
-from fastapi import Depends
+from fastapi import Depends, FastAPI
+from fastapi.testclient import TestClient
 from sqlalchemy import String, select
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -109,3 +110,42 @@ async def test_get_db_rolls_back_on_error() -> None:
         found = (await check.execute(select(_Row))).scalars().all()
         assert found == []
     await engine.dispose()
+
+
+def _app_with_db(get_db):  # noqa: ANN001
+    app = FastAPI()
+
+    @app.post("/x")
+    async def _ok(_db=Depends(get_db, scope="function")) -> dict[str, bool]:
+        return {"ok": True}
+
+    return app
+
+
+def test_fail_commit_header_does_nothing_when_env_unset(monkeypatch) -> None:  # noqa: ANN001
+    monkeypatch.delenv("SMARTSERVE_FAULT_INJECTION", raising=False)
+    engine = make_engine("sqlite+aiosqlite:///:memory:")
+    get_db = make_get_db(make_sessionmaker(engine))
+    app = _app_with_db(get_db)
+    try:
+        with TestClient(app) as client:
+            resp = client.post("/x", headers={"X-Fail-Commit": "1"})
+        assert resp.status_code == 200
+        assert resp.json() == {"ok": True}
+    finally:
+        engine.sync_engine.dispose()
+
+
+def test_fail_commit_header_raises_when_env_set(monkeypatch) -> None:  # noqa: ANN001
+    monkeypatch.setenv("SMARTSERVE_FAULT_INJECTION", "1")
+    engine = make_engine("sqlite+aiosqlite:///:memory:")
+    get_db = make_get_db(make_sessionmaker(engine))
+    app = _app_with_db(get_db)
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            resp = client.post("/x", headers={"X-Fail-Commit": "1"})
+            assert resp.status_code == 500
+            ok = client.post("/x")
+            assert ok.status_code == 200
+    finally:
+        engine.sync_engine.dispose()
