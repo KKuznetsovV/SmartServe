@@ -205,7 +205,7 @@ jobs:
         run: cp .env.example .env
 
       - name: Start demo stack
-        run: python scripts/demo.py --reset
+        run: python scripts/demo.py --reset --stack
 
       - name: Install API test dependencies
         run: pip install -r tests/api/requirements.txt

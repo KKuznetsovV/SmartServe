@@ -1,0 +1,28 @@
+# Stack-job only. Never used by default compose or Dockerfiles.
+# Enables get_db commit fault injection via the X-Fail-Commit header.
+
+services:
+  auth:
+    environment:
+      SMARTSERVE_FAULT_INJECTION: "1"
+  catalog:
+    environment:
+      SMARTSERVE_FAULT_INJECTION: "1"
+  ordering:
+    environment:
+      SMARTSERVE_FAULT_INJECTION: "1"
+  payments:
+    environment:
+      SMARTSERVE_FAULT_INJECTION: "1"
+  staff:
+    environment:
+      SMARTSERVE_FAULT_INJECTION: "1"
+  printing:
+    environment:
+      SMARTSERVE_FAULT_INJECTION: "1"
+  reporting:
+    environment:
+      SMARTSERVE_FAULT_INJECTION: "1"
+  ai:
+    environment:
+      SMARTSERVE_FAULT_INJECTION: "1"

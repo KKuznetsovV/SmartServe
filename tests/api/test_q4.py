@@ -4,7 +4,6 @@ from httpx import AsyncClient
 from conftest import add_item, create_order, get_order, set_item_status, submit_order
 
 
-@pytest.mark.xfail(strict=True, reason="Q4")
 async def test_q4_cancelling_item_lowers_total(
     client: AsyncClient, waiter_a: dict, kitchen_a: dict, catalog: dict
 ) -> None:

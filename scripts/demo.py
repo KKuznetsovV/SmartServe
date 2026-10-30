@@ -19,21 +19,29 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Start SmartServe with demo data.")
     parser.add_argument("--rebuild", action="store_true", help="Pass --build to docker compose up.")
     parser.add_argument("--reset", action="store_true", help="Wipe compose volumes first (fresh database).")
+    parser.add_argument(
+        "--stack",
+        action="store_true",
+        help="Apply docker-compose.stack.yml (CI API suite fault injection).",
+    )
     args = parser.parse_args()
 
     (ROOT / "models").mkdir(exist_ok=True)
 
-    if args.reset:
-        _run(["docker", "compose", "down", "-v"])
+    compose = ["docker", "compose", "-f", "docker-compose.yml"]
+    if args.stack:
+        compose += ["-f", "docker-compose.stack.yml"]
 
-    up = ["docker", "compose", "up", "-d", "--wait"]
+    if args.reset:
+        _run([*compose, "down", "-v"])
+
+    up = [*compose, "up", "-d", "--wait"]
     if args.rebuild:
-        up = ["docker", "compose", "up", "-d", "--build", "--wait"]
+        up = [*compose, "up", "-d", "--build", "--wait"]
     _run(up)
     _run(
         [
-            "docker",
-            "compose",
+            *compose,
             "exec",
             "-T",
             "auth",

@@ -5,13 +5,12 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import uuid
 
 import pytest
 import websockets
 from httpx import AsyncClient
 
-from conftest import add_item, bearer, create_order, submit_order
+from conftest import add_item, bearer, create_order, get_order, submit_order
 from test_s4 import _ws_url
 
 _CONTROL_TYPES = {"hello", "ping"}
@@ -49,32 +48,38 @@ async def test_e9_two_sockets_see_submitted_order(
 
 
 @pytest.mark.stack
-async def test_e9_failed_commit_is_not_broadcast(client: AsyncClient, owner_a: dict, waiter_a: dict) -> None:
+async def test_e9_failed_commit_is_not_broadcast(
+    client: AsyncClient, waiter_a: dict, catalog: dict
+) -> None:
     if os.environ.get("SMARTSERVE_STACK") != "1":
         pytest.skip("stack-only: set SMARTSERVE_STACK=1 in the compose API suite")
 
     location_id = waiter_a["locationId"]
+    token = waiter_a["token"]
+    order = await create_order(client, token, location_id)
+    await add_item(client, token, order["id"], catalog["burgerId"])
+
     first, second, first_id, second_id = await _connect_distinct_workers(_ws_url(location_id))
     try:
         assert first_id != second_id
-        headers = bearer(owner_a["token"])
-        code = f"E9{uuid.uuid4().hex[:10]}"
-        body = {
-            "businessId": owner_a["businessId"],
-            "code": code,
-            "name": "E9 unique",
-            "type": "percent",
-            "value": 5,
-        }
-        created, raced = await asyncio.gather(
-            client.post("/discounts", headers=headers, json=body),
-            client.post("/discounts", headers=headers, json=body),
+        # Create/add enqueue outbox events that may arrive after the sockets open.
+        await asyncio.gather(_drain_until_quiet(first), _drain_until_quiet(second))
+        failed = await client.post(
+            f"/orders/{order['id']}/submit",
+            headers={**bearer(token), "X-Fail-Commit": "1"},
         )
-        statuses = {created.status_code, raced.status_code}
-        assert 201 in statuses
-        assert 409 in statuses
+        assert failed.status_code >= 500 or failed.status_code == 409
+        still_open = await get_order(client, token, order["id"])
+        assert still_open["status"] == "open"
 
         await asyncio.gather(_assert_no_domain_events(first), _assert_no_domain_events(second))
+
+        submitted = await submit_order(client, token, order["id"])
+        assert submitted["status"] == "submitted"
+        seen_first = await _wait_for_order(first, order["id"])
+        seen_second = await _wait_for_order(second, order["id"])
+        assert seen_first["type"].startswith("order.")
+        assert seen_second["type"].startswith("order.")
     finally:
         await first.close()
         await second.close()
@@ -131,6 +136,18 @@ async def _wait_for_order(ws: websockets.ClientConnection, order_id: str, timeou
         if payload.get("orderId") == order_id or payload.get("id") == order_id:
             return msg
     raise AssertionError(f"no websocket event for order {order_id}")
+
+
+async def _drain_until_quiet(ws: websockets.ClientConnection, timeout: float = 2.0) -> None:
+    deadline = asyncio.get_event_loop().time() + timeout
+    while True:
+        remaining = deadline - asyncio.get_event_loop().time()
+        if remaining <= 0:
+            return
+        try:
+            await asyncio.wait_for(ws.recv(), timeout=remaining)
+        except TimeoutError:
+            return
 
 
 async def _assert_no_domain_events(ws: websockets.ClientConnection, timeout: float = 3.0) -> None:

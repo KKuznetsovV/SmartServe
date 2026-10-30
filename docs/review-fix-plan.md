@@ -34,7 +34,7 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 18b | E5b | `fix/e5b-outbox-hardening` | merged | https://github.com/KKuznetsovV/SmartServe/pull/86 |
 | 19 | E9 | `feat/e9-redis-ws-fanout` | merged | https://github.com/KKuznetsovV/SmartServe/pull/88 |
 | 19b | E9b | `fix/e9b-ws-worker-id` | merged | https://github.com/KKuznetsovV/SmartServe/pull/90 |
-| 20 | E6 | `fix/e6-atomic-order-totals` | todo | |
+| 20 | E6 | `fix/e6-atomic-order-totals` | in progress | |
 | 21 | E7 | `refactor/e7-decimal-money` | todo | |
 | 22 | VAT | `feat/vat-inclusive-pricing` | todo | |
 | 23 | Q4 | `fix/q4-cancelled-item-totals` | todo | |
@@ -926,5 +926,8 @@ fixes* list, and these manual follow-ups that need the owner:
   delete-orphan"` on the ORM relationships, `ON DELETE CASCADE` in a catalog migration, and a
   `tests/api` case that an item with a modifier group can be trashed then permanently deleted (204)
   with the groups gone afterwards.
+- E6: recomputing from non-cancelled lines makes `test_q4_cancelling_item_lowers_total` pass, so its
+  strict xfail was removed here (otherwise CI XPASS-fails). Q4 still owns emitting `order.updated` on
+  cancel.
 
 (Add items here as you find them. Don't fix them in an unrelated branch.)

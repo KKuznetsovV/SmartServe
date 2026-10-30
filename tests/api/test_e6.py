@@ -6,7 +6,6 @@ from httpx import AsyncClient
 from conftest import add_item, create_order, get_order
 
 
-@pytest.mark.xfail(strict=True, reason="E6")
 async def test_e6_concurrent_adds_match_line_sum(
     client: AsyncClient, waiter_a: dict, catalog: dict
 ) -> None:

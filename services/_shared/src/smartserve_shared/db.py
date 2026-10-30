@@ -6,7 +6,7 @@ import os
 from collections.abc import AsyncGenerator, Callable
 from typing import Annotated, Any
 
-from fastapi import Depends
+from fastapi import Depends, Header
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
@@ -79,10 +79,14 @@ def make_get_db(
             return session_factory
         return session_factory()
 
-    async def get_db() -> AsyncGenerator[AsyncSession]:
+    async def get_db(
+        x_fail_commit: Annotated[str | None, Header(alias="X-Fail-Commit")] = None,
+    ) -> AsyncGenerator[AsyncSession]:
         async with _factory()() as session:
             try:
                 yield session
+                if os.environ.get("SMARTSERVE_FAULT_INJECTION") == "1" and x_fail_commit == "1":
+                    raise RuntimeError("injected commit failure")
                 await session.commit()
             except Exception:
                 await session.rollback()
