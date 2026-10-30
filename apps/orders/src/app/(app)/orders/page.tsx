@@ -146,7 +146,7 @@ export default function OrdersPage() {
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-sm font-medium">
-                      #{order.id.slice(0, 8)}
+                      #{order.orderNumber ?? order.id.slice(0, 8)}
                     </span>
                     <span className="text-sm text-muted-foreground">
                       {order.tableName ?? t(`channel.${order.channel}`)}

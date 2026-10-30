@@ -1,6 +1,7 @@
 """Tests for outbox enqueue call sites and the payment.completed consumer handler."""
 
 import json
+from datetime import date
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -223,7 +224,14 @@ async def events_engine():
 async def test_handle_payment_completed_marks_order_paid(events_engine):
     session_factory = async_sessionmaker(events_engine, class_=AsyncSession, expire_on_commit=False)
     async with session_factory() as session:
-        order = Order(location_id="loc-1", channel="dine_in", status="served", total=42.0)
+        order = Order(
+            location_id="loc-1",
+            channel="dine_in",
+            status="served",
+            total=42.0,
+            order_number=1,
+            business_date=date(2020, 1, 1),
+        )
         session.add(order)
         await session.commit()
         order_id = order.id
@@ -251,7 +259,14 @@ async def test_handle_payment_completed_ignores_unknown_order(events_engine):
 async def test_handle_payment_refunded_marks_paid_order_served(events_engine):
     session_factory = async_sessionmaker(events_engine, class_=AsyncSession, expire_on_commit=False)
     async with session_factory() as session:
-        order = Order(location_id="loc-1", channel="dine_in", status="paid", total=42.0)
+        order = Order(
+            location_id="loc-1",
+            channel="dine_in",
+            status="paid",
+            total=42.0,
+            order_number=1,
+            business_date=date(2020, 1, 1),
+        )
         session.add(order)
         await session.commit()
         order_id = order.id

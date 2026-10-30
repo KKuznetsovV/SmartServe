@@ -175,7 +175,7 @@ export default function DashboardPage() {
               <CardContent className="p-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="font-mono text-xs text-muted-foreground">
-                    #{o.id.slice(0, 8)}
+                    #{o.orderNumber ?? o.id.slice(0, 8)}
                   </span>
                   <span className="text-sm">
                     {o.tableName ?? tOrders(`channel.${o.channel}`)}

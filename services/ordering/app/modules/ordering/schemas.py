@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
@@ -75,6 +75,8 @@ class OrderOut(BaseModel):
     location_id: str
     table_id: str | None = None
     table_name: str | None = None
+    order_number: int | None = None
+    business_date: date | None = None
     discount_id: str | None = None
     discount_amount: Money = Decimal("0.00")
     created_by: str | None = None

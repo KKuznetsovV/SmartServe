@@ -1,6 +1,7 @@
 """Integration tests for order lifecycle."""
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
+from zoneinfo import ZoneInfo
 
 import pytest
 from httpx import AsyncClient
@@ -8,6 +9,8 @@ from smartserve_shared.security import hash_password
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Business, Location, MenuCategory, MenuItem, Table, User
+from app.modules.ordering.schemas import OrderCreate
+from app.modules.ordering.service import OrderService
 
 
 @pytest.mark.asyncio
@@ -96,6 +99,55 @@ async def test_dine_in_order_requires_guest_count(
     )
     assert resp.status_code == 201
     assert resp.json()["tableName"] is None
+
+
+@pytest.mark.asyncio
+async def test_daily_order_numbers_per_location_and_business_day(
+    client: AsyncClient,
+    db: AsyncSession,
+    business: Business,
+    manager_user: tuple[User, str],
+):
+    _, token = manager_user
+    headers = {"Authorization": f"Bearer {token}"}
+    loc_a = Location(business_id=business.id, name="A", timezone="Asia/Jerusalem")
+    loc_b = Location(business_id=business.id, name="B", timezone="Asia/Jerusalem")
+    db.add_all([loc_a, loc_b])
+    await db.flush()
+
+    numbers_a = []
+    first_a: dict | None = None
+    for _ in range(3):
+        resp = await client.post(
+            "/api/v1/orders",
+            json={"locationId": loc_a.id, "channel": "takeaway"},
+            headers=headers,
+        )
+        assert resp.status_code == 201
+        body = resp.json()
+        first_a = first_a or body
+        numbers_a.append(body["orderNumber"])
+    assert numbers_a == [1, 2, 3]
+    assert first_a is not None
+
+    other = await client.post(
+        "/api/v1/orders",
+        json={"locationId": loc_b.id, "channel": "takeaway"},
+        headers=headers,
+    )
+    assert other.status_code == 201
+    assert other.json()["orderNumber"] == 1
+
+    early = datetime(2026, 10, 31, 2, 0, tzinfo=ZoneInfo("Asia/Jerusalem"))
+    overnight = await OrderService(db).create_order(
+        OrderCreate(location_id=loc_a.id, channel="takeaway"),
+        created_by="test",
+        business_id=business.id,
+        now=early,
+    )
+    assert overnight.business_date == date(2026, 10, 30)
+    same_day = date.fromisoformat(str(first_a["businessDate"])) == date(2026, 10, 30)
+    assert overnight.order_number == (4 if same_day else 1)
 
 
 @pytest.mark.asyncio

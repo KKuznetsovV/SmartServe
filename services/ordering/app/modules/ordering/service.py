@@ -1,7 +1,8 @@
 """Order service — lifecycle management for orders and items."""
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
+from typing import Any
 
 from fastapi import HTTPException, status
 from smartserve_shared.money import money, rate, vat_in_inclusive
@@ -20,9 +21,11 @@ from app.db.models import (
     ModifierGroup,
     Order,
     OrderItem,
+    OrderNumberCounter,
     Table,
     User,
 )
+from app.modules.ordering.business_day import business_date_for
 from app.modules.ordering.schemas import (
     ApplyDiscountIn,
     AssignGuestsRequest,
@@ -36,6 +39,19 @@ from app.modules.ordering.schemas import (
     OrderItemStatusUpdate,
     OrderItemUpdate,
 )
+
+
+def _insert_stmt(session: Any) -> Any:
+    bind = getattr(session, "bind", None) or session.get_bind()
+    name = getattr(getattr(bind, "dialect", None), "name", "sqlite")
+    if name == "postgresql":
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+        return pg_insert
+    from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+
+    return sqlite_insert
+
 
 VALID_ORDER_TRANSITIONS: dict[str, set[str]] = {
     "open": {"submitted", "cancelled"},
@@ -177,8 +193,33 @@ class OrderService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
         return order
 
+    async def _next_order_number(self, location: Location, *, now: datetime | None = None) -> tuple[int, date]:
+        biz_date = business_date_for(now or datetime.now(UTC), location.timezone or "Asia/Jerusalem")
+        insert = _insert_stmt(self.db)
+        await self.db.execute(
+            insert(OrderNumberCounter)
+            .values(location_id=location.id, business_date=biz_date, last_number=0)
+            .on_conflict_do_nothing(index_elements=["location_id", "business_date"])
+        )
+        result = await self.db.execute(
+            select(OrderNumberCounter)
+            .where(
+                OrderNumberCounter.location_id == location.id,
+                OrderNumberCounter.business_date == biz_date,
+            )
+            .with_for_update()
+        )
+        counter = result.scalar_one()
+        counter.last_number += 1
+        return counter.last_number, biz_date
+
     async def create_order(
-        self, data: OrderCreate, created_by: str | None = None, business_id: str | None = None
+        self,
+        data: OrderCreate,
+        created_by: str | None = None,
+        business_id: str | None = None,
+        *,
+        now: datetime | None = None,
     ) -> Order:
         if business_id is not None:
             await verify_location_owned(self.db, data.location_id, business_id, Location)
@@ -205,6 +246,7 @@ class OrderService:
             biz = await self.db.get(Business, loc_row.business_id)
             vat = rate(biz.vat_rate) if biz is not None else rate("0.18")
 
+        order_number, business_date = await self._next_order_number(loc_row, now=now)
         order = Order(
             location_id=data.location_id,
             table_id=data.table_id,
@@ -217,6 +259,8 @@ class OrderService:
             tax_amount=money(0),
             total=money(0),
             vat_rate=vat,
+            order_number=order_number,
+            business_date=business_date,
         )
         self.db.add(order)
         await self.db.flush()

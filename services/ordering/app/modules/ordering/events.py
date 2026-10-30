@@ -39,6 +39,7 @@ def order_event_payload(order: Order, business_id: str) -> dict[str, Any]:
         "version": order.version,
         "occurredAt": occurred_at.isoformat(),
         "tableName": order.table_name,
+        "orderNumber": order.order_number,
         "items": items,
     }
 

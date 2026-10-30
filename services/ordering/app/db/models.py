@@ -9,7 +9,7 @@ already exist as owned by the other services.
 """
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from smartserve_shared.mirrors import ReadOnlyMirror
@@ -18,6 +18,7 @@ from smartserve_shared.outbox import declare_outbox, declare_processed_events
 from sqlalchemy import (
     JSON,
     Boolean,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -25,6 +26,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     inspect,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -230,11 +232,25 @@ class Table(Base):
     orders: Mapped[list[Order]] = relationship(back_populates="table")
 
 
+class OrderNumberCounter(Base):
+    __tablename__ = "order_number_counters"
+
+    location_id: Mapped[str] = mapped_column(String(), primary_key=True)
+    business_date: Mapped[date] = mapped_column(Date, primary_key=True)
+    last_number: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
 class Order(Base):
     __tablename__ = "orders"
     __table_args__ = (
         Index("ix_orders_location_status", "location_id", "status"),
         Index("ix_orders_location_created", "location_id", "created_at"),
+        UniqueConstraint(
+            "location_id",
+            "business_date",
+            "order_number",
+            name="uq_orders_location_business_date_number",
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
@@ -251,6 +267,8 @@ class Order(Base):
     discount_amount: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
     total: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
     vat_rate: Mapped[Decimal] = mapped_column(RATE_NUMERIC, default=Decimal("0.18"))
+    order_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    business_date: Mapped[date] = mapped_column(Date, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

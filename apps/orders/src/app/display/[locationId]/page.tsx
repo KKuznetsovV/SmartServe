@@ -62,7 +62,7 @@ export default function CustomerDisplayPage({ params }: Props) {
                 {/* Order number + status */}
                 <div className="flex items-center justify-between">
                   <span className="text-2xl font-bold font-mono">
-                    #{order.id.slice(0, 6).toUpperCase()}
+                    #{order.orderNumber ?? order.id.slice(0, 6).toUpperCase()}
                   </span>
                   <span className="text-sm font-semibold uppercase tracking-wide opacity-80">
                     {statusLabel}
