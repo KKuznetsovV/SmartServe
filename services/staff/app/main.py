@@ -1,7 +1,6 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from smartserve_shared import mq
 from smartserve_shared.app_factory import create_service_app
 
 from app.api.v1.router import api_router
@@ -11,11 +10,8 @@ from app.db.session import engine, get_db
 
 
 @asynccontextmanager
-async def lifespan_hooks(app: FastAPI):
-    app.state.mq_connection = await mq.connect(settings.RABBITMQ_URL)
+async def lifespan_hooks(_app: FastAPI):
     yield
-    if app.state.mq_connection is not None:
-        await app.state.mq_connection.close()
     await engine.dispose()
 
 

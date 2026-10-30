@@ -25,7 +25,7 @@ async def test_create_staff(
     body = resp.json()
     assert body["name"] == "New Waiter"
     assert body["role"] == "waiter"
-    assert body["businessId"] == "biz-fixture"
+    assert body["businessId"] == manager_user[0].business_id
 
 
 @pytest.mark.asyncio

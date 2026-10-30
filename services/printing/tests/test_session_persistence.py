@@ -41,6 +41,7 @@ async def fresh_session_client(monkeypatch):
 
 async def _manager_setup(session_factory) -> tuple[dict[str, str], str, str]:
     async with session_factory() as setup_session:
+        setup_session.info["allow_mirror_writes"] = True
         user = User(
             business_id="biz-fixture",
             email="manager@test.com",

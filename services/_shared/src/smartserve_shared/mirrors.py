@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import os
-
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 
@@ -17,9 +15,7 @@ class ReadOnlyMirror:
 
 
 def _mirror_writes_allowed(session: Session) -> bool:
-    if session.info.get("allow_mirror_writes"):
-        return True
-    return os.environ.get("SMARTSERVE_ALLOW_MIRROR_WRITES") == "1"
+    return bool(session.info.get("allow_mirror_writes"))
 
 
 @event.listens_for(Session, "before_flush")

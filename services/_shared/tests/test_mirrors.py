@@ -38,3 +38,10 @@ def test_read_only_mirror_allows_flagged_session(session: Session) -> None:
     session.add(_MirrorRow(id="1"))
     session.flush()
     assert session.get(_MirrorRow, "1") is not None
+
+
+def test_guard_cannot_be_disabled_by_environment(session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SMARTSERVE_ALLOW_MIRROR_WRITES", "1")
+    session.add(_MirrorRow(id="env"))
+    with pytest.raises(ReadOnlyMirrorError):
+        session.flush()

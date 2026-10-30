@@ -1,9 +1,5 @@
 """Shared test fixtures for the staff service test suite."""
 
-import os
-
-os.environ.setdefault("SMARTSERVE_ALLOW_MIRROR_WRITES", "1")
-
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from smartserve_shared.security import create_access_token, hash_password
@@ -19,7 +15,7 @@ TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
 
 
 @pytest_asyncio.fixture(scope="function")
-async def db():
+async def seed_db():
     engine = create_async_engine(TEST_DB_URL, echo=False)
 
     @event.listens_for(engine.sync_engine, "connect")
@@ -33,6 +29,7 @@ async def db():
 
     session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     async with session_factory() as session:
+        session.info["allow_mirror_writes"] = True
         yield session
 
     async with engine.begin() as conn:
@@ -41,9 +38,19 @@ async def db():
 
 
 @pytest_asyncio.fixture(scope="function")
+async def db(seed_db: AsyncSession) -> AsyncSession:
+    return seed_db
+
+
+@pytest_asyncio.fixture(scope="function")
 async def client(db: AsyncSession):
     async def _override_db():
-        yield db
+        previous = db.info.pop("allow_mirror_writes", None)
+        try:
+            yield db
+        finally:
+            if previous:
+                db.info["allow_mirror_writes"] = previous
 
     app.dependency_overrides[get_db] = _override_db
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:

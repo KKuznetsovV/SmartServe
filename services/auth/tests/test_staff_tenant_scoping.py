@@ -10,13 +10,16 @@ from httpx import AsyncClient
 from smartserve_shared.security import create_access_token, hash_password
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import User
+from app.db.models import Business, User
 
 
 @pytest_asyncio.fixture
 async def other_manager(db: AsyncSession) -> tuple[User, str]:
+    other_biz = Business(name="Other Restaurant", country="IL", currency="ILS")
+    db.add(other_biz)
+    await db.flush()
     user = User(
-        business_id="other-biz-fixture",
+        business_id=other_biz.id,
         email="other-manager@test.com",
         name="Other Manager",
         role="manager",
