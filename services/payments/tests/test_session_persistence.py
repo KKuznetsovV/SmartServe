@@ -53,6 +53,7 @@ async def test_payment_persists_across_fresh_sessions(fresh_session_client):
     client, session_factory = fresh_session_client
 
     async with session_factory() as setup_session:
+        setup_session.info["allow_mirror_writes"] = True
         user = User(
             business_id="biz-fixture",
             email="manager@test.com",

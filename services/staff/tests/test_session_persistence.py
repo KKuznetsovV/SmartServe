@@ -41,6 +41,7 @@ async def fresh_session_client(monkeypatch):
 
 async def _manager_headers(session_factory) -> tuple[dict[str, str], str]:
     async with session_factory() as setup_session:
+        setup_session.info["allow_mirror_writes"] = True
         user = User(
             business_id="biz-fixture",
             email="manager@test.com",
@@ -54,29 +55,6 @@ async def _manager_headers(session_factory) -> tuple[dict[str, str], str]:
         await setup_session.commit()
         token = create_access_token(user.id, {"business_id": user.business_id, "role": user.role})
         return {"Authorization": f"Bearer {token}"}, user.id, location.id
-
-
-@pytest.mark.asyncio
-async def test_created_staff_persists_across_fresh_sessions(fresh_session_client):
-    client, session_factory = fresh_session_client
-    headers, *_ = await _manager_headers(session_factory)
-
-    resp = await client.post(
-        "/api/v1/staff",
-        json={"name": "New Waiter", "role": "waiter", "pin": "1234"},
-        headers=headers,
-    )
-    assert resp.status_code == 201
-    staff_id = resp.json()["id"]
-
-    async with session_factory() as verify_session:
-        staff = (await verify_session.execute(select(User).where(User.id == staff_id))).scalar_one()
-        assert staff.name == "New Waiter"
-        assert staff.role == "waiter"
-
-    get_resp = await client.get(f"/api/v1/staff/{staff_id}", headers=headers)
-    assert get_resp.status_code == 200
-    assert get_resp.json()["name"] == "New Waiter"
 
 
 @pytest.mark.asyncio

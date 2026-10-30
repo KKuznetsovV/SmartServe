@@ -56,6 +56,21 @@ async def business(db: AsyncSession) -> Business:
 
 
 @pytest_asyncio.fixture
+async def manager_user(db: AsyncSession, business: Business) -> tuple[User, str]:
+    user = User(
+        business_id=business.id,
+        email="manager@test.com",
+        name="Manager",
+        role="manager",
+        password_hash=hash_password("password123"),
+    )
+    db.add(user)
+    await db.flush()
+    token = create_access_token(user.id, {"business_id": user.business_id, "role": user.role})
+    return user, token
+
+
+@pytest_asyncio.fixture
 async def owner_user(db: AsyncSession, business: Business) -> tuple[User, str]:
     user = User(
         business_id=business.id,

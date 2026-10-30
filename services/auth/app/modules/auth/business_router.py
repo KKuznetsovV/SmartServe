@@ -71,8 +71,7 @@ async def list_staff(
     db: DbSession,
     current_user: User = Depends(require_manager),
 ):
-    # Users belong to `auth` (this service) — the `staff` service's own shift-tracking
-    # data (services/staff, step 21) is a separate concern from this business/user lookup.
+    # Users belong to `auth`. Shift tracking stays on services/staff.
     _require_own_business(business_id, current_user)
     result = await db.execute(select(User).where(User.business_id == business_id))
     return [UserOut.model_validate(u) for u in result.scalars().all()]

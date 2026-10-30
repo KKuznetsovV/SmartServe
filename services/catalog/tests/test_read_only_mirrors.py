@@ -5,9 +5,8 @@ from app.db.models import Business
 
 
 @pytest.mark.asyncio
-async def test_read_only_mirror_rejects_unflagged_insert(db, monkeypatch):
-    monkeypatch.delenv("SMARTSERVE_ALLOW_MIRROR_WRITES", raising=False)
-    db.info["allow_mirror_writes"] = False
+async def test_app_session_rejects_mirror_write(db):
+    db.info.pop("allow_mirror_writes", None)
     db.add(Business(name="Blocked", country="IL", currency="ILS"))
     with pytest.raises(ReadOnlyMirrorError):
         await db.flush()

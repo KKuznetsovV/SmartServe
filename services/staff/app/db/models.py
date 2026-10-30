@@ -1,7 +1,7 @@
-"""SQLAlchemy ORM models — staff service owns Shift; mutates the shared users table for
-staff CRUD (User is a trimmed, read-only-elsewhere mirror of the table owned by `auth` —
-same physical Postgres instance, schema-per-service mapping only, see
-docs/microservices-plan.md §4). Location is a trimmed mirror used only for tenant checks.
+"""SQLAlchemy ORM models — staff service owns Shift.
+
+User and Location are trimmed read-only mirrors of tables owned by `auth`
+(see docs/microservices-plan.md §4). Staff CRUD lives on auth.
 """
 
 import uuid
@@ -25,7 +25,7 @@ def _now() -> datetime:
 # ─── User (owned by auth, trimmed mirror) ─────────────────────────────────────
 
 
-class User(Base):
+class User(ReadOnlyMirror, Base):
     __tablename__ = "users"
 
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
