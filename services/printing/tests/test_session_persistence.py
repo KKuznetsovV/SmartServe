@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import StaticPool
 
 import app.db.session as session_module
-from app.db.models import Printer, PrinterRoute, User
+from app.db.models import Location, MenuCategory, MenuItem, Printer, PrinterRoute, User
 from app.db.session import Base
 from app.main import app
 
@@ -39,7 +39,7 @@ async def fresh_session_client(monkeypatch):
     await engine.dispose()
 
 
-async def _manager_headers(session_factory) -> dict[str, str]:
+async def _manager_setup(session_factory) -> tuple[dict[str, str], str, str]:
     async with session_factory() as setup_session:
         user = User(
             business_id="biz-fixture",
@@ -48,17 +48,23 @@ async def _manager_headers(session_factory) -> dict[str, str]:
             role="manager",
             password_hash=hash_password("password123"),
         )
-        setup_session.add(user)
+        location = Location(business_id="biz-fixture", name="Main")
+        setup_session.add_all([user, location])
+        await setup_session.flush()
+        category = MenuCategory(location_id=location.id)
+        setup_session.add(category)
+        await setup_session.flush()
+        item = MenuItem(category_id=category.id)
+        setup_session.add(item)
         await setup_session.commit()
         token = create_access_token(user.id, {"business_id": user.business_id, "role": user.role})
-        return {"Authorization": f"Bearer {token}"}
+        return {"Authorization": f"Bearer {token}"}, location.id, item.id
 
 
 @pytest.mark.asyncio
 async def test_created_printer_and_route_persist_across_fresh_sessions(fresh_session_client):
     client, session_factory = fresh_session_client
-    headers = await _manager_headers(session_factory)
-    location_id = "loc-fixture"
+    headers, location_id, item_id = await _manager_setup(session_factory)
 
     resp = await client.post(
         "/api/v1/printers",
@@ -75,7 +81,7 @@ async def test_created_printer_and_route_persist_across_fresh_sessions(fresh_ses
 
     route_resp = await client.post(
         "/api/v1/printer-routes",
-        json={"printerId": printer_id, "itemId": "item-cola"},
+        json={"printerId": printer_id, "itemId": item_id},
         headers=headers,
     )
     assert route_resp.status_code == 201
@@ -84,7 +90,7 @@ async def test_created_printer_and_route_persist_across_fresh_sessions(fresh_ses
     async with session_factory() as verify_session:
         route = (await verify_session.execute(select(PrinterRoute).where(PrinterRoute.id == route_id))).scalar_one()
         assert route.printer_id == printer_id
-        assert route.item_id == "item-cola"
+        assert route.item_id == item_id
 
     list_resp = await client.get(f"/api/v1/locations/{location_id}/printers", headers=headers)
     assert list_resp.status_code == 200

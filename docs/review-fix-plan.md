@@ -916,5 +916,12 @@ fixes* list, and these manual follow-ups that need the owner:
 - QA-2: `pnpm audit --prod --audit-level high` fails on Next.js 15.3.0 (S7) and on Expo/`apps/pos`
   advisories. The CI step runs and is visible, but is `continue-on-error` until S7. `pip-audit` still fails
   the job on high/critical Python findings.
+- E3: permanently deleting a trashed menu item that still has modifier groups returns 409 because
+  `modifier_groups.item_id` has no ORM/DB cascade. Modifier groups and modifiers are catalog-owned
+  children of the item and should be deleted with it; only cross-service references (order lines)
+  should block the delete. Fix on `fix/catalog-permanent-delete-cascade` after S1: `cascade="all,
+  delete-orphan"` on the ORM relationships, `ON DELETE CASCADE` in a catalog migration, and a
+  `tests/api` case that an item with a modifier group can be trashed then permanently deleted (204)
+  with the groups gone afterwards.
 
 (Add items here as you find them. Don't fix them in an unrelated branch.)

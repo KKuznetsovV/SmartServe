@@ -17,7 +17,7 @@ async def open_shift(
     db: DbSession,
     user: User = Depends(require_manager),
 ):
-    return await ShiftService(db).open_shift(user.id, location_id, data)
+    return await ShiftService(db).open_shift(user.id, location_id, data, user.business_id)
 
 
 @router.post("/shifts/{shift_id}/close", response_model=ShiftOut)
@@ -27,22 +27,22 @@ async def close_shift(
     db: DbSession,
     user: User = Depends(require_manager),
 ):
-    return await ShiftService(db).close_shift(shift_id, user.id, data)
+    return await ShiftService(db).close_shift(shift_id, user.id, data, user.business_id)
 
 
 @router.get("/locations/{location_id}/shifts/current", response_model=ShiftOut | None)
 async def get_current_shift(
     location_id: str,
     db: DbSession,
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    return await ShiftService(db).get_current(location_id)
+    return await ShiftService(db).get_current(location_id, current_user.business_id)
 
 
 @router.get("/locations/{location_id}/shifts", response_model=list[ShiftOut])
 async def list_shifts(
     location_id: str,
     db: DbSession,
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    return await ShiftService(db).list_shifts(location_id)
+    return await ShiftService(db).list_shifts(location_id, current_user.business_id)

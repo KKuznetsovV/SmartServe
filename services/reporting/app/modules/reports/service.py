@@ -3,11 +3,10 @@ import io
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 
-from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import EventLog, Location, Order, OrderItem, User
+from app.db.models import EventLog, Order, OrderItem, User
 from app.modules.reports.schemas import (
     ClosedOrderOut,
     ClosedOrdersReportOut,
@@ -30,21 +29,6 @@ def _csv_row(fields: list) -> str:
     buf = io.StringIO()
     csv.writer(buf).writerow(fields)
     return buf.getvalue()
-
-
-async def verify_location_owned(db: AsyncSession, location_id: str, business_id: str) -> Location:
-    """Raise 404 unless `location_id` both exists and belongs to the caller's own business.
-
-    Mirrors `services/ai`'s `_get_owned_location` pattern, but reads the locally-mirrored
-    `Location` row directly (same physical Postgres database) rather than an HTTP call to
-    `auth` — reporting already has direct DB access, unlike `services/ai` (which has no
-    owned DB at all).
-    """
-    result = await db.execute(select(Location).where(Location.id == location_id))
-    location = result.scalar_one_or_none()
-    if not location or location.business_id != business_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
-    return location
 
 
 def _period_start(period: str) -> datetime:

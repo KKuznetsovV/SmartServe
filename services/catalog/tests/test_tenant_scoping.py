@@ -71,9 +71,7 @@ async def test_delete_category_rejects_other_business(
     client: AsyncClient, category: MenuCategory, other_manager: tuple[User, str]
 ):
     _, token = other_manager
-    resp = await client.delete(
-        f"/api/v1/menu/categories/{category.id}", headers={"Authorization": f"Bearer {token}"}
-    )
+    resp = await client.delete(f"/api/v1/menu/categories/{category.id}", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 404
 
 
@@ -170,9 +168,7 @@ async def test_list_discounts_rejects_other_business(
     client: AsyncClient, business: Business, other_manager: tuple[User, str]
 ):
     _, token = other_manager
-    resp = await client.get(
-        f"/api/v1/businesses/{business.id}/discounts", headers={"Authorization": f"Bearer {token}"}
-    )
+    resp = await client.get(f"/api/v1/businesses/{business.id}/discounts", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 404
 
 

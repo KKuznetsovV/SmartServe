@@ -6,7 +6,7 @@ from smartserve_shared.security import create_access_token, hash_password
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.db.models import User
+from app.db.models import Location, MenuCategory, MenuItem, User
 from app.db.session import Base, get_db
 from app.main import app
 
@@ -62,6 +62,19 @@ async def manager_user(db: AsyncSession) -> tuple[User, str]:
 
 
 @pytest_asyncio.fixture
-async def location_id() -> str:
-    """Printer.location_id is an opaque string here (Location isn't mirrored — see db/models.py)."""
-    return "loc-fixture"
+async def location_id(db, manager_user: tuple[User, str]) -> str:
+    location = Location(business_id=manager_user[0].business_id, name="Main")
+    db.add(location)
+    await db.flush()
+    return location.id
+
+
+@pytest_asyncio.fixture
+async def menu_item_id(db, location_id: str) -> str:
+    category = MenuCategory(location_id=location_id)
+    db.add(category)
+    await db.flush()
+    item = MenuItem(category_id=category.id)
+    db.add(item)
+    await db.flush()
+    return item.id

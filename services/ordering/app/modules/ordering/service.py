@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
 from smartserve_shared.security import verify_password
+from smartserve_shared.tenancy import verify_location_owned
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -43,17 +44,6 @@ VALID_ITEM_TRANSITIONS: dict[str, set[str]] = {
     "served": set(),
     "cancelled": set(),
 }
-
-
-async def verify_location_owned(db: AsyncSession, location_id: str, business_id: str) -> Location:
-    """Raise 404 unless `location_id` belongs to `business_id`. Mirrors
-    services/reporting's `verify_location_owned` — never trust a location_id path/body
-    param alone for a tenant-scoped operation."""
-    result = await db.execute(select(Location).where(Location.id == location_id))
-    location = result.scalar_one_or_none()
-    if not location or location.business_id != business_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found")
-    return location
 
 
 class OrderService:
@@ -143,7 +133,7 @@ class OrderService:
         business_id: str | None = None,
     ) -> list[Order]:
         if business_id is not None:
-            await verify_location_owned(self.db, location_id, business_id)
+            await verify_location_owned(self.db, location_id, business_id, Location)
         q = select(Order).where(Order.location_id == location_id).options(selectinload(Order.items))
         if status_filter:
             q = q.where(Order.status == status_filter)
@@ -177,7 +167,7 @@ class OrderService:
         self, data: OrderCreate, created_by: str | None = None, business_id: str | None = None
     ) -> Order:
         if business_id is not None:
-            await verify_location_owned(self.db, data.location_id, business_id)
+            await verify_location_owned(self.db, data.location_id, business_id, Location)
 
         if data.table_id:
             table_result = await self.db.execute(

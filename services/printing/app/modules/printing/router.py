@@ -21,27 +21,27 @@ router = APIRouter()
 async def list_printers(
     location_id: str,
     db: DbSession,
-    _: User = Depends(require_manager),
+    current_user: User = Depends(require_manager),
 ):
-    return await PrinterService(db).list_printers(location_id)
+    return await PrinterService(db).list_printers(location_id, current_user.business_id)
 
 
 @router.get("/locations/{location_id}/print-jobs", response_model=list[PrintJobOut])
 async def list_print_jobs(
     location_id: str,
     db: DbSession,
-    _: User = Depends(require_manager),
+    current_user: User = Depends(require_manager),
 ):
-    return await PrinterService(db).list_print_jobs(location_id)
+    return await PrinterService(db).list_print_jobs(location_id, current_user.business_id)
 
 
 @router.post("/printers", response_model=PrinterOut, status_code=201)
 async def create_printer(
     data: PrinterCreate,
     db: DbSession,
-    _: User = Depends(require_manager),
+    current_user: User = Depends(require_manager),
 ):
-    return await PrinterService(db).create_printer(data)
+    return await PrinterService(db).create_printer(data, current_user.business_id)
 
 
 @router.patch("/printers/{printer_id}", response_model=PrinterOut)
@@ -49,42 +49,42 @@ async def update_printer(
     printer_id: str,
     data: PrinterUpdate,
     db: DbSession,
-    _: User = Depends(require_manager),
+    current_user: User = Depends(require_manager),
 ):
-    return await PrinterService(db).update_printer(printer_id, data)
+    return await PrinterService(db).update_printer(printer_id, data, current_user.business_id)
 
 
 @router.delete("/printers/{printer_id}", status_code=204)
 async def delete_printer(
     printer_id: str,
     db: DbSession,
-    _: User = Depends(require_manager),
+    current_user: User = Depends(require_manager),
 ):
-    await PrinterService(db).delete_printer(printer_id)
+    await PrinterService(db).delete_printer(printer_id, current_user.business_id)
 
 
 @router.post("/printer-routes", response_model=PrinterRouteOut, status_code=201)
 async def add_printer_route(
     data: PrinterRouteCreate,
     db: DbSession,
-    _: User = Depends(require_manager),
+    current_user: User = Depends(require_manager),
 ):
-    return await PrinterService(db).add_route(data)
+    return await PrinterService(db).add_route(data, current_user.business_id)
 
 
 @router.delete("/printer-routes/{route_id}", status_code=204)
 async def delete_printer_route(
     route_id: str,
     db: DbSession,
-    _: User = Depends(require_manager),
+    current_user: User = Depends(require_manager),
 ):
-    await PrinterService(db).delete_route(route_id)
+    await PrinterService(db).delete_route(route_id, current_user.business_id)
 
 
 @router.get("/locations/{location_id}/printer-routes", response_model=list[PrinterRouteOut])
 async def list_printer_routes(
     location_id: str,
     db: DbSession,
-    _: User = Depends(require_manager),
+    current_user: User = Depends(require_manager),
 ):
-    return await PrinterService(db).list_routes(location_id)
+    return await PrinterService(db).list_routes(location_id, current_user.business_id)

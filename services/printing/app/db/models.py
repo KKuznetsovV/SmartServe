@@ -1,8 +1,7 @@
-"""SQLAlchemy ORM models — printing service owns Printer + PrinterRoute. User is a
-trimmed, read-only-elsewhere mirror (see docs/microservices-plan.md §4). Printer.location_id
-and PrinterRoute.item_id are plain strings (not ForeignKeys) since Location (auth) and
-MenuItem (catalog) aren't mirrored here — the service never joins to their tables, only
-compares/stores the id values, following the minimal-mirror precedent set in payments/staff.
+"""SQLAlchemy ORM models — printing service owns Printer + PrinterRoute. User, Location,
+MenuCategory and MenuItem are trimmed mirrors (see docs/microservices-plan.md §4) used for
+tenant checks: a printer through its location, a route through its printer, and the routed
+item's category through that location's business.
 """
 
 import uuid
@@ -38,6 +37,31 @@ class User(Base):
     language: Mapped[str] = mapped_column(String(5), default="he")
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+# ─── Location / catalog (owned elsewhere, trimmed mirrors) ────────────────────
+
+
+class Location(Base):
+    __tablename__ = "locations"
+
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
+    business_id: Mapped[str] = mapped_column(String(), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+
+
+class MenuCategory(Base):
+    __tablename__ = "menu_categories"
+
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
+    location_id: Mapped[str] = mapped_column(String(), nullable=False)
+
+
+class MenuItem(Base):
+    __tablename__ = "menu_items"
+
+    id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
+    category_id: Mapped[str] = mapped_column(String(), nullable=False)
 
 
 # ─── Printers + routing (owned here) ───────────────────────────────────────────

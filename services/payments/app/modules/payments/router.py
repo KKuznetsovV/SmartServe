@@ -16,9 +16,9 @@ async def create_payment(
     data: PaymentCreate,
     request: Request,
     db: DbSession,
-    _: User = Depends(require_staff),
+    current_user: User = Depends(require_staff),
 ):
-    payment, order = await PaymentService(db).create_payment(data)
+    payment, order = await PaymentService(db).create_payment(data, current_user.business_id)
     if order.status == "paid":
         await mq.publish(
             request.app.state.mq_connection,
@@ -37,15 +37,15 @@ async def create_payment(
 async def get_payment(
     payment_id: str,
     db: DbSession,
-    _: User = Depends(require_staff),
+    current_user: User = Depends(require_staff),
 ):
-    return await PaymentService(db).get_payment(payment_id)
+    return await PaymentService(db).get_payment(payment_id, current_user.business_id)
 
 
 @router.get("/orders/{order_id}/payments", response_model=list[PaymentOut])
 async def list_order_payments(
     order_id: str,
     db: DbSession,
-    _: User = Depends(require_staff),
+    current_user: User = Depends(require_staff),
 ):
-    return await PaymentService(db).list_by_order(order_id)
+    return await PaymentService(db).list_by_order(order_id, current_user.business_id)

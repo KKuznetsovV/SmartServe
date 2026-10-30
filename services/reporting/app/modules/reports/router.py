@@ -4,9 +4,10 @@ from typing import Literal
 from fastapi import Depends, Query
 from fastapi.responses import StreamingResponse
 from smartserve_shared.routing import APIRouter
+from smartserve_shared.tenancy import verify_location_owned
 
 from app.api.v1.deps import require_manager
-from app.db.models import User
+from app.db.models import Location, User
 from app.db.session import DbSession
 from app.modules.reports.schemas import (
     ClosedOrdersReportOut,
@@ -15,7 +16,7 @@ from app.modules.reports.schemas import (
     SalesReportOut,
     ServerSalesReportOut,
 )
-from app.modules.reports.service import ReportService, verify_location_owned
+from app.modules.reports.service import ReportService
 
 router = APIRouter()
 
@@ -27,7 +28,7 @@ async def get_report_summary(
     period: Literal["today", "week", "month"] = "today",
     current_user: User = Depends(require_manager),
 ) -> ReportSummaryOut:
-    await verify_location_owned(db, location_id, current_user.business_id)
+    await verify_location_owned(db, location_id, current_user.business_id, Location)
     return await ReportService(db).summary(location_id, period)
 
 
@@ -40,7 +41,7 @@ async def get_sales_report(
     group_by: Literal["item", "category", "menu"] = "item",
     current_user: User = Depends(require_manager),
 ) -> SalesReportOut:
-    await verify_location_owned(db, location_id, current_user.business_id)
+    await verify_location_owned(db, location_id, current_user.business_id, Location)
     return await ReportService(db).sales_report(location_id, group_by, start, end)
 
 
@@ -54,7 +55,7 @@ async def get_sales_by_server_report(
     category_id: str | None = Query(None),
     current_user: User = Depends(require_manager),
 ) -> ServerSalesReportOut:
-    await verify_location_owned(db, location_id, current_user.business_id)
+    await verify_location_owned(db, location_id, current_user.business_id, Location)
     return await ReportService(db).sales_by_server(location_id, start, end, item_id, category_id)
 
 
@@ -67,7 +68,7 @@ async def get_closed_orders_report(
     status: Literal["paid", "cancelled", "other"] | None = Query(None),
     current_user: User = Depends(require_manager),
 ) -> ClosedOrdersReportOut:
-    await verify_location_owned(db, location_id, current_user.business_id)
+    await verify_location_owned(db, location_id, current_user.business_id, Location)
     return await ReportService(db).closed_orders(location_id, start, end, status)
 
 
@@ -84,7 +85,7 @@ async def export_report_csv(
     status: Literal["paid", "cancelled", "other"] | None = Query(None),
     current_user: User = Depends(require_manager),
 ) -> StreamingResponse:
-    await verify_location_owned(db, location_id, current_user.business_id)
+    await verify_location_owned(db, location_id, current_user.business_id, Location)
     service = ReportService(db)
 
     if report_type == "sales":
