@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
+import { ordersAppUrl } from '@/lib/orders-app-url'
 import type { OrderStatus } from '@smartserve/types'
 
 const ACTIVE_STATUSES: OrderStatus[] = ['open', 'submitted', 'preparing', 'ready']
@@ -129,7 +130,7 @@ export default function DashboardPage() {
       {/* Live order status breakdown */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {ACTIVE_STATUSES.map((s) => (
-          <Link key={s} href={`/orders?status=${s}`}>
+          <a key={s} href={ordersAppUrl(`/orders?status=${s}`)}>
             <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
               <CardContent className="p-4 text-center">
                 <p className={`text-3xl font-bold ${STATUS_COLOR[s]}`}>
@@ -138,18 +139,18 @@ export default function DashboardPage() {
                 <p className="text-xs text-muted-foreground mt-1">{tOrders(`status.${s}`)}</p>
               </CardContent>
             </Card>
-          </Link>
+          </a>
         ))}
       </div>
 
       {/* Quick actions */}
       <div className="flex flex-wrap gap-3">
-        <Link href="/orders">
+        <a href={ordersAppUrl('/orders')}>
           <Button>{tOrders('newOrder')}</Button>
-        </Link>
-        <Link href="/tables">
+        </a>
+        <a href={ordersAppUrl('/tables')}>
           <Button variant="outline">{t('floorPlan')}</Button>
-        </Link>
+        </a>
         <Link href="/menu">
           <Button variant="outline">{tNav('menu')}</Button>
         </Link>
@@ -169,7 +170,7 @@ export default function DashboardPage() {
         )}
 
         {recentOrders.map((o) => (
-          <Link key={o.id} href={`/orders/${o.id}`}>
+          <a key={o.id} href={ordersAppUrl(`/orders/${o.id}`)}>
             <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
               <CardContent className="p-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -195,7 +196,7 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
             </Card>
-          </Link>
+          </a>
         ))}
       </div>
     </div>
