@@ -13,9 +13,9 @@ from typing import Any
 
 import structlog
 from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import EventLog, ReportingOrder, ReportingOrderItem
-from app.db.session import AsyncSessionLocal
 
 logger = structlog.get_logger()
 
@@ -57,22 +57,19 @@ def _event_occurred_at(payload: dict[str, Any]) -> datetime:
     return datetime.now(UTC)
 
 
-async def handle_any_event(routing_key: str, payload: dict[str, Any]) -> None:
-    async with AsyncSessionLocal() as db:
-        db.add(
-            EventLog(
-                routing_key=routing_key,
-                payload=json.dumps(payload),
-                business_id=_business_id_from_payload(payload),
-            )
+async def handle_any_event(routing_key: str, payload: dict[str, Any], db: AsyncSession) -> None:
+    db.add(
+        EventLog(
+            routing_key=routing_key,
+            payload=json.dumps(payload),
+            business_id=_business_id_from_payload(payload),
         )
+    )
 
-        if routing_key in ("order.created", "order.updated"):
-            await _project_order(db, payload)
-        elif routing_key == "payment.completed":
-            await _mark_order_paid(db, payload)
-
-        await db.commit()
+    if routing_key in ("order.created", "order.updated"):
+        await _project_order(db, payload)
+    elif routing_key == "payment.completed":
+        await _mark_order_paid(db, payload)
 
 
 async def _project_order(db, payload: dict[str, Any]) -> None:

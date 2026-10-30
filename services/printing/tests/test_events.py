@@ -1,7 +1,5 @@
 """Tests for the `order.item_fired` consumer handler and the new `PrintJob` audit trail."""
 
-from unittest.mock import patch
-
 import pytest
 import pytest_asyncio
 from sqlalchemy import select
@@ -32,11 +30,13 @@ async def test_handle_order_item_fired_creates_print_job_for_routed_printer(even
         await session.commit()
         printer_id = printer.id
 
-    with patch("app.modules.printing.events.AsyncSessionLocal", session_factory):
+    async with session_factory() as session:
         await handle_order_item_fired(
             "order.item_fired",
             {"orderId": "order-1", "itemId": "item-1", "menuItemId": "menu-item-1", "locationId": "loc-1"},
+            session,
         )
+        await session.commit()
 
     async with session_factory() as session:
         result = await session.execute(select(PrintJob))
@@ -51,11 +51,13 @@ async def test_handle_order_item_fired_creates_print_job_for_routed_printer(even
 async def test_handle_order_item_fired_no_routes_is_noop(events_engine):
     session_factory = async_sessionmaker(events_engine, class_=AsyncSession, expire_on_commit=False)
 
-    with patch("app.modules.printing.events.AsyncSessionLocal", session_factory):
+    async with session_factory() as session:
         await handle_order_item_fired(
             "order.item_fired",
             {"orderId": "order-1", "itemId": "item-1", "menuItemId": "menu-item-unrouted", "locationId": "loc-1"},
+            session,
         )
+        await session.commit()
 
     async with session_factory() as session:
         result = await session.execute(select(PrintJob))
@@ -66,8 +68,9 @@ async def test_handle_order_item_fired_no_routes_is_noop(events_engine):
 async def test_handle_order_item_fired_missing_fields_is_noop(events_engine):
     session_factory = async_sessionmaker(events_engine, class_=AsyncSession, expire_on_commit=False)
 
-    with patch("app.modules.printing.events.AsyncSessionLocal", session_factory):
-        await handle_order_item_fired("order.item_fired", {"orderId": "order-1"})
+    async with session_factory() as session:
+        await handle_order_item_fired("order.item_fired", {"orderId": "order-1"}, session)
+        await session.commit()
 
     async with session_factory() as session:
         result = await session.execute(select(PrintJob))

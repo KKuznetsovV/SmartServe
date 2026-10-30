@@ -150,8 +150,9 @@ async def test_handle_payment_completed_marks_order_paid(events_engine):
         await session.commit()
         order_id = order.id
 
-    with patch("app.modules.ordering.events.AsyncSessionLocal", session_factory):
-        await handle_payment_completed("payment.completed", {"orderId": order_id, "amount": 42.0})
+    async with session_factory() as session:
+        await handle_payment_completed("payment.completed", {"orderId": order_id, "amount": 42.0}, session)
+        await session.commit()
 
     async with session_factory() as session:
         result = await session.execute(select(Order).where(Order.id == order_id))
@@ -163,16 +164,17 @@ async def test_handle_payment_completed_marks_order_paid(events_engine):
 @pytest.mark.asyncio
 async def test_handle_payment_completed_ignores_unknown_order(events_engine):
     session_factory = async_sessionmaker(events_engine, class_=AsyncSession, expire_on_commit=False)
-    with patch("app.modules.ordering.events.AsyncSessionLocal", session_factory):
-        # Should not raise even though the order doesn't exist
-        await handle_payment_completed("payment.completed", {"orderId": "does-not-exist"})
+    async with session_factory() as session:
+        await handle_payment_completed("payment.completed", {"orderId": "does-not-exist"}, session)
+        await session.commit()
 
 
 @pytest.mark.asyncio
 async def test_handle_payment_completed_missing_order_id_is_noop(events_engine):
     session_factory = async_sessionmaker(events_engine, class_=AsyncSession, expire_on_commit=False)
-    with patch("app.modules.ordering.events.AsyncSessionLocal", session_factory):
-        await handle_payment_completed("payment.completed", {})
+    async with session_factory() as session:
+        await handle_payment_completed("payment.completed", {}, session)
+        await session.commit()
 
 
 @pytest.mark.asyncio
@@ -181,6 +183,7 @@ async def test_handle_catalog_item_updated_broadcasts_to_location():
         await handle_catalog_item_updated(
             "catalog.item_updated",
             {"locationId": "loc-1", "itemId": "item-1", "price": 45.0},
+            None,  # type: ignore[arg-type]
         )
 
     mock_broadcast.assert_awaited_once()
@@ -195,7 +198,7 @@ async def test_handle_catalog_item_updated_broadcasts_to_location():
 @pytest.mark.asyncio
 async def test_handle_catalog_item_updated_missing_location_id_is_noop():
     with patch("app.modules.ordering.events.broadcast", new_callable=AsyncMock) as mock_broadcast:
-        await handle_catalog_item_updated("catalog.item_updated", {"itemId": "item-1"})
+        await handle_catalog_item_updated("catalog.item_updated", {"itemId": "item-1"}, None)  # type: ignore[arg-type]
 
     mock_broadcast.assert_not_awaited()
 

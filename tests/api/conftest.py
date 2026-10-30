@@ -213,10 +213,13 @@ async def add_item(
     *,
     qty: int = 1,
     modifiers: list[dict[str, Any]] | None = None,
+    fire_course: int | None = None,
 ) -> dict[str, Any]:
     body: dict[str, Any] = {"menuItemId": menu_item_id, "qty": qty}
     if modifiers is not None:
         body["modifiers"] = modifiers
+    if fire_course is not None:
+        body["fireCourse"] = fire_course
     resp = await client.post(f"/orders/{order_id}/items", headers=bearer(token), json=body)
     resp.raise_for_status()
     return resp.json()

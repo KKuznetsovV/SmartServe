@@ -211,6 +211,8 @@ jobs:
         run: pip install -r tests/api/requirements.txt
 
       - name: Run black-box API suite
+        env:
+          SMARTSERVE_STACK: "1"
         run: python -m pytest tests/api -q --tb=short
 
       - name: Install frontend dependencies

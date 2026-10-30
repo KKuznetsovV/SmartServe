@@ -34,7 +34,7 @@ RETRY_TTL_MS = 2000
 
 logger = logging.getLogger("smartserve.mq")
 
-EventHandler = Callable[[str, dict[str, Any]], Awaitable[None]]
+EventHandler = Callable[..., Awaitable[None]]
 
 
 async def connect(url: str) -> AbstractRobustConnection | None:
