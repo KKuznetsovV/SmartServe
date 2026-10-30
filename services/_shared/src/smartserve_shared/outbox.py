@@ -11,17 +11,20 @@ import json
 import logging
 import uuid
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import DateTime, Index, Integer, String, Text, UniqueConstraint, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import DateTime, Index, Integer, String, Text, UniqueConstraint, delete, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 logger = logging.getLogger("smartserve.outbox")
 
 RELAY_POLL_SECONDS = 1.0
 RELAY_BATCH_SIZE = 50
+CLEANUP_AFTER = timedelta(days=7)
+CLEANUP_INTERVAL = timedelta(hours=1)
+CLEANUP_BATCH_SIZE = 500
+_relay_locks: dict[str, asyncio.Lock] = {}
 
 
 def declare_outbox(base: type, table_name: str) -> type:
@@ -137,32 +140,87 @@ async def enqueue(
     return row
 
 
-async def relay_once(connection: Any, session: Any, model: type, *, batch_size: int = RELAY_BATCH_SIZE) -> int:
-    """Publish a batch of unpublished rows. Marks a row sent only if publish succeeds."""
-    result = await session.execute(
-        select(model).where(model.published_at.is_(None)).order_by(model.occurred_at.asc()).limit(batch_size)
-    )
-    rows = list(result.scalars().all())
-    sent = 0
-    now = datetime.now(UTC)
-    from smartserve_shared import mq
+def _session_bind(session: Any) -> Any:
+    return getattr(session, "bind", None) or session.get_bind()
 
-    for row in rows:
-        row.attempts = int(row.attempts or 0) + 1
-        try:
-            payload = json.loads(row.payload)
-        except json.JSONDecodeError:
-            row.last_error = "unparsable payload"
-            continue
-        ok = await mq.publish(connection, row.routing_key, payload)
-        if ok:
-            row.published_at = now
-            row.last_error = None
-            sent += 1
-        else:
-            row.last_error = "publish failed"
+
+def _supports_skip_locked(session: Any) -> bool:
+    dialect = getattr(_session_bind(session), "dialect", None)
+    return getattr(dialect, "name", "") == "postgresql"
+
+
+def _insert_stmt(session: Any):
+    dialect = getattr(_session_bind(session), "dialect", None)
+    name = getattr(dialect, "name", "sqlite")
+    if name == "postgresql":
+        from sqlalchemy.dialects.postgresql import insert
+    else:
+        from sqlalchemy.dialects.sqlite import insert
+    return insert
+
+
+async def claim_event(session: Any, processed_model: type, event_id: str) -> str | None:
+    """INSERT processed eventId; returns it if this caller won, else None (duplicate)."""
+    insert = _insert_stmt(session)
+    stmt = (
+        insert(processed_model)
+        .values(event_id=event_id, processed_at=datetime.now(UTC))
+        .on_conflict_do_nothing(index_elements=["event_id"])
+        .returning(processed_model.event_id)
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def cleanup_published(
+    session: Any,
+    model: type,
+    *,
+    older_than: timedelta = CLEANUP_AFTER,
+    batch_size: int = CLEANUP_BATCH_SIZE,
+) -> int:
+    """Delete published outbox rows older than `older_than`, one batch at a time."""
+    cutoff = datetime.now(UTC) - older_than
+    ids = select(model.id).where(model.published_at.is_not(None), model.published_at < cutoff).limit(batch_size)
+    result = await session.execute(delete(model).where(model.id.in_(ids)))
     await session.commit()
-    return sent
+    return int(result.rowcount or 0)
+
+
+async def relay_once(connection: Any, session: Any, model: type, *, batch_size: int = RELAY_BATCH_SIZE) -> int:
+    """Publish a batch of unpublished rows. Marks a row sent only if publish succeeds.
+
+    Unpublished rows are locked with `FOR UPDATE SKIP LOCKED` (PostgreSQL) so two relays
+    never take the same batch. Same-process callers serialize on a per-table lock so the
+    same guarantee holds on SQLite unit tests.
+    """
+    lock = _relay_locks.setdefault(model.__tablename__, asyncio.Lock())
+    async with lock:
+        stmt = select(model).where(model.published_at.is_(None)).order_by(model.occurred_at.asc()).limit(batch_size)
+        if _supports_skip_locked(session):
+            stmt = stmt.with_for_update(skip_locked=True)
+        result = await session.execute(stmt)
+        rows = list(result.scalars().all())
+        sent = 0
+        now = datetime.now(UTC)
+        from smartserve_shared import mq
+
+        for row in rows:
+            row.attempts = int(row.attempts or 0) + 1
+            try:
+                payload = json.loads(row.payload)
+            except json.JSONDecodeError:
+                row.last_error = "unparsable payload"
+                continue
+            ok = await mq.publish(connection, row.routing_key, payload)
+            if ok:
+                row.published_at = now
+                row.last_error = None
+                sent += 1
+            else:
+                row.last_error = "publish failed"
+        await session.commit()
+        return sent
 
 
 async def relay_forever(
@@ -173,33 +231,21 @@ async def relay_forever(
     poll_seconds: float = RELAY_POLL_SECONDS,
 ) -> None:
     """Background loop: publish unpublished outbox rows, reconnecting via `get_connection`."""
+    last_cleanup = datetime.now(UTC) - CLEANUP_INTERVAL
     while True:
         try:
             connection = get_connection()
             async with session_factory() as session:
                 await relay_once(connection, session, model)
+            if datetime.now(UTC) - last_cleanup >= CLEANUP_INTERVAL:
+                async with session_factory() as session:
+                    await cleanup_published(session, model)
+                last_cleanup = datetime.now(UTC)
         except asyncio.CancelledError:
             raise
         except Exception:  # noqa: BLE001 — keep the relay alive across poll failures
             logger.warning("outbox.relay: poll failed, retrying", exc_info=True)
         await asyncio.sleep(poll_seconds)
-
-
-async def already_processed(session_factory: Callable[[], Any], model: type, event_id: str) -> bool:
-    async with session_factory() as session:
-        row = await session.get(model, event_id)
-        return row is not None
-
-
-async def record_processed(session_factory: Callable[[], Any], model: type, event_id: str) -> None:
-    async with session_factory() as session:
-        if await session.get(model, event_id) is not None:
-            return
-        session.add(model(event_id=event_id, processed_at=datetime.now(UTC)))
-        try:
-            await session.commit()
-        except IntegrityError:
-            await session.rollback()
 
 
 async def handle_idempotent(
@@ -209,11 +255,19 @@ async def handle_idempotent(
     routing_key: str,
     payload: dict[str, Any],
 ) -> None:
-    event_id = payload.get("eventId")
-    if event_id and session_factory is not None and processed_model is not None:
-        if await already_processed(session_factory, processed_model, str(event_id)):
-            return
-        await handler(routing_key, payload)
-        await record_processed(session_factory, processed_model, str(event_id))
+    """Run `handler(routing_key, payload, session)` at most once per eventId.
+
+    Inserts the processed-event row in the same transaction as the handler. A duplicate
+    insert is a no-op (ack). A handler exception rolls back the insert.
+    """
+    if session_factory is None:
+        await handler(routing_key, payload, None)
         return
-    await handler(routing_key, payload)
+    event_id = payload.get("eventId")
+    async with session_factory() as session:
+        if event_id and processed_model is not None:
+            claimed = await claim_event(session, processed_model, str(event_id))
+            if claimed is None:
+                return
+        await handler(routing_key, payload, session)
+        await session.commit()

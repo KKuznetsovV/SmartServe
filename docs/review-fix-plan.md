@@ -31,6 +31,7 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 17 | E4 | `refactor/e4-single-owner-tables` | merged | https://github.com/KKuznetsovV/SmartServe/pull/76 https://github.com/KKuznetsovV/SmartServe/pull/78 https://github.com/KKuznetsovV/SmartServe/pull/79 |
 | 17d | E4d | `refactor/e4d-users-owner-and-mirror-guard` | merged | https://github.com/KKuznetsovV/SmartServe/pull/82 |
 | 18 | E5 | `feat/e5-transactional-outbox` | merged | https://github.com/KKuznetsovV/SmartServe/pull/84 |
+| 18b | E5b | `fix/e5b-outbox-hardening` | in progress | |
 | 19 | E9 | `feat/e9-redis-ws-fanout` | todo | |
 | 20 | E6 | `fix/e6-atomic-order-totals` | todo | |
 | 21 | E7 | `refactor/e7-decimal-money` | todo | |

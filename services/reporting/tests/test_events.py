@@ -6,7 +6,6 @@ always returned zero rows in real usage. These handlers keep the mirror in sync.
 """
 
 import json
-from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
@@ -26,12 +25,17 @@ async def events_engine():
     await engine.dispose()
 
 
+async def _handle(session_factory, routing_key: str, payload: dict) -> None:
+    async with session_factory() as session:
+        await handle_any_event(routing_key, payload, session)
+        await session.commit()
+
+
 @pytest.mark.asyncio
 async def test_handle_any_event_always_logs_to_event_log(events_engine):
     session_factory = async_sessionmaker(events_engine, class_=AsyncSession, expire_on_commit=False)
 
-    with patch("app.modules.reports.events.AsyncSessionLocal", session_factory):
-        await handle_any_event("staff.created", {"userId": "u-1", "role": "waiter"})
+    await _handle(session_factory, "staff.created", {"userId": "u-1", "role": "waiter"})
 
     async with session_factory() as session:
         result = await session.execute(select(EventLog))
@@ -46,11 +50,7 @@ async def test_handle_any_event_always_logs_to_event_log(events_engine):
 async def test_handle_any_event_stores_payload_business_id(events_engine):
     session_factory = async_sessionmaker(events_engine, class_=AsyncSession, expire_on_commit=False)
 
-    with patch("app.modules.reports.events.AsyncSessionLocal", session_factory):
-        await handle_any_event(
-            "payment.completed",
-            {"orderId": "o-1", "businessId": "biz-a", "amount": 10.0},
-        )
+    await _handle(session_factory, "payment.completed", {"orderId": "o-1", "businessId": "biz-a", "amount": 10.0})
 
     async with session_factory() as session:
         result = await session.execute(select(EventLog))
@@ -62,20 +62,20 @@ async def test_handle_any_event_stores_payload_business_id(events_engine):
 async def test_order_created_upserts_order_mirror(events_engine):
     session_factory = async_sessionmaker(events_engine, class_=AsyncSession, expire_on_commit=False)
 
-    with patch("app.modules.reports.events.AsyncSessionLocal", session_factory):
-        await handle_any_event(
-            "order.created",
-            {
-                "orderId": "order-1",
-                "locationId": "loc-1",
-                "channel": "dine_in",
-                "status": "open",
-                "total": 100.0,
-                "createdAt": "2024-01-01T12:00:00+00:00",
-                "version": 1,
-                "occurredAt": "2024-01-01T12:00:00+00:00",
-            },
-        )
+    await _handle(
+        session_factory,
+        "order.created",
+        {
+            "orderId": "order-1",
+            "locationId": "loc-1",
+            "channel": "dine_in",
+            "status": "open",
+            "total": 100.0,
+            "createdAt": "2024-01-01T12:00:00+00:00",
+            "version": 1,
+            "occurredAt": "2024-01-01T12:00:00+00:00",
+        },
+    )
 
     async with session_factory() as session:
         result = await session.execute(select(ReportingOrder).where(ReportingOrder.id == "order-1"))
@@ -89,19 +89,19 @@ async def test_order_created_upserts_order_mirror(events_engine):
 async def test_order_created_captures_created_by(events_engine):
     session_factory = async_sessionmaker(events_engine, class_=AsyncSession, expire_on_commit=False)
 
-    with patch("app.modules.reports.events.AsyncSessionLocal", session_factory):
-        await handle_any_event(
-            "order.created",
-            {
-                "orderId": "order-2",
-                "locationId": "loc-1",
-                "channel": "dine_in",
-                "status": "open",
-                "total": 100.0,
-                "createdBy": "user-1",
-                "version": 1,
-            },
-        )
+    await _handle(
+        session_factory,
+        "order.created",
+        {
+            "orderId": "order-2",
+            "locationId": "loc-1",
+            "channel": "dine_in",
+            "status": "open",
+            "total": 100.0,
+            "createdBy": "user-1",
+            "version": 1,
+        },
+    )
 
     async with session_factory() as session:
         result = await session.execute(select(ReportingOrder).where(ReportingOrder.id == "order-2"))
@@ -112,26 +112,25 @@ async def test_order_created_captures_created_by(events_engine):
 async def test_order_updated_and_payment_completed_transition_status(events_engine):
     session_factory = async_sessionmaker(events_engine, class_=AsyncSession, expire_on_commit=False)
 
-    with patch("app.modules.reports.events.AsyncSessionLocal", session_factory):
-        await handle_any_event(
-            "order.created",
-            {
-                "orderId": "order-1",
-                "locationId": "loc-1",
-                "channel": "dine_in",
-                "status": "open",
-                "total": 50.0,
-                "version": 1,
-            },
-        )
-        await handle_any_event("order.updated", {"orderId": "order-1", "status": "submitted", "version": 2})
+    await _handle(
+        session_factory,
+        "order.created",
+        {
+            "orderId": "order-1",
+            "locationId": "loc-1",
+            "channel": "dine_in",
+            "status": "open",
+            "total": 50.0,
+            "version": 1,
+        },
+    )
+    await _handle(session_factory, "order.updated", {"orderId": "order-1", "status": "submitted", "version": 2})
 
     async with session_factory() as session:
         result = await session.execute(select(ReportingOrder).where(ReportingOrder.id == "order-1"))
         assert result.scalar_one().status == "submitted"
 
-    with patch("app.modules.reports.events.AsyncSessionLocal", session_factory):
-        await handle_any_event("payment.completed", {"orderId": "order-1", "amount": 50.0})
+    await _handle(session_factory, "payment.completed", {"orderId": "order-1", "amount": 50.0})
 
     async with session_factory() as session:
         result = await session.execute(select(ReportingOrder).where(ReportingOrder.id == "order-1"))
@@ -142,16 +141,16 @@ async def test_order_updated_and_payment_completed_transition_status(events_engi
 async def test_order_updated_for_unknown_order_upserts(events_engine):
     session_factory = async_sessionmaker(events_engine, class_=AsyncSession, expire_on_commit=False)
 
-    with patch("app.modules.reports.events.AsyncSessionLocal", session_factory):
-        await handle_any_event(
-            "order.updated",
-            {
-                "orderId": "late-order",
-                "locationId": "loc-1",
-                "status": "submitted",
-                "version": 2,
-            },
-        )
+    await _handle(
+        session_factory,
+        "order.updated",
+        {
+            "orderId": "late-order",
+            "locationId": "loc-1",
+            "status": "submitted",
+            "version": 2,
+        },
+    )
 
     async with session_factory() as session:
         result = await session.execute(select(ReportingOrder).where(ReportingOrder.id == "late-order"))
@@ -162,19 +161,21 @@ async def test_order_updated_for_unknown_order_upserts(events_engine):
 async def test_stale_order_event_does_not_overwrite_newer_projection(events_engine):
     session_factory = async_sessionmaker(events_engine, class_=AsyncSession, expire_on_commit=False)
 
-    with patch("app.modules.reports.events.AsyncSessionLocal", session_factory):
-        await handle_any_event(
-            "order.created",
-            {"orderId": "order-1", "locationId": "loc-1", "status": "open", "total": 10.0, "version": 1},
-        )
-        await handle_any_event(
-            "order.updated",
-            {"orderId": "order-1", "status": "ready", "total": 10.0, "version": 3},
-        )
-        await handle_any_event(
-            "order.updated",
-            {"orderId": "order-1", "status": "submitted", "total": 10.0, "version": 2},
-        )
+    await _handle(
+        session_factory,
+        "order.created",
+        {"orderId": "order-1", "locationId": "loc-1", "status": "open", "total": 10.0, "version": 1},
+    )
+    await _handle(
+        session_factory,
+        "order.updated",
+        {"orderId": "order-1", "status": "ready", "total": 10.0, "version": 3},
+    )
+    await _handle(
+        session_factory,
+        "order.updated",
+        {"orderId": "order-1", "status": "submitted", "total": 10.0, "version": 2},
+    )
 
     async with session_factory() as session:
         result = await session.execute(select(ReportingOrder).where(ReportingOrder.id == "order-1"))

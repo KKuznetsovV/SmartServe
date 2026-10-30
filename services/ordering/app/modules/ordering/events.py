@@ -7,9 +7,9 @@ from typing import Any
 
 import structlog
 from sqlalchemy import inspect, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Order, OrderItem
-from app.db.session import AsyncSessionLocal
 from app.modules.ordering.ws_router import broadcast
 
 logger = structlog.get_logger()
@@ -51,30 +51,29 @@ def _item_snapshot(item: OrderItem) -> dict[str, Any]:
     }
 
 
-async def handle_payment_completed(routing_key: str, payload: dict[str, Any]) -> None:
+async def handle_payment_completed(routing_key: str, payload: dict[str, Any], db: AsyncSession) -> None:
     """`payments` publishes this once a payment covers an order's total.
 
     `ordering` owns the canonical `Order.status` (payments only holds a local mirror used
     for its own duplicate-payment checks), so this marks the real row paid here rather than
     relying on payments' write. Idempotent — a redelivered/duplicate event is a no-op.
+    Writes use the session from `handle_idempotent` and commit with the processed-event row.
     """
     order_id = payload.get("orderId")
     if not order_id:
         logger.warning("ordering.events: payment.completed missing orderId", payload=payload)
         return
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(select(Order).where(Order.id == order_id))
-        order = result.scalar_one_or_none()
-        if not order:
-            logger.warning("ordering.events: payment.completed for unknown order", order_id=order_id)
-            return
-        if order.status not in ("paid", "cancelled"):
-            order.status = "paid"
-            order.version = int(order.version or 0) + 1
-            await db.commit()
+    result = await db.execute(select(Order).where(Order.id == order_id))
+    order = result.scalar_one_or_none()
+    if not order:
+        logger.warning("ordering.events: payment.completed for unknown order", order_id=order_id)
+        return
+    if order.status not in ("paid", "cancelled"):
+        order.status = "paid"
+        order.version = int(order.version or 0) + 1
 
 
-async def handle_catalog_item_updated(routing_key: str, payload: dict[str, Any]) -> None:
+async def handle_catalog_item_updated(routing_key: str, payload: dict[str, Any], _db: AsyncSession) -> None:
     """`catalog` publishes this on every menu item create/update/stock/bulk-price change.
 
     `ordering` owns the only real-time websocket hub connected frontends already have a
