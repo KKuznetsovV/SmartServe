@@ -3,6 +3,8 @@
 import { useEffect, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { WsEvent } from '@smartserve/types'
+import { apiClient } from '@/lib/api'
+import { useAuthStore } from '@/lib/auth-store'
 
 export function nextWsReconnectDelay(attempt: number): number {
   return Math.min(1000 * 2 ** Math.max(attempt, 0), 15000)
@@ -22,9 +24,10 @@ function invalidateOrders(qc: ReturnType<typeof useQueryClient>, locationId: str
 export function useLocationWs(locationId: string | null) {
   const qc = useQueryClient()
   const wsRef = useRef<WebSocket | null>(null)
+  const accessToken = useAuthStore((s) => s.accessToken)
 
   useEffect(() => {
-    if (!locationId) return
+    if (!locationId || !accessToken) return
 
     const base = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080').replace(
       /^http/,
@@ -37,41 +40,57 @@ export function useLocationWs(locationId: string | null) {
 
     const connect = () => {
       if (disposed) return
-      const ws = new WebSocket(`${base}/api/v1/ws/${locationId}`)
-      wsRef.current = ws
-
-      ws.onopen = () => {
-        if (disposed) return
-        if (everOpened) {
-          invalidateOrders(qc, locationId)
-        }
-        everOpened = true
-        attempt = 0
-      }
-
-      ws.onmessage = (event) => {
+      void (async () => {
+        let ticket: string
         try {
-          const msg: WsEvent = JSON.parse(event.data as string)
-          if (msg.type.startsWith('order.')) {
-            qc.invalidateQueries({ queryKey: ['orders', locationId] })
-            const id = orderIdFromPayload(msg.payload)
-            if (typeof id === 'string') qc.invalidateQueries({ queryKey: ['order', id] })
-          }
-          if (msg.type === 'menu.item_updated') {
-            qc.invalidateQueries({ queryKey: ['items'] })
-            qc.invalidateQueries({ queryKey: ['categories', locationId] })
-          }
+          const issued = await apiClient.ws.ticket(locationId)
+          ticket = issued.ticket
         } catch {
-          // ignore malformed messages
+          if (disposed) return
+          const delay = nextWsReconnectDelay(attempt)
+          attempt += 1
+          timer = setTimeout(connect, delay)
+          return
         }
-      }
-
-      ws.onclose = () => {
         if (disposed) return
-        const delay = nextWsReconnectDelay(attempt)
-        attempt += 1
-        timer = setTimeout(connect, delay)
-      }
+        const ws = new WebSocket(
+          `${base}/api/v1/ws/${locationId}?ticket=${encodeURIComponent(ticket)}`,
+        )
+        wsRef.current = ws
+
+        ws.onopen = () => {
+          if (disposed) return
+          if (everOpened) {
+            invalidateOrders(qc, locationId)
+          }
+          everOpened = true
+          attempt = 0
+        }
+
+        ws.onmessage = (event) => {
+          try {
+            const msg: WsEvent = JSON.parse(event.data as string)
+            if (msg.type.startsWith('order.')) {
+              qc.invalidateQueries({ queryKey: ['orders', locationId] })
+              const id = orderIdFromPayload(msg.payload)
+              if (typeof id === 'string') qc.invalidateQueries({ queryKey: ['order', id] })
+            }
+            if (msg.type === 'menu.item_updated') {
+              qc.invalidateQueries({ queryKey: ['items'] })
+              qc.invalidateQueries({ queryKey: ['categories', locationId] })
+            }
+          } catch {
+            // ignore malformed messages
+          }
+        }
+
+        ws.onclose = () => {
+          if (disposed) return
+          const delay = nextWsReconnectDelay(attempt)
+          attempt += 1
+          timer = setTimeout(connect, delay)
+        }
+      })()
     }
 
     connect()
@@ -82,5 +101,5 @@ export function useLocationWs(locationId: string | null) {
       wsRef.current?.close()
       wsRef.current = null
     }
-  }, [locationId, qc])
+  }, [locationId, accessToken, qc])
 }

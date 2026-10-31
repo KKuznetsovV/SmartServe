@@ -71,14 +71,20 @@ class DeviceService:
             await self.db.flush()
         return device
 
-    async def authenticate(self, raw_token: str | None, location_id: str) -> Device:
+    async def resolve(self, raw_token: str | None) -> Device:
         if not raw_token or not raw_token.strip():
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=_UNAUTHORIZED)
         digest = hash_device_token(raw_token.strip())
         result = await self.db.execute(select(Device).where(Device.token_hash == digest))
         device = result.scalar_one_or_none()
-        if not device or device.revoked_at is not None or device.location_id != location_id:
+        if not device or device.revoked_at is not None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=_UNAUTHORIZED)
         device.last_seen_at = _now()
         await self.db.flush()
+        return device
+
+    async def authenticate(self, raw_token: str | None, location_id: str) -> Device:
+        device = await self.resolve(raw_token)
+        if device.location_id != location_id:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=_UNAUTHORIZED)
         return device

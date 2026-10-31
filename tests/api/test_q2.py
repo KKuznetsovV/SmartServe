@@ -1,12 +1,11 @@
 import os
 
 import pytest
-import websockets
 from httpx import AsyncClient
 
 from conftest import bearer, create_order, get_order
 from test_e9 import _drain_until_quiet, _wait_for_order, _worker_id
-from test_s4 import _ws_url
+from test_s4 import connect_location_ws
 
 
 async def test_q2_order_includes_table_name(
@@ -47,7 +46,7 @@ async def test_q2_table_name_on_get_list_and_kds_socket(
     tables.raise_for_status()
     t3 = next(t for t in tables.json() if t["name"] == "T3")
 
-    ws = await websockets.connect(_ws_url(location_id), open_timeout=10)
+    ws = await connect_location_ws(client, token, location_id)
     try:
         await _worker_id(ws)
         await _drain_until_quiet(ws)

@@ -1,8 +1,18 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { renderHook, waitFor, cleanup, act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { nextWsReconnectDelay, useLocationWs } from '@/hooks/use-ws'
+import { useAuthStore } from '@/lib/auth-store'
+import { apiClient } from '@/lib/api'
 import type { ReactNode } from 'react'
+
+vi.mock('@/lib/api', () => ({
+  apiClient: {
+    ws: {
+      ticket: vi.fn(),
+    },
+  },
+}))
 
 class MockWebSocket {
   static instances: MockWebSocket[] = []
@@ -38,11 +48,21 @@ function wrapperFor(qc: QueryClient) {
 }
 
 describe('useLocationWs', () => {
+  beforeEach(() => {
+    let n = 0
+    vi.mocked(apiClient.ws.ticket).mockImplementation(async () => ({
+      ticket: `ticket-${++n}`,
+      expiresIn: 60,
+    }))
+    useAuthStore.setState({ accessToken: 'jwt-token' })
+  })
+
   afterEach(() => {
     cleanup()
     MockWebSocket.instances = []
     vi.unstubAllGlobals()
     vi.useRealTimers()
+    useAuthStore.setState({ accessToken: null })
   })
 
   it('invalidates order list and detail using payload.orderId', async () => {
@@ -55,6 +75,7 @@ describe('useLocationWs', () => {
     renderHook(() => useLocationWs(locationId), { wrapper: wrapperFor(qc) })
 
     await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1))
+    expect(MockWebSocket.instances[0].url).toContain('ticket=ticket-1')
     MockWebSocket.instances[0].emit({
       type: 'order.item_status_changed',
       locationId,
@@ -66,7 +87,7 @@ describe('useLocationWs', () => {
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['order', orderId] })
   })
 
-  it('reconnects with backoff and invalidates orders after a drop', async () => {
+  it('reconnects with backoff, fetches a new ticket, and invalidates orders after a drop', async () => {
     vi.useFakeTimers()
     vi.stubGlobal('WebSocket', MockWebSocket)
     const qc = new QueryClient()
@@ -76,6 +97,7 @@ describe('useLocationWs', () => {
     renderHook(() => useLocationWs(locationId), { wrapper: wrapperFor(qc) })
     await act(async () => {
       await Promise.resolve()
+      await Promise.resolve()
     })
     expect(MockWebSocket.instances).toHaveLength(1)
 
@@ -84,8 +106,11 @@ describe('useLocationWs', () => {
     })
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1000)
+      await Promise.resolve()
+      await Promise.resolve()
     })
     expect(MockWebSocket.instances).toHaveLength(2)
+    expect(MockWebSocket.instances[1].url).toContain('ticket=ticket-2')
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['orders', locationId] })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['order'] })
   })

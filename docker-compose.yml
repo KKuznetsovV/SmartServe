@@ -111,6 +111,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://smartserve:smartserve@db:5432/smartserve
       REDIS_URL: redis://redis:6379/0
       RABBITMQ_URL: amqp://smartserve:smartserve@rabbitmq:5672/
+      AUTH_SERVICE_URL: http://auth:8000
       ENVIRONMENT: development
     env_file:
       - ./.env
@@ -120,6 +121,8 @@ services:
       redis:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      auth:
         condition: service_healthy
     volumes:
       - ./services/ordering:/app

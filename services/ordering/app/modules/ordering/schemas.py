@@ -11,6 +11,15 @@ class ApplyDiscountIn(BaseModel):
     code: str
 
 
+class WsTicketIn(BaseModel):
+    location_id: str
+
+
+class WsTicketOut(BaseModel):
+    ticket: str
+    expires_in: int
+
+
 class ReorderRequest(BaseModel):
     ids: list[str] = Field(..., min_length=1)
 

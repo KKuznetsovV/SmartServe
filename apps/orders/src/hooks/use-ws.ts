@@ -3,6 +3,9 @@
 import { useEffect, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { WsEvent } from '@smartserve/types'
+import { apiClient } from '@/lib/api'
+import { useAuthStore } from '@/lib/auth-store'
+import { useDeviceStore } from '@/lib/device-store'
 
 export function nextWsReconnectDelay(attempt: number): number {
   return Math.min(1000 * 2 ** Math.max(attempt, 0), 15000)
@@ -18,13 +21,25 @@ function invalidateOrders(qc: ReturnType<typeof useQueryClient>, locationId: str
   qc.invalidateQueries({ queryKey: ['order'] })
 }
 
+function socketQuery(ticket: string | null, deviceToken: string | null): string {
+  if (ticket) return `ticket=${encodeURIComponent(ticket)}`
+  if (deviceToken) return `deviceToken=${encodeURIComponent(deviceToken)}`
+  return ''
+}
+
 // Connects to the location WebSocket and invalidates order queries on events.
 export function useLocationWs(locationId: string | null) {
   const qc = useQueryClient()
   const wsRef = useRef<WebSocket | null>(null)
+  const accessToken = useAuthStore((s) => s.accessToken)
+  const deviceToken = useDeviceStore((s) => s.deviceToken)
+  const deviceType = useDeviceStore((s) => s.deviceType)
 
   useEffect(() => {
     if (!locationId) return
+    const displayToken =
+      !accessToken && (deviceType === 'kds' || deviceType === 'display') ? deviceToken : null
+    if (!accessToken && !displayToken) return
 
     const base = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080').replace(
       /^http/,
@@ -37,37 +52,55 @@ export function useLocationWs(locationId: string | null) {
 
     const connect = () => {
       if (disposed) return
-      const ws = new WebSocket(`${base}/api/v1/ws/${locationId}`)
-      wsRef.current = ws
-
-      ws.onopen = () => {
-        if (disposed) return
-        if (everOpened) {
-          invalidateOrders(qc, locationId)
-        }
-        everOpened = true
-        attempt = 0
-      }
-
-      ws.onmessage = (event) => {
-        try {
-          const msg: WsEvent = JSON.parse(event.data as string)
-          if (msg.type.startsWith('order.')) {
-            qc.invalidateQueries({ queryKey: ['orders', locationId] })
-            const id = orderIdFromPayload(msg.payload)
-            if (id) qc.invalidateQueries({ queryKey: ['order', id] })
+      void (async () => {
+        let ticket: string | null = null
+        if (accessToken) {
+          try {
+            const issued = await apiClient.ws.ticket(locationId)
+            ticket = issued.ticket
+          } catch {
+            if (disposed) return
+            const delay = nextWsReconnectDelay(attempt)
+            attempt += 1
+            timer = setTimeout(connect, delay)
+            return
           }
-        } catch {
-          // ignore malformed messages
         }
-      }
-
-      ws.onclose = () => {
+        const query = socketQuery(ticket, displayToken)
+        if (!query) return
         if (disposed) return
-        const delay = nextWsReconnectDelay(attempt)
-        attempt += 1
-        timer = setTimeout(connect, delay)
-      }
+        const ws = new WebSocket(`${base}/api/v1/ws/${locationId}?${query}`)
+        wsRef.current = ws
+
+        ws.onopen = () => {
+          if (disposed) return
+          if (everOpened) {
+            invalidateOrders(qc, locationId)
+          }
+          everOpened = true
+          attempt = 0
+        }
+
+        ws.onmessage = (event) => {
+          try {
+            const msg: WsEvent = JSON.parse(event.data as string)
+            if (msg.type.startsWith('order.')) {
+              qc.invalidateQueries({ queryKey: ['orders', locationId] })
+              const id = orderIdFromPayload(msg.payload)
+              if (id) qc.invalidateQueries({ queryKey: ['order', id] })
+            }
+          } catch {
+            // ignore malformed messages
+          }
+        }
+
+        ws.onclose = () => {
+          if (disposed) return
+          const delay = nextWsReconnectDelay(attempt)
+          attempt += 1
+          timer = setTimeout(connect, delay)
+        }
+      })()
     }
 
     connect()
@@ -78,5 +111,5 @@ export function useLocationWs(locationId: string | null) {
       wsRef.current?.close()
       wsRef.current = null
     }
-  }, [locationId, qc])
+  }, [locationId, accessToken, deviceToken, deviceType, qc])
 }

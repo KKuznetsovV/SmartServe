@@ -6,12 +6,21 @@ import asyncio
 import contextlib
 import json
 import os
+import secrets
 from collections import defaultdict
 from typing import Any
 
+import httpx
 import structlog
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import Depends, HTTPException, WebSocket, WebSocketDisconnect, status
 from smartserve_shared.routing import APIRouter
+from smartserve_shared.tenancy import verify_location_owned
+
+from app.api.v1.deps import get_current_user
+from app.clients import auth_client
+from app.db.models import Location, User
+from app.db.session import DbSession
+from app.modules.ordering.schemas import WsTicketIn, WsTicketOut
 
 router = APIRouter()
 logger = structlog.get_logger()
@@ -19,6 +28,10 @@ logger = structlog.get_logger()
 WS_CHANNEL_PREFIX = "ws:"
 WS_CHANNEL_PATTERN = "ws:*"
 PING_INTERVAL_SECONDS = 25.0
+TICKET_TTL_SECONDS = 60
+TICKET_KEY_PREFIX = "ws:ticket:"
+WS_UNAUTHORIZED = 4401
+_SOCKET_DEVICE_TYPES = frozenset({"kds", "display"})
 
 _connections: dict[str, set[WebSocket]] = defaultdict(set)
 _redis: Any = None
@@ -57,8 +70,72 @@ def unregister(location_id: str, websocket: WebSocket) -> None:
         _connections.pop(location_id, None)
 
 
+def _ticket_key(ticket: str) -> str:
+    return f"{TICKET_KEY_PREFIX}{ticket}"
+
+
+async def issue_ws_ticket(location_id: str) -> str:
+    client = redis_client()
+    if client is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Realtime unavailable")
+    raw = secrets.token_urlsafe(32)
+    await client.set(_ticket_key(raw), location_id, ex=TICKET_TTL_SECONDS)
+    return raw
+
+
+async def consume_ws_ticket(ticket: str | None) -> str | None:
+    if not ticket:
+        return None
+    client = redis_client()
+    if client is None:
+        return None
+    value = await client.getdel(_ticket_key(ticket))
+    if isinstance(value, bytes):
+        return value.decode()
+    return value
+
+
+async def device_for_token(raw: str | None) -> dict[str, Any] | None:
+    if not raw:
+        return None
+    try:
+        resp = await auth_client.get("/api/v1/devices/current", headers={"X-Device-Token": raw})
+    except httpx.HTTPStatusError, httpx.RequestError:
+        return None
+    body = resp.json()
+    return body if isinstance(body, dict) else None
+
+
+async def authorize_socket(websocket: WebSocket, location_id: str) -> bool:
+    ticket = websocket.query_params.get("ticket")
+    if ticket:
+        ticket_location = await consume_ws_ticket(ticket)
+        return ticket_location == location_id
+    raw = websocket.query_params.get("deviceToken") or websocket.headers.get("x-device-token")
+    device = await device_for_token(raw)
+    if not device:
+        return False
+    device_location = device.get("locationId") or device.get("location_id")
+    device_type = device.get("type")
+    return device_location == location_id and device_type in _SOCKET_DEVICE_TYPES
+
+
+@router.post("/ticket", response_model=WsTicketOut)
+async def create_ws_ticket(
+    data: WsTicketIn,
+    db: DbSession,
+    current_user: User = Depends(get_current_user),
+) -> WsTicketOut:
+    await verify_location_owned(db, data.location_id, current_user.business_id, Location)
+    ticket = await issue_ws_ticket(data.location_id)
+    return WsTicketOut(ticket=ticket, expires_in=TICKET_TTL_SECONDS)
+
+
 @router.websocket("/{location_id}")
 async def websocket_endpoint(websocket: WebSocket, location_id: str) -> None:
+    if not await authorize_socket(websocket, location_id):
+        await websocket.close(code=WS_UNAUTHORIZED)
+        return
     worker_id = str(os.getpid())
     await websocket.accept(headers=[(b"x-worker-id", worker_id.encode())])
     register(location_id, websocket)

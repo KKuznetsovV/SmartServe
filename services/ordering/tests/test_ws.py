@@ -1,12 +1,17 @@
 import json
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from httpx import AsyncClient
 
+from app.db.models import Location, User
 from app.modules.ordering.ws_router import (
+    authorize_socket,
     bind_redis,
     broadcast,
+    consume_ws_ticket,
     handle_redis_message,
+    issue_ws_ticket,
     location_id_from_channel,
     publish_ws,
     register,
@@ -28,9 +33,16 @@ class _FakeSocket:
 class _FakeRedis:
     def __init__(self) -> None:
         self.published: list[tuple[str, str]] = []
+        self.store: dict[str, str] = {}
 
     async def publish(self, channel: str, message: str) -> None:
         self.published.append((channel, message))
+
+    async def set(self, key: str, value: str, ex: int | None = None) -> None:
+        self.store[key] = value
+
+    async def getdel(self, key: str) -> str | None:
+        return self.store.pop(key, None)
 
 
 def test_unregister_is_idempotent() -> None:
@@ -111,3 +123,88 @@ async def test_handle_realtime_uses_publish_ws(monkeypatch: pytest.MonkeyPatch) 
     )
     _location, event = mock.await_args.args
     assert event["payload"] == {"orderId": "o-1", "id": "o-1", "locationId": "loc-1", "status": "submitted"}
+
+
+@pytest.mark.asyncio
+async def test_ticket_is_one_time() -> None:
+    redis = _FakeRedis()
+    bind_redis(redis)
+    try:
+        ticket = await issue_ws_ticket("loc-1")
+        assert await consume_ws_ticket(ticket) == "loc-1"
+        assert await consume_ws_ticket(ticket) is None
+    finally:
+        bind_redis(None)
+
+
+@pytest.mark.asyncio
+async def test_create_ticket_requires_login_and_location(
+    client: AsyncClient, owner_user: tuple[User, str], location: Location
+) -> None:
+    redis = _FakeRedis()
+    bind_redis(redis)
+    try:
+        unauth = await client.post("/api/v1/ws/ticket", json={"locationId": location.id})
+        assert unauth.status_code in {401, 403}
+
+        _, token = owner_user
+        missing = await client.post(
+            "/api/v1/ws/ticket",
+            json={"locationId": "00000000-0000-0000-0000-000000000000"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert missing.status_code == 404
+
+        ok = await client.post(
+            "/api/v1/ws/ticket",
+            json={"locationId": location.id},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert ok.status_code == 200
+        assert ok.json()["ticket"]
+        assert ok.json()["expiresIn"] == 60
+    finally:
+        bind_redis(None)
+
+
+@pytest.mark.asyncio
+async def test_authorize_socket_ticket_and_device(monkeypatch: pytest.MonkeyPatch) -> None:
+    redis = _FakeRedis()
+    bind_redis(redis)
+    try:
+        ticket = await issue_ws_ticket("loc-1")
+        ws = MagicMock()
+        ws.query_params = {"ticket": ticket}
+        ws.headers = {}
+        assert await authorize_socket(ws, "loc-1")
+        assert not await authorize_socket(ws, "loc-1")
+
+        ws_other = MagicMock()
+        ws_other.query_params = {"ticket": ticket}
+        ws_other.headers = {}
+        assert not await authorize_socket(ws_other, "loc-2")
+
+        async def _kds(_raw: str | None) -> dict:
+            return {"locationId": "loc-1", "type": "kds"}
+
+        monkeypatch.setattr("app.modules.ordering.ws_router.device_for_token", _kds)
+        device_ws = MagicMock()
+        device_ws.query_params = {"deviceToken": "secret"}
+        device_ws.headers = {}
+        assert await authorize_socket(device_ws, "loc-1")
+
+        async def _pos(_raw: str | None) -> dict:
+            return {"locationId": "loc-1", "type": "pos"}
+
+        monkeypatch.setattr("app.modules.ordering.ws_router.device_for_token", _pos)
+        pos_ws = MagicMock()
+        pos_ws.query_params = {"deviceToken": "secret"}
+        pos_ws.headers = {}
+        assert not await authorize_socket(pos_ws, "loc-1")
+
+        anon = MagicMock()
+        anon.query_params = {}
+        anon.headers = {}
+        assert not await authorize_socket(anon, "loc-1")
+    finally:
+        bind_redis(None)
