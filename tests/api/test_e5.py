@@ -14,10 +14,15 @@ from httpx import AsyncClient
 from conftest import add_item, bearer, create_order, submit_order
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DATABASE_URL = os.environ.get(
-    "SMARTSERVE_API_DATABASE_URL",
-    "postgresql://smartserve:smartserve@localhost:5432/smartserve",
-)
+
+
+def _database_url() -> str:
+    if url := os.environ.get("SMARTSERVE_API_DATABASE_URL"):
+        return url
+    user = os.environ.get("POSTGRES_USER", "smartserve")
+    password = os.environ.get("POSTGRES_PASSWORD", "smartserve")
+    db = os.environ.get("POSTGRES_DB", "smartserve")
+    return f"postgresql://{user}:{password}@localhost:5432/{db}"
 
 
 @pytest.mark.stack
@@ -42,7 +47,7 @@ async def test_e5_outbox_survives_broker_outage(
         )
         assert fired.status_code == 200
 
-        db = await asyncpg.connect(DATABASE_URL)
+        db = await asyncpg.connect(_database_url())
         try:
             unsent = await db.fetchval(
                 "SELECT count(*) FROM ordering_outbox WHERE published_at IS NULL AND payload LIKE $1",
@@ -55,7 +60,7 @@ async def test_e5_outbox_survives_broker_outage(
         _compose(["start", "rabbitmq"])
         await _wait_rabbit()
 
-    db = await asyncpg.connect(DATABASE_URL)
+    db = await asyncpg.connect(_database_url())
     try:
         reporting_count = 0
         print_jobs = 0

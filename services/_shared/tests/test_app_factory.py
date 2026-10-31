@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 
@@ -33,6 +34,9 @@ def test_create_service_app_health_and_served_by() -> None:
     ping = client.get("/api/v1/ping")
     assert ping.json() == {"pong": "ok"}
     assert ping.headers["X-Content-Type-Options"] == "nosniff"
+    assert ping.headers["Content-Security-Policy"] == "default-src 'none'; frame-ancestors 'none'"
+    assert ping.headers["Permissions-Policy"] == "camera=(), microphone=(), geolocation=()"
+    assert "X-XSS-Protection" not in ping.headers
     ready = client.get("/api/v1/ready")
     assert ready.status_code == 200
     assert ready.json() == {"status": "ok", "service": "smartserve-auth"}
@@ -76,6 +80,18 @@ def test_integrity_error_returns_409() -> None:
     resp = client.post("/api/v1/conflict")
     assert resp.status_code == 409
     assert resp.json() == {"detail": "The change conflicts with existing data"}
+
+
+def test_secret_key_refused_outside_development() -> None:
+    from smartserve_shared.app_factory import require_secret_key
+    from smartserve_shared.security import DEFAULT_SECRET_KEY
+
+    require_secret_key(SimpleNamespace(ENVIRONMENT="development", SECRET_KEY="short"))
+    require_secret_key(SimpleNamespace(ENVIRONMENT="test", SECRET_KEY=DEFAULT_SECRET_KEY))
+    with pytest.raises(RuntimeError, match="SECRET_KEY"):
+        require_secret_key(SimpleNamespace(ENVIRONMENT="staging", SECRET_KEY=DEFAULT_SECRET_KEY))
+    with pytest.raises(RuntimeError, match="SECRET_KEY"):
+        require_secret_key(SimpleNamespace(ENVIRONMENT="production", SECRET_KEY="too-short"))
 
 
 def test_json_logging_outside_development() -> None:

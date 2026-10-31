@@ -19,7 +19,24 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from smartserve_shared.logging import setup_logging
-from smartserve_shared.security import configure_security_from_settings
+from smartserve_shared.security import DEFAULT_SECRET_KEY, configure_security_from_settings
+
+_PLACEHOLDER_SECRETS = frozenset(
+    {
+        DEFAULT_SECRET_KEY,
+        "replace-with-openssl-rand-hex-32",
+        "change-me-in-production-use-a-256-bit-random-string",
+    }
+)
+
+
+def require_secret_key(settings: Any) -> None:
+    env = str(getattr(settings, "ENVIRONMENT", "development"))
+    if env in {"development", "test"}:
+        return
+    key = str(getattr(settings, "SECRET_KEY", "") or "")
+    if key in _PLACEHOLDER_SECRETS or len(key) < 32:
+        raise RuntimeError("SECRET_KEY must be a random value of at least 32 characters")
 
 logger = structlog.get_logger()
 
@@ -54,10 +71,7 @@ def create_service_app(
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         setup_logging(getattr(settings, "ENVIRONMENT", "development"))
-        if getattr(settings, "ENVIRONMENT", "development") == "production" and str(
-            getattr(settings, "SECRET_KEY", "")
-        ).startswith("change-me"):
-            raise RuntimeError("SECRET_KEY must be changed in production!")
+        require_secret_key(settings)
         logger.info(
             f"{name} service starting",
             env=getattr(settings, "ENVIRONMENT", "development"),
@@ -112,8 +126,9 @@ def create_service_app(
         response: Response = await call_next(request)  # type: ignore[operator]
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         response.headers["X-Served-By"] = name
         if getattr(settings, "ENVIRONMENT", "development") == "production":
             response.headers["Strict-Transport-Security"] = (

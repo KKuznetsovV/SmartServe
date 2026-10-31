@@ -2,11 +2,11 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: smartserve
-      POSTGRES_PASSWORD: smartserve
-      POSTGRES_DB: smartserve
+      POSTGRES_USER: ${POSTGRES_USER:-smartserve}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smartserve}
+      POSTGRES_DB: ${POSTGRES_DB:-smartserve}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -17,10 +17,11 @@ services:
 
   redis:
     image: redis:7-alpine
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-smartserve}"]
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-smartserve}", "ping"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -28,11 +29,11 @@ services:
   rabbitmq:
     image: rabbitmq:4-management-alpine
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: smartserve
-      RABBITMQ_DEFAULT_PASS: smartserve
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-smartserve}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-smartserve}
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 5s
@@ -46,9 +47,9 @@ services:
     ports:
       - "8001:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://smartserve:smartserve@db:5432/smartserve
-      REDIS_URL: redis://redis:6379/0
-      RABBITMQ_URL: amqp://smartserve:smartserve@rabbitmq:5672/
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-smartserve}:${POSTGRES_PASSWORD:-smartserve}@db:5432/${POSTGRES_DB:-smartserve}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-smartserve}@redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-smartserve}:${RABBITMQ_PASSWORD:-smartserve}@rabbitmq:5672/
       ENVIRONMENT: development
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
     env_file:
@@ -78,9 +79,9 @@ services:
     ports:
       - "8002:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://smartserve:smartserve@db:5432/smartserve
-      REDIS_URL: redis://redis:6379/0
-      RABBITMQ_URL: amqp://smartserve:smartserve@rabbitmq:5672/
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-smartserve}:${POSTGRES_PASSWORD:-smartserve}@db:5432/${POSTGRES_DB:-smartserve}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-smartserve}@redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-smartserve}:${RABBITMQ_PASSWORD:-smartserve}@rabbitmq:5672/
       ENVIRONMENT: development
     env_file:
       - ./.env
@@ -109,9 +110,9 @@ services:
     ports:
       - "8003:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://smartserve:smartserve@db:5432/smartserve
-      REDIS_URL: redis://redis:6379/0
-      RABBITMQ_URL: amqp://smartserve:smartserve@rabbitmq:5672/
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-smartserve}:${POSTGRES_PASSWORD:-smartserve}@db:5432/${POSTGRES_DB:-smartserve}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-smartserve}@redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-smartserve}:${RABBITMQ_PASSWORD:-smartserve}@rabbitmq:5672/
       AUTH_SERVICE_URL: http://auth:8000
       ENVIRONMENT: development
     env_file:
@@ -143,9 +144,9 @@ services:
     ports:
       - "8004:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://smartserve:smartserve@db:5432/smartserve
-      REDIS_URL: redis://redis:6379/0
-      RABBITMQ_URL: amqp://smartserve:smartserve@rabbitmq:5672/
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-smartserve}:${POSTGRES_PASSWORD:-smartserve}@db:5432/${POSTGRES_DB:-smartserve}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-smartserve}@redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-smartserve}:${RABBITMQ_PASSWORD:-smartserve}@rabbitmq:5672/
       ENVIRONMENT: development
     env_file:
       - ./.env
@@ -176,9 +177,9 @@ services:
     ports:
       - "8005:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://smartserve:smartserve@db:5432/smartserve
-      REDIS_URL: redis://redis:6379/0
-      RABBITMQ_URL: amqp://smartserve:smartserve@rabbitmq:5672/
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-smartserve}:${POSTGRES_PASSWORD:-smartserve}@db:5432/${POSTGRES_DB:-smartserve}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-smartserve}@redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-smartserve}:${RABBITMQ_PASSWORD:-smartserve}@rabbitmq:5672/
       ENVIRONMENT: development
     env_file:
       - ./.env
@@ -209,9 +210,9 @@ services:
     ports:
       - "8006:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://smartserve:smartserve@db:5432/smartserve
-      REDIS_URL: redis://redis:6379/0
-      RABBITMQ_URL: amqp://smartserve:smartserve@rabbitmq:5672/
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-smartserve}:${POSTGRES_PASSWORD:-smartserve}@db:5432/${POSTGRES_DB:-smartserve}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-smartserve}@redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-smartserve}:${RABBITMQ_PASSWORD:-smartserve}@rabbitmq:5672/
       ENVIRONMENT: development
     env_file:
       - ./.env
@@ -240,9 +241,9 @@ services:
     ports:
       - "8007:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://smartserve:smartserve@db:5432/smartserve
-      REDIS_URL: redis://redis:6379/0
-      RABBITMQ_URL: amqp://smartserve:smartserve@rabbitmq:5672/
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-smartserve}:${POSTGRES_PASSWORD:-smartserve}@db:5432/${POSTGRES_DB:-smartserve}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-smartserve}@redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-smartserve}:${RABBITMQ_PASSWORD:-smartserve}@rabbitmq:5672/
       ENVIRONMENT: development
     env_file:
       - ./.env
@@ -271,15 +272,15 @@ services:
     ports:
       - "8008:8000"
     environment:
-      DATABASE_URL: postgresql+asyncpg://smartserve:smartserve@db:5432/smartserve
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-smartserve}:${POSTGRES_PASSWORD:-smartserve}@db:5432/${POSTGRES_DB:-smartserve}
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production-use-a-256-bit-random-string}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       AUTH_SERVICE_URL: http://auth:8000
       CATALOG_SERVICE_URL: http://catalog:8000
       PRINTING_SERVICE_URL: http://printing:8000
       REPORTING_SERVICE_URL: http://reporting:8000
-      RABBITMQ_URL: amqp://smartserve:smartserve@rabbitmq:5672/
-      REDIS_URL: redis://redis:6379/2
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-smartserve}:${RABBITMQ_PASSWORD:-smartserve}@rabbitmq:5672/
+      REDIS_URL: redis://:${REDIS_PASSWORD:-smartserve}@redis:6379/2
       ENVIRONMENT: development
       # Empty by default so a fresh clone needs nothing outside this repo.
       LOCAL_MODEL_PATH: ${LOCAL_MODEL_PATH:-}

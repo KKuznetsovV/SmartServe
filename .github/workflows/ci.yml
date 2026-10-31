@@ -202,7 +202,9 @@ jobs:
           cache: "pip"
 
       - name: Prepare env
-        run: cp .env.example .env
+        run: |
+          cp .env.example .env
+          python -c "import pathlib,secrets; p=pathlib.Path('.env'); p.write_text(p.read_text().replace('SECRET_KEY=replace-with-openssl-rand-hex-32','SECRET_KEY='+secrets.token_hex(32),1))"
 
       - name: Start demo stack
         run: python scripts/demo.py --reset --stack
@@ -213,7 +215,12 @@ jobs:
       - name: Run black-box API suite
         env:
           SMARTSERVE_STACK: "1"
-        run: python -m pytest tests/api -q --tb=short
+        run: |
+          set -a
+          # shellcheck disable=SC1091
+          . ./.env
+          set +a
+          python -m pytest tests/api -q --tb=short
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
