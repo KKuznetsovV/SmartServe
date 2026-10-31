@@ -43,7 +43,7 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 26 | Q2 | `fix/q2-table-name` | merged | https://github.com/KKuznetsovV/SmartServe/pull/103 |
 | 27 | Q3 | `fix/q3-print-on-send` | merged | https://github.com/KKuznetsovV/SmartServe/pull/105 |
 | 28 | NUM | `feat/daily-order-numbers` | merged | https://github.com/KKuznetsovV/SmartServe/pull/107 |
-| 29 | AI | `fix/ai-dry-run-preview` | todo | |
+| 29 | AI | `fix/ai-dry-run-preview` | merged | https://github.com/KKuznetsovV/SmartServe/pull/109 |
 | 30 | S4 | `fix/s4-device-pairing-and-realtime-auth` | todo | |
 | 31 | S5 | `fix/s5-pin-lockout-and-proxy-ip` | todo | |
 | 32 | S8 | `fix/s8-token-handling` | todo | |
