@@ -13,6 +13,7 @@ dependencies = [
     "slowapi>=0.1.9",
     "aio-pika>=9.4.0",
     "pydantic>=2.9.0",
+    "tzdata>=2025.1",
 ]
 
 [project.optional-dependencies]

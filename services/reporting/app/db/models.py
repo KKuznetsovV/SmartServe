@@ -6,13 +6,13 @@ exists so report endpoints can verify a `location_id` belongs to the caller's bu
 """
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time
 from decimal import Decimal
 
 from smartserve_shared.mirrors import ReadOnlyMirror
 from smartserve_shared.money import MONEY_NUMERIC
 from smartserve_shared.outbox import declare_processed_events
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Time
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.session import Base
@@ -47,6 +47,8 @@ class Location(ReadOnlyMirror, Base):
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     business_id: Mapped[str] = mapped_column(String(), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    timezone: Mapped[str] = mapped_column(String(50), default="Asia/Jerusalem")
+    business_day_cutoff: Mapped[time] = mapped_column(Time, default=time(5, 0), server_default="05:00:00")
 
 
 class ReportingOrder(Base):

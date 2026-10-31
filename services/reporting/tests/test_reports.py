@@ -342,3 +342,91 @@ async def test_revenue_sum_has_no_float_drift(
     assert resp.status_code == 200
     assert resp.json()["totalRevenue"] == 1010.0
     assert resp.json()["orderCount"] == 100
+
+
+@pytest.mark.asyncio
+async def test_sale_before_cutoff_counts_on_previous_business_day(
+    client: AsyncClient, db: AsyncSession, location_id: str, manager_user: tuple[User, str]
+):
+    from zoneinfo import ZoneInfo
+
+    _, token = manager_user
+    headers = {"Authorization": f"Bearer {token}"}
+    created = datetime(2026, 11, 1, 1, 30, tzinfo=ZoneInfo("Asia/Jerusalem"))
+    await create_paid_order(db, location_id, [("Late bar", 1, 40.0)], created_at=created)
+
+    oct31 = await client.get(
+        f"/api/v1/locations/{location_id}/reports/sales?start_date=2026-10-31&end_date=2026-10-31",
+        headers=headers,
+    )
+    nov1 = await client.get(
+        f"/api/v1/locations/{location_id}/reports/sales?start_date=2026-11-01&end_date=2026-11-01",
+        headers=headers,
+    )
+    assert oct31.status_code == 200
+    assert oct31.json()["totalQty"] == 1
+    assert nov1.json()["totalQty"] == 0
+
+
+@pytest.mark.asyncio
+async def test_dst_fallback_business_day_keeps_all_sales(
+    client: AsyncClient, db: AsyncSession, location_id: str, manager_user: tuple[User, str]
+):
+    from zoneinfo import ZoneInfo
+
+    _, token = manager_user
+    headers = {"Authorization": f"Bearer {token}"}
+    tz = ZoneInfo("Asia/Jerusalem")
+    await create_paid_order(
+        db, location_id, [("Before fallback", 1, 10.0)], created_at=datetime(2026, 10, 24, 23, 0, tzinfo=tz)
+    )
+    await create_paid_order(
+        db, location_id, [("After fallback", 1, 15.0)], created_at=datetime(2026, 10, 25, 1, 30, tzinfo=tz)
+    )
+
+    resp = await client.get(
+        f"/api/v1/locations/{location_id}/reports/sales?start_date=2026-10-24&end_date=2026-10-24",
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    assert resp.json()["totalQty"] == 2
+    assert resp.json()["totalRevenue"] == pytest.approx(25.0)
+
+
+@pytest.mark.asyncio
+async def test_period_today_before_cutoff_is_previous_business_day(
+    client: AsyncClient, db: AsyncSession, location_id: str, manager_user: tuple[User, str], monkeypatch
+):
+    from datetime import datetime as dt
+    from zoneinfo import ZoneInfo
+
+    class FrozenDateTime(dt):
+        @classmethod
+        def now(cls, tz=None):
+            current = dt(2026, 11, 1, 3, 0, tzinfo=ZoneInfo("Asia/Jerusalem"))
+            return current.astimezone(tz or UTC)
+
+    monkeypatch.setattr("app.modules.reports.period.datetime", FrozenDateTime)
+
+    _, token = manager_user
+    headers = {"Authorization": f"Bearer {token}"}
+    await create_paid_order(
+        db,
+        location_id,
+        [("Yesterday bar", 1, 30.0)],
+        created_at=datetime(2026, 11, 1, 1, 30, tzinfo=ZoneInfo("Asia/Jerusalem")),
+    )
+    await create_paid_order(
+        db,
+        location_id,
+        [("Older", 1, 5.0)],
+        created_at=datetime(2026, 10, 30, 12, 0, tzinfo=ZoneInfo("Asia/Jerusalem")),
+    )
+
+    resp = await client.get(
+        f"/api/v1/locations/{location_id}/reports/summary?period=today",
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    assert resp.json()["orderCount"] == 1
+    assert resp.json()["totalRevenue"] == pytest.approx(30.0)

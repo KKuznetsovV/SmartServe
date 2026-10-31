@@ -246,6 +246,8 @@
     "addressOptional": "כתובת (אופציונלי)",
     "addressPlaceholder": "רחוב, עיר",
     "timezone": "אזור זמן",
+    "businessDayCutoff": "תחילת יום העסקים",
+    "businessDayCutoffHint": "מכירות לפני השעה הזו (לפי שעון הסניף) נספרות ליום העסקים הקודם. ברירת מחדל 05:00.",
     "defaultLanguage": "שפת ברירת מחדל",
     "defaultLanguageHint": "משמשת לקבלות ולתשובות ה-AI בסניף זה — נפרדת משפת התצוגה של לוח הבקרה למעלה",
     "saveLocation": "שמור סניף",

@@ -12,27 +12,27 @@ import type { Http } from './client'
 
 export interface SalesReportParams {
   groupBy: ReportGroupBy
-  start: string
-  end: string
+  startDate: string
+  endDate: string
 }
 
 export interface ServerSalesReportParams {
-  start: string
-  end: string
+  startDate: string
+  endDate: string
   itemId?: string
   categoryId?: string
 }
 
 export interface ClosedOrdersReportParams {
-  start: string
-  end: string
+  startDate: string
+  endDate: string
   status?: ClosedOrderStatusFilter
 }
 
 export interface ExportReportParams {
   reportType: ReportExportType
-  start: string
-  end: string
+  startDate: string
+  endDate: string
   groupBy?: ReportGroupBy
   itemId?: string
   categoryId?: string
@@ -56,16 +56,16 @@ export function createReportsResource(http: Http) {
       http.get<SalesReport>(
         `/locations/${locationId}/reports/sales?${toQuery({
           group_by: params.groupBy,
-          start: params.start,
-          end: params.end,
+          start_date: params.startDate,
+          end_date: params.endDate,
         })}`,
       ),
 
     salesByServer: (locationId: string, params: ServerSalesReportParams) =>
       http.get<ServerSalesReport>(
         `/locations/${locationId}/reports/sales-by-server?${toQuery({
-          start: params.start,
-          end: params.end,
+          start_date: params.startDate,
+          end_date: params.endDate,
           item_id: params.itemId,
           category_id: params.categoryId,
         })}`,
@@ -74,8 +74,8 @@ export function createReportsResource(http: Http) {
     closedOrders: (locationId: string, params: ClosedOrdersReportParams) =>
       http.get<ClosedOrdersReport>(
         `/locations/${locationId}/reports/closed-orders?${toQuery({
-          start: params.start,
-          end: params.end,
+          start_date: params.startDate,
+          end_date: params.endDate,
           status: params.status,
         })}`,
       ),
@@ -84,8 +84,8 @@ export function createReportsResource(http: Http) {
       http.getBlob(
         `/locations/${locationId}/reports/export?${toQuery({
           report_type: params.reportType,
-          start: params.start,
-          end: params.end,
+          start_date: params.startDate,
+          end_date: params.endDate,
           group_by: params.groupBy,
           item_id: params.itemId,
           category_id: params.categoryId,

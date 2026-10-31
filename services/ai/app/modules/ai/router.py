@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from fastapi import Depends, File, Form, HTTPException, Request, UploadFile, status
 from httpx import HTTPStatusError
 from smartserve_shared.app_factory import limiter
+from smartserve_shared.business_day import business_date_for
 from smartserve_shared.money import money
 from smartserve_shared.outbox import enqueue
 from smartserve_shared.routing import APIRouter
@@ -85,9 +86,12 @@ async def ai_command(
                 detail="AI service not configured (set ANTHROPIC_API_KEY)",
             )
 
-        system = INTENT_SYSTEM_PROMPT.format(
-            intents=", ".join(SUPPORTED_INTENTS), today=datetime.now(UTC).date().isoformat()
+        today = business_date_for(
+            datetime.now(UTC),
+            tz_name,
+            location.get("businessDayCutoff") or location.get("business_day_cutoff"),
         )
+        system = INTENT_SYSTEM_PROMPT.format(intents=", ".join(SUPPORTED_INTENTS), today=today.isoformat())
 
         message = await create_message(
             redis,
@@ -141,7 +145,7 @@ async def ai_command(
     if intent == "report.query":
         if ctx.claims.role not in ("owner", "manager"):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only managers can run reports")
-        report = await generate_report(params, location_id, ctx.token)
+        report = await generate_report(params, location_id, ctx.token, location=location)
         return {
             "intent": intent,
             "confidence": result.get("confidence"),

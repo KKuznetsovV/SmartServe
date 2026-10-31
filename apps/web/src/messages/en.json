@@ -246,6 +246,8 @@
     "addressOptional": "Address (optional)",
     "addressPlaceholder": "Street, City",
     "timezone": "Timezone",
+    "businessDayCutoff": "Business day starts at",
+    "businessDayCutoffHint": "Sales before this local time count toward the previous business day. Default 05:00.",
     "defaultLanguage": "Default Language",
     "defaultLanguageHint": "Used for receipts and AI replies at this location — separate from the dashboard's display language above",
     "saveLocation": "Save Location",

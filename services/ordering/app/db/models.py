@@ -9,7 +9,7 @@ already exist as owned by the other services.
 """
 
 import uuid
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time
 from decimal import Decimal
 
 from smartserve_shared.mirrors import ReadOnlyMirror
@@ -26,6 +26,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    Time,
     UniqueConstraint,
     inspect,
 )
@@ -71,6 +72,7 @@ class Location(ReadOnlyMirror, Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     address: Mapped[str | None] = mapped_column(Text)
     timezone: Mapped[str] = mapped_column(String(50), default="Asia/Jerusalem")
+    business_day_cutoff: Mapped[time] = mapped_column(Time, default=time(5, 0), server_default="05:00:00")
     language: Mapped[str] = mapped_column(String(5), default="he")
     vat_rate: Mapped[Decimal | None] = mapped_column(RATE_NUMERIC, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)

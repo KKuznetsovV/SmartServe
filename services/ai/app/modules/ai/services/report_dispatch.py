@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
 from httpx import HTTPStatusError
+from smartserve_shared.business_day import resolve_report_dates
 
 from app.modules.ai.services.match import MatchError, match_index
 from app.modules.ai.services.menu_client import MenuClient
@@ -19,23 +20,21 @@ _VALID_GROUP_BY = {"item", "category", "menu"}
 _VALID_STATUS = {"paid", "cancelled", "other"}
 
 
-def _parse_date(value: str | None, *, end_of_day: bool) -> str:
-    """Parse a model-supplied YYYY-MM-DD (or full ISO) date into a UTC ISO datetime string,
-    defaulting to start-of-day / end-of-day when only a bare date is given."""
-    if not value:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Could not determine the date range")
+def _report_dates(params: dict, location: dict | None, now: datetime | None) -> tuple[str, str]:
+    loc = location or {}
+    tz_name = loc.get("timezone")
+    cutoff = loc.get("businessDayCutoff") or loc.get("business_day_cutoff")
     try:
-        parsed = datetime.fromisoformat(value)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Could not parse date '{value}'") from None
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=UTC)
-    if "T" not in value:
-        if end_of_day:
-            parsed = parsed.replace(hour=23, minute=59, second=59, microsecond=999999)
-        else:
-            parsed = parsed.replace(hour=0, minute=0, second=0, microsecond=0)
-    return parsed.isoformat()
+        start, end = resolve_report_dates(
+            params.get("start") or params.get("start_date"),
+            params.get("end") or params.get("end_date"),
+            now=now or datetime.now(UTC),
+            timezone_name=tz_name,
+            cutoff=cutoff,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    return start.isoformat(), end.isoformat()
 
 
 async def _resolve_item_and_category_hints(params: dict, location_id: str, token: str) -> tuple[str | None, str | None]:
@@ -66,32 +65,40 @@ async def _resolve_item_and_category_hints(params: dict, location_id: str, token
     return item_id, category_id
 
 
-async def generate_report(params: dict, location_id: str, token: str) -> dict:
+async def generate_report(
+    params: dict,
+    location_id: str,
+    token: str,
+    *,
+    location: dict | None = None,
+    now: datetime | None = None,
+) -> dict:
     """Resolve classified params (report_type/group_by/date range/item or category hint/
     status) into a reporting-service call and return its JSON result."""
     report_type = params.get("report_type")
     if report_type not in _VALID_REPORT_TYPES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Could not determine which report to run")
 
-    start = _parse_date(params.get("start"), end_of_day=False)
-    end = _parse_date(params.get("end"), end_of_day=True)
+    start_date, end_date = _report_dates(params, location, now)
     reports = ReportingClient(token)
 
     try:
         if report_type == "sales":
             group_by_param = params.get("group_by")
             group_by = group_by_param if group_by_param in _VALID_GROUP_BY else "item"
-            return await reports.sales(location_id, group_by=str(group_by), start=start, end=end)
+            return await reports.sales(location_id, group_by=str(group_by), start_date=start_date, end_date=end_date)
 
         if report_type == "sales_by_server":
             item_id, category_id = await _resolve_item_and_category_hints(params, location_id, token)
             return await reports.sales_by_server(
-                location_id, start=start, end=end, item_id=item_id, category_id=category_id
+                location_id, start_date=start_date, end_date=end_date, item_id=item_id, category_id=category_id
             )
 
         # closed_orders
         status_filter = params.get("status") if params.get("status") in _VALID_STATUS else None
-        return await reports.closed_orders(location_id, start=start, end=end, status_filter=status_filter)
+        return await reports.closed_orders(
+            location_id, start_date=start_date, end_date=end_date, status_filter=status_filter
+        )
     except HTTPStatusError as exc:
         if exc.response.status_code == status.HTTP_404_NOT_FOUND:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not found") from exc

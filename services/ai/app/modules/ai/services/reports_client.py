@@ -12,10 +12,10 @@ class ReportingClient:
     def __init__(self, token: str):
         self._token = token
 
-    async def sales(self, location_id: str, *, group_by: str, start: str, end: str) -> dict[str, Any]:
+    async def sales(self, location_id: str, *, group_by: str, start_date: str, end_date: str) -> dict[str, Any]:
         resp = await reporting_client.get(
             f"/api/v1/locations/{location_id}/reports/sales",
-            params={"group_by": group_by, "start": start, "end": end},
+            params={"group_by": group_by, "start_date": start_date, "end_date": end_date},
             forward_token=self._token,
         )
         return resp.json()
@@ -24,12 +24,12 @@ class ReportingClient:
         self,
         location_id: str,
         *,
-        start: str,
-        end: str,
+        start_date: str,
+        end_date: str,
         item_id: str | None = None,
         category_id: str | None = None,
     ) -> dict[str, Any]:
-        params: dict[str, str] = {"start": start, "end": end}
+        params: dict[str, str] = {"start_date": start_date, "end_date": end_date}
         if item_id:
             params["item_id"] = item_id
         if category_id:
@@ -42,9 +42,9 @@ class ReportingClient:
         return resp.json()
 
     async def closed_orders(
-        self, location_id: str, *, start: str, end: str, status_filter: str | None = None
+        self, location_id: str, *, start_date: str, end_date: str, status_filter: str | None = None
     ) -> dict[str, Any]:
-        params: dict[str, str] = {"start": start, "end": end}
+        params: dict[str, str] = {"start_date": start_date, "end_date": end_date}
         if status_filter:
             params["status"] = status_filter
         resp = await reporting_client.get(

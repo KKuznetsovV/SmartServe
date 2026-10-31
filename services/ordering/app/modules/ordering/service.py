@@ -5,6 +5,7 @@ from decimal import Decimal
 from typing import Any
 
 from fastapi import HTTPException, status
+from smartserve_shared.business_day import business_date_for
 from smartserve_shared.lockout import (
     clear_failures,
     emit_lockout,
@@ -35,7 +36,6 @@ from app.db.models import (
     Table,
     User,
 )
-from app.modules.ordering.business_day import business_date_for
 from app.modules.ordering.schemas import (
     ApplyDiscountIn,
     AssignGuestsRequest,
@@ -231,7 +231,11 @@ class OrderService:
         return order
 
     async def _next_order_number(self, location: Location, *, now: datetime | None = None) -> tuple[int, date]:
-        biz_date = business_date_for(now or datetime.now(UTC), location.timezone or "Asia/Jerusalem")
+        biz_date = business_date_for(
+            now or datetime.now(UTC),
+            location.timezone or "Asia/Jerusalem",
+            location.business_day_cutoff,
+        )
         insert = _insert_stmt(self.db)
         await self.db.execute(
             insert(OrderNumberCounter)

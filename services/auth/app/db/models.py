@@ -9,12 +9,12 @@ references such as `orders.location_id`.
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time
 from decimal import Decimal
 
 from smartserve_shared.money import RATE_NUMERIC
 from smartserve_shared.outbox import declare_outbox
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, Time, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -51,6 +51,7 @@ class Location(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     address: Mapped[str | None] = mapped_column(Text)
     timezone: Mapped[str] = mapped_column(String(50), default="Asia/Jerusalem")
+    business_day_cutoff: Mapped[time] = mapped_column(Time, default=time(5, 0), server_default="05:00:00")
     language: Mapped[str] = mapped_column(String(5), default="he")
     vat_rate: Mapped[Decimal | None] = mapped_column(RATE_NUMERIC, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)

@@ -10,9 +10,8 @@ interface DateRangeFieldsProps {
   onEndDateChange: (value: string) => void
 }
 
-/** Two native date inputs (start/end) for filtering reports by day range.
- * Values are plain `YYYY-MM-DD` strings — converted to inclusive UTC
- * datetime bounds via `dayRangeToIso` before hitting the API. */
+/** Two native date inputs (start/end) for filtering reports by business day.
+ * Values are plain `YYYY-MM-DD` strings sent to the API as start_date/end_date. */
 export function DateRangeFields({
   startDate,
   endDate,

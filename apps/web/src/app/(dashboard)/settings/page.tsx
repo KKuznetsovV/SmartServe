@@ -28,6 +28,7 @@ const locSchema = z.object({
   name: z.string().min(1, 'Required'),
   address: z.string().optional().or(z.literal('')),
   timezone: z.string().min(1),
+  businessDayCutoff: z.string().regex(/^\d{2}:\d{2}$/),
   language: z.enum(['he', 'en']),
   vatRatePercent: z.string(),
 })
@@ -76,6 +77,7 @@ export default function SettingsPage() {
         name: data.name,
         address: data.address,
         timezone: data.timezone,
+        businessDayCutoff: data.businessDayCutoff,
         language: data.language,
         vatRate: trimmed === '' ? null : Number(trimmed) / 100,
       })
@@ -106,6 +108,7 @@ export default function SettingsPage() {
         name: loc.name,
         address: loc.address ?? '',
         timezone: loc.timezone,
+        businessDayCutoff: (loc.businessDayCutoff ?? '05:00:00').slice(0, 5),
         language: loc.language as 'he' | 'en',
         vatRatePercent: loc.vatRate == null ? '' : String(Math.round(loc.vatRate * 1000) / 10),
       })
@@ -190,6 +193,11 @@ export default function SettingsPage() {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">{t('defaultLanguageHint')}</p>
+              <div className="space-y-1">
+                <Label>{t('businessDayCutoff')}</Label>
+                <Input type="time" {...locForm.register('businessDayCutoff')} />
+                <p className="text-xs text-muted-foreground">{t('businessDayCutoffHint')}</p>
+              </div>
               <div className="space-y-1">
                 <Label>{t('locationVatRate')}</Label>
                 <Input
