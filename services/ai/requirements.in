@@ -9,7 +9,7 @@ pydantic-settings>=2.4.0
 httpx>=0.28.1
 anthropic>=0.40.0
 defusedxml>=0.7.1
-python-multipart>=0.0.20
+python-multipart==0.0.32
 structlog>=25.4.0
 slowapi>=0.1.9
 aio-pika>=9.4.0
