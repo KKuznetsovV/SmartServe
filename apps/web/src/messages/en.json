@@ -249,7 +249,15 @@
     "defaultLanguage": "Default Language",
     "defaultLanguageHint": "Used for receipts and AI replies at this location — separate from the dashboard's display language above",
     "saveLocation": "Save Location",
-    "locationSaved": "Location settings saved"
+    "locationSaved": "Location settings saved",
+    "devices": "Paired devices",
+    "noDevices": "No devices paired at this location yet.",
+    "revokeDevice": "Revoke",
+    "deviceRevoked": "Device revoked",
+    "revoked": "revoked",
+    "deviceType_pos": "POS",
+    "deviceType_kds": "Kitchen display",
+    "deviceType_display": "Customer display"
   },
   "discounts": {
     "title": "Discounts",

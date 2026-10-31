@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import type { PinStaff } from '@smartserve/types'
 import { apiClient } from '@/lib/api'
+import { useDeviceStore } from '@/lib/device-store'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -43,8 +44,13 @@ export function ManagerOverrideDialog({
     if (!open) return
     setPin('')
     setReason('')
+    const deviceToken = useDeviceStore.getState().deviceToken
+    if (!deviceToken) {
+      setManagers([])
+      return
+    }
     apiClient.auth
-      .pinStaff(locationId)
+      .pinStaff(locationId, deviceToken)
       .then((staff) => {
         const eligible = staff.filter((s) => s.role === 'owner' || s.role === 'manager')
         setManagers(eligible)

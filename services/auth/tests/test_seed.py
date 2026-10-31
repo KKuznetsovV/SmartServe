@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.db import seed as seed_mod
-from app.db.models import Business, User
+from app.db.models import Business, Device, User
 from app.db.session import Base
 
 
@@ -33,6 +33,8 @@ async def test_seed_creates_demo_users_and_is_idempotent(monkeypatch):
         assert emails == {"owner@demo.com", "manager@demo.com"}
         roles = set((await db.execute(select(User.role))).scalars().all())
         assert roles == {"owner", "manager", "waiter", "kitchen"}
+        n_devices = (await db.execute(select(func.count()).select_from(Device))).scalar_one()
+        assert n_devices == 1
 
     await seed_mod.seed(with_second_tenant=True)
     async with factory() as db:

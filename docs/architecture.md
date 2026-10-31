@@ -128,6 +128,7 @@ Services share one Postgres database. Each table has a single writer. Other serv
 | `businesses` | auth | catalog, ordering |
 | `locations` | auth | catalog, ordering, payments, staff, printing, reporting |
 | `users` | auth | catalog, ordering, payments, staff, printing, reporting |
+| `devices` | auth | — |
 | `menu_categories` | catalog | ordering, printing |
 | `menu_items` | catalog | ordering, printing |
 | `modifier_groups`, `modifiers`, `discounts` | catalog | ordering |

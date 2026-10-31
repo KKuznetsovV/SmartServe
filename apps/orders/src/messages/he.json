@@ -57,9 +57,21 @@
   },
   "setup": {
     "title": "הגדרת מכשיר זה",
-    "description": "בקש/י ממנהל את מזהה המיקום (ניתן למצוא בפורטל הניהול).",
-    "locationIdLabel": "מזהה מיקום",
-    "saveContinue": "שמור והמשך"
+    "description": "מנהל מתחבר, בוחר סניף, ונותן שם למכשיר.",
+    "email": "אימייל מנהל",
+    "password": "סיסמה",
+    "continue": "המשך",
+    "location": "סניף",
+    "deviceName": "שם המכשיר",
+    "deviceNamePlaceholder": "דלפק קדמי",
+    "deviceType": "סוג מכשיר",
+    "typePos": "קופה",
+    "typeKds": "תצוגת מטבח",
+    "typeDisplay": "תצוגת לקוח",
+    "saveContinue": "שיוך מכשיר",
+    "invalidCredentials": "אימייל או סיסמה שגויים",
+    "noLocations": "לא נמצאו סניפים לחשבון זה",
+    "registerFailed": "לא ניתן לרשום את המכשיר"
   },
   "menu": {
     "categories": "קטגוריות",

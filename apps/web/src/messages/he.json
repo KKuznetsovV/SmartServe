@@ -249,7 +249,15 @@
     "defaultLanguage": "שפת ברירת מחדל",
     "defaultLanguageHint": "משמשת לקבלות ולתשובות ה-AI בסניף זה — נפרדת משפת התצוגה של לוח הבקרה למעלה",
     "saveLocation": "שמור סניף",
-    "locationSaved": "הגדרות הסניף נשמרו"
+    "locationSaved": "הגדרות הסניף נשמרו",
+    "devices": "מכשירים משויכים",
+    "noDevices": "עדיין אין מכשירים משויכים בסניף זה.",
+    "revokeDevice": "ביטול שיוך",
+    "deviceRevoked": "השיוך בוטל",
+    "revoked": "בוטל",
+    "deviceType_pos": "קופה",
+    "deviceType_kds": "תצוגת מטבח",
+    "deviceType_display": "תצוגת לקוח"
   },
   "discounts": {
     "title": "הנחות",

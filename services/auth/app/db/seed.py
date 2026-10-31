@@ -7,13 +7,15 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import secrets
 
 import structlog
 from smartserve_shared.security import hash_password
 from sqlalchemy import func, select
 
-from app.db.models import Business, Location, User
+from app.db.models import Business, Device, Location, User
 from app.db.session import AsyncSessionLocal
+from app.modules.auth.device_service import hash_device_token
 
 logger = structlog.get_logger()
 
@@ -65,7 +67,7 @@ async def seed(*, with_second_tenant: bool = False) -> None:
             loc = Location(business_id=biz.id, name="Main Branch", address="1 Rothschild Blvd, Tel Aviv")
             db.add(loc)
             await db.flush()
-            await _ensure_user(
+            owner_user = await _ensure_user(
                 db,
                 business_id=biz.id,
                 email=DEMO_EMAIL,
@@ -98,9 +100,16 @@ async def seed(*, with_second_tenant: bool = False) -> None:
                 role="kitchen",
                 pin=KITCHEN_PIN,
             )
+            await db.flush()
             logger.info("demo tenant seeded", business_id=biz.id, location_id=loc.id)
+            await _ensure_pos_device(db, location_id=loc.id, created_by=owner_user.id)
         else:
             logger.info("demo tenant already present, skipping")
+            existing_loc = (
+                (await db.execute(select(Location).where(Location.business_id == owner.business_id))).scalars().first()
+            )
+            if existing_loc is not None:
+                await _ensure_pos_device(db, location_id=existing_loc.id, created_by=owner.id)
 
         if with_second_tenant:
             other = await db.execute(select(User).where(func.lower(User.email) == OTHER_EMAIL))
@@ -121,6 +130,25 @@ async def seed(*, with_second_tenant: bool = False) -> None:
                 logger.info("second tenant seeded", business_id=biz.id, location_id=loc.id)
 
         await db.commit()
+
+
+async def _ensure_pos_device(db, *, location_id: str, created_by: str) -> None:
+    existing = await db.execute(
+        select(Device).where(Device.location_id == location_id, Device.type == "pos", Device.revoked_at.is_(None))
+    )
+    if existing.scalar_one_or_none() is not None:
+        return
+    raw = secrets.token_urlsafe(32)
+    db.add(
+        Device(
+            location_id=location_id,
+            name="Demo POS",
+            type="pos",
+            token_hash=hash_device_token(raw),
+            created_by=created_by,
+        )
+    )
+    logger.info("demo POS device registered", location_id=location_id)
 
 
 def main() -> None:

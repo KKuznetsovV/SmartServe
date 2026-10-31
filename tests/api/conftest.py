@@ -71,12 +71,38 @@ async def _first_location(client: httpx.AsyncClient, token: str, business_id: st
 PIN_STAFF_NAMES = {"waiter": "Demo Waiter", "kitchen": "Demo Cook"}
 
 
-async def _pin_login(client: httpx.AsyncClient, location_id: str, role: str, pin: str) -> str:
+async def _ensure_pos_device(client: httpx.AsyncClient, token: str, location_id: str) -> str:
+    cache_key = f"device:{location_id}"
+    cached = _TOKEN_CACHE.get(cache_key)
+    if cached:
+        return cached
+    resp = await client.post(
+        f"/locations/{location_id}/devices",
+        headers=bearer(token),
+        json={"name": "API POS", "type": "pos"},
+    )
+    resp.raise_for_status()
+    device_token = resp.json()["token"]
+    _TOKEN_CACHE[cache_key] = device_token
+    return device_token
+
+
+def device_headers(device_token: str) -> dict[str, str]:
+    return {"X-Device-Token": device_token}
+
+
+async def _pin_login(
+    client: httpx.AsyncClient, location_id: str, role: str, pin: str, *, device_token: str
+) -> str:
     cache_key = f"pin:{location_id}:{role}"
     cached = _TOKEN_CACHE.get(cache_key)
     if cached:
         return cached
-    staff = await client.get("/auth/pin/staff", params={"locationId": location_id})
+    staff = await client.get(
+        "/auth/pin/staff",
+        params={"locationId": location_id},
+        headers=device_headers(device_token),
+    )
     staff.raise_for_status()
     preferred = PIN_STAFF_NAMES.get(role)
     match = next((row for row in staff.json() if row["name"] == preferred), None)
@@ -87,12 +113,14 @@ async def _pin_login(client: httpx.AsyncClient, location_id: str, role: str, pin
     resp = await client.post(
         "/auth/pin",
         json={"locationId": location_id, "userId": match["id"], "pin": pin},
+        headers=device_headers(device_token),
     )
     if resp.status_code == 429:
         await asyncio.sleep(7)
         resp = await client.post(
             "/auth/pin",
             json={"locationId": location_id, "userId": match["id"], "pin": pin},
+            headers=device_headers(device_token),
         )
     resp.raise_for_status()
     token = resp.json()["accessToken"]
@@ -105,12 +133,25 @@ async def owner_a(client: httpx.AsyncClient) -> dict[str, Any]:
     token = await _login(client, OWNER_A_EMAIL, OWNER_A_PASSWORD)
     profile = await _me(client, token)
     location = await _first_location(client, token, profile["businessId"])
-    await _restore_demo_manager(client, token, location["id"])
-    return {**profile, "token": token, "locationId": location["id"], "locationName": location["name"]}
+    device_token = await _ensure_pos_device(client, token, location["id"])
+    await _restore_demo_manager(client, token, location["id"], device_token)
+    return {
+        **profile,
+        "token": token,
+        "locationId": location["id"],
+        "locationName": location["name"],
+        "deviceToken": device_token,
+    }
 
 
-async def _restore_demo_manager(client: httpx.AsyncClient, owner_token: str, location_id: str) -> None:
-    staff = await client.get("/auth/pin/staff", params={"locationId": location_id})
+async def _restore_demo_manager(
+    client: httpx.AsyncClient, owner_token: str, location_id: str, device_token: str
+) -> None:
+    staff = await client.get(
+        "/auth/pin/staff",
+        params={"locationId": location_id},
+        headers=device_headers(device_token),
+    )
     if staff.status_code != 200:
         return
     manager = next((row for row in staff.json() if row["name"] == "Demo Manager"), None)
@@ -132,14 +173,18 @@ async def manager_a(client: httpx.AsyncClient, owner_a: dict[str, Any]) -> dict[
 
 @pytest_asyncio.fixture
 async def waiter_a(client: httpx.AsyncClient, owner_a: dict[str, Any]) -> dict[str, Any]:
-    token = await _pin_login(client, owner_a["locationId"], "waiter", WAITER_PIN)
+    token = await _pin_login(
+        client, owner_a["locationId"], "waiter", WAITER_PIN, device_token=owner_a["deviceToken"]
+    )
     profile = await _me(client, token)
     return {**profile, "token": token, "locationId": owner_a["locationId"]}
 
 
 @pytest_asyncio.fixture
 async def kitchen_a(client: httpx.AsyncClient, owner_a: dict[str, Any]) -> dict[str, Any]:
-    token = await _pin_login(client, owner_a["locationId"], "kitchen", KITCHEN_PIN)
+    token = await _pin_login(
+        client, owner_a["locationId"], "kitchen", KITCHEN_PIN, device_token=owner_a["deviceToken"]
+    )
     profile = await _me(client, token)
     return {**profile, "token": token, "locationId": owner_a["locationId"]}
 

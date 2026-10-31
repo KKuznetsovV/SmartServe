@@ -20,7 +20,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
-AUTH_OWNED_TABLES = {"businesses", "locations", "users", "auth_outbox"}
+AUTH_OWNED_TABLES = {"businesses", "locations", "users", "devices", "auth_outbox"}
 VERSION_TABLE = "alembic_version_auth"
 
 

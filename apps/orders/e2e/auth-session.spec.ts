@@ -22,13 +22,30 @@ async function demoLocationId(request: APIRequestContext): Promise<string> {
   return list[0].id as string
 }
 
-async function configureDevice(page: Page, locationId: string) {
-  await page.addInitScript((id) => {
-    localStorage.setItem(
-      'smartserve-device',
-      JSON.stringify({ state: { locationId: id }, version: 0 }),
-    )
-  }, locationId)
+async function configureDevice(page: Page, request: APIRequestContext, locationId: string) {
+  const login = await request.post(`${API}/auth/login`, {
+    data: { email: 'owner@demo.com', password: 'demo1234' },
+  })
+  expect(login.ok()).toBeTruthy()
+  const tokens = await login.json()
+  const registered = await request.post(`${API}/locations/${locationId}/devices`, {
+    headers: { Authorization: `Bearer ${tokens.accessToken}` },
+    data: { name: 'E2E POS', type: 'pos' },
+  })
+  expect(registered.ok()).toBeTruthy()
+  const device = await registered.json()
+  await page.addInitScript(
+    ({ locationId: id, deviceToken }) => {
+      localStorage.setItem(
+        'smartserve-device',
+        JSON.stringify({
+          state: { locationId: id, deviceToken, deviceType: 'pos', deviceName: 'E2E POS' },
+          version: 0,
+        }),
+      )
+    },
+    { locationId, deviceToken: device.token as string },
+  )
 }
 
 async function pinLoginWaiter(page: Page) {
@@ -41,7 +58,7 @@ async function pinLoginWaiter(page: Page) {
 
 test('reload and a new tab keep the session on /kitchen', async ({ page, context, request }) => {
   const locationId = await demoLocationId(request)
-  await configureDevice(page, locationId)
+  await configureDevice(page, request, locationId)
   await pinLoginWaiter(page)
   await expect(page).toHaveURL(/\/orders/)
 

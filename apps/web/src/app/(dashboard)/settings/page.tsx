@@ -115,7 +115,6 @@ export default function SettingsPage() {
     <div className="p-6 space-y-8 max-w-xl">
       <h1 className="text-2xl font-bold">{t('title')}</h1>
 
-      {/* Business */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">{t('business')}</CardTitle>
@@ -154,7 +153,6 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Location */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">{t('location')}</CardTitle>
@@ -209,6 +207,61 @@ export default function SettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      <DevicesCard locationId={activeLocationId} />
     </div>
+  )
+}
+
+function DevicesCard({ locationId }: { locationId: string | null }) {
+  const t = useTranslations('settings')
+  const qc = useQueryClient()
+  const { data: devices, isLoading } = useQuery({
+    queryKey: ['devices', locationId],
+    queryFn: () => apiClient.auth.listDevices(locationId!),
+    enabled: !!locationId,
+  })
+  const revoke = useMutation({
+    mutationFn: (deviceId: string) => apiClient.auth.revokeDevice(deviceId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['devices', locationId] })
+      toast.success(t('deviceRevoked'))
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">{t('devices')}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {isLoading && <Spinner />}
+        {!isLoading && (!devices || devices.length === 0) && (
+          <p className="text-sm text-muted-foreground">{t('noDevices')}</p>
+        )}
+        {(devices ?? []).map((device) => (
+          <div key={device.id} className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">{device.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {device.type}
+                {device.revokedAt ? ' · ' + t('revoked') : ''}
+              </p>
+            </div>
+            {!device.revokedAt && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={revoke.isPending}
+                onClick={() => revoke.mutate(device.id)}
+              >
+                {t('revokeDevice')}
+              </Button>
+            )}
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   )
 }

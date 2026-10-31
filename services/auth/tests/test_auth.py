@@ -8,6 +8,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Business, Location, User
 
 
+async def _device_headers(client: AsyncClient, manager_token: str, location_id: str) -> dict[str, str]:
+    resp = await client.post(
+        f"/api/v1/locations/{location_id}/devices",
+        json={"name": "Test POS", "type": "pos"},
+        headers={"Authorization": f"Bearer {manager_token}"},
+    )
+    assert resp.status_code == 201
+    return {"X-Device-Token": resp.json()["token"]}
+
+
 @pytest.fixture
 def anyio_backend():
     return "asyncio"
@@ -21,18 +31,31 @@ async def _make_pin_user(db: AsyncSession, business_id: str, pin: str, name: str
 
 
 async def test_pin_login_scoped_to_business(
-    client: AsyncClient, db: AsyncSession, business: Business, location: Location
+    client: AsyncClient,
+    db: AsyncSession,
+    business: Business,
+    location: Location,
+    manager_user: tuple[User, str],
 ):
     user = await _make_pin_user(db, business.id, "1234", "Waiter A")
+    headers = await _device_headers(client, manager_user[1], location.id)
 
-    resp = await client.post("/api/v1/auth/pin", json={"locationId": location.id, "userId": user.id, "pin": "1234"})
+    resp = await client.post(
+        "/api/v1/auth/pin",
+        json={"locationId": location.id, "userId": user.id, "pin": "1234"},
+        headers=headers,
+    )
     assert resp.status_code == 200
     payload = decode_token(resp.json()["accessToken"])
     assert payload["business_id"] == business.id
 
 
 async def test_pin_login_rejects_other_business_pin(
-    client: AsyncClient, db: AsyncSession, business: Business, location: Location
+    client: AsyncClient,
+    db: AsyncSession,
+    business: Business,
+    location: Location,
+    manager_user: tuple[User, str],
 ):
     other_biz = Business(name="Other Restaurant", country="IL", currency="ILS")
     db.add(other_biz)
@@ -40,8 +63,11 @@ async def test_pin_login_rejects_other_business_pin(
     other_user = await _make_pin_user(db, other_biz.id, "9999", "Other Waiter")
 
     # PIN belongs to a user of another business — must be rejected at this location
+    headers = await _device_headers(client, manager_user[1], location.id)
     resp = await client.post(
-        "/api/v1/auth/pin", json={"locationId": location.id, "userId": other_user.id, "pin": "9999"}
+        "/api/v1/auth/pin",
+        json={"locationId": location.id, "userId": other_user.id, "pin": "9999"},
+        headers=headers,
     )
     assert resp.status_code == 401
 
@@ -53,14 +79,23 @@ async def test_pin_login_invalid_location(client: AsyncClient, db: AsyncSession,
 
 
 async def test_pin_login_duplicate_pin_disambiguated_by_user_id(
-    client: AsyncClient, db: AsyncSession, business: Business, location: Location
+    client: AsyncClient,
+    db: AsyncSession,
+    business: Business,
+    location: Location,
+    manager_user: tuple[User, str],
 ):
     # Duplicate PINs across staff are allowed — login must authenticate the selected user, not
     # an arbitrary match, when two users share the same PIN.
     user_a = await _make_pin_user(db, business.id, "1111", "Waiter A")
     user_b = await _make_pin_user(db, business.id, "1111", "Waiter B")
 
-    resp = await client.post("/api/v1/auth/pin", json={"locationId": location.id, "userId": user_b.id, "pin": "1111"})
+    headers = await _device_headers(client, manager_user[1], location.id)
+    resp = await client.post(
+        "/api/v1/auth/pin",
+        json={"locationId": location.id, "userId": user_b.id, "pin": "1111"},
+        headers=headers,
+    )
     assert resp.status_code == 200
     payload = decode_token(resp.json()["accessToken"])
     assert payload["sub"] == user_b.id

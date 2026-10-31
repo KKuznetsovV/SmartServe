@@ -57,9 +57,21 @@
   },
   "setup": {
     "title": "Set Up This Device",
-    "description": "Ask a manager for this location's ID (found in the manager portal).",
-    "locationIdLabel": "Location ID",
-    "saveContinue": "Save & Continue"
+    "description": "A manager signs in, picks this location, and names the device.",
+    "email": "Manager email",
+    "password": "Password",
+    "continue": "Continue",
+    "location": "Location",
+    "deviceName": "Device name",
+    "deviceNamePlaceholder": "Front counter",
+    "deviceType": "Device type",
+    "typePos": "POS",
+    "typeKds": "Kitchen display",
+    "typeDisplay": "Customer display",
+    "saveContinue": "Pair device",
+    "invalidCredentials": "Invalid email or password",
+    "noLocations": "No locations found for this account",
+    "registerFailed": "Could not register this device"
   },
   "menu": {
     "categories": "Categories",
