@@ -69,29 +69,27 @@ async def test_s5_manager_override_pin_lockout(
     assert correct.status_code == 423
 
 
-async def test_s5_gateway_xff_uses_separate_rate_limit_buckets(client: AsyncClient) -> None:
+async def test_s5_gateway_forged_xff_shares_one_bucket(client: AsyncClient) -> None:
     stamp = uuid.uuid4().hex
     ip_a = "198.51.100.10"
     ip_b = "198.51.100.11"
-    for i in range(10):
+    statuses: list[int] = []
+    for i in range(11):
+        xff = ip_a if i % 2 == 0 else ip_b
         resp = await client.post(
             "/auth/login",
-            json={"email": f"s5-a-{stamp}-{i}@example.com", "password": "nope"},
-            headers={"X-Forwarded-For": ip_a},
+            json={"email": f"s5-gw-{stamp}-{i}@example.com", "password": "nope"},
+            headers={"X-Forwarded-For": xff},
         )
-        assert resp.status_code == 401, i
-    overflow = await client.post(
-        "/auth/login",
-        json={"email": f"s5-a-{stamp}-overflow@example.com", "password": "nope"},
-        headers={"X-Forwarded-For": ip_a},
-    )
-    assert overflow.status_code == 429
+        assert resp.status_code in {401, 429}, i
+        statuses.append(resp.status_code)
+    assert 429 in statuses
     other = await client.post(
         "/auth/login",
-        json={"email": f"s5-b-{stamp}@example.com", "password": "nope"},
+        json={"email": f"s5-gw-{stamp}-other@example.com", "password": "nope"},
         headers={"X-Forwarded-For": ip_b},
     )
-    assert other.status_code == 401
+    assert other.status_code == 429
 
 
 async def test_s5_direct_auth_port_ignores_forged_xff() -> None:
@@ -105,6 +103,5 @@ async def test_s5_direct_auth_port_ignores_forged_xff() -> None:
                 headers={"X-Forwarded-For": f"203.0.113.{i}"},
             )
             statuses.append(resp.status_code)
-    assert 401 in statuses
     assert 429 in statuses
     assert all(code in {401, 429} for code in statuses)

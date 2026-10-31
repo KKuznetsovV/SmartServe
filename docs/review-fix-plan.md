@@ -48,6 +48,7 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 30b | S4b | `fix/s4b-ws-tickets` | merged | https://github.com/KKuznetsovV/SmartServe/pull/113 |
 | 30c | S4c | `fix/s4c-public-display-token` | merged | https://github.com/KKuznetsovV/SmartServe/pull/115 |
 | 31 | S5 | `fix/s5-pin-lockout-and-proxy-ip` | merged | https://github.com/KKuznetsovV/SmartServe/pull/117 |
+| 31b | S5b | `fix/s5b-edge-client-ip` | merged | https://github.com/KKuznetsovV/SmartServe/pull/119 |
 | 32 | S8 | `fix/s8-token-handling` | todo | |
 | 33 | S9 | `fix/s9-ai-limits` | todo | |
 | 34 | S11 | `fix/s11-secure-defaults` | todo | |
@@ -692,6 +693,13 @@ ordering have no limit.
 - uvicorn runs with `--proxy-headers --forwarded-allow-ips` set to the gateway's network.
 - slowapi uses Redis storage.
 - Tests for the lockout and for limits keyed on the forwarded IP.
+
+### 31b S5b: overwrite client IP at the gateway
+
+Branch `fix/s5b-edge-client-ip`.
+
+nginx sets `X-Forwarded-For` to `$remote_addr` (never the caller's header). Optional
+`TRUSTED_PROXY_CIDRS` turns on the realip module for a load balancer in front.
 
 ### 32 S8: token handling
 

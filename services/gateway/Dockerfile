@@ -1,6 +1,10 @@
 FROM nginx:1.27-alpine
 
 COPY nginx.conf /etc/nginx/nginx.conf
+COPY realip.conf /etc/nginx/realip.conf
+COPY docker-entrypoint.d/40-trusted-proxy.sh /docker-entrypoint.d/40-trusted-proxy.sh
+RUN sed -i 's/\r$//' /docker-entrypoint.d/40-trusted-proxy.sh \
+    && chmod +x /docker-entrypoint.d/40-trusted-proxy.sh
 
 EXPOSE 80
 
