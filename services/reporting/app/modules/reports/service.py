@@ -1,7 +1,7 @@
 import csv
 import io
 from collections.abc import AsyncIterator
-from datetime import UTC, datetime, timedelta
+from datetime import datetime
 
 from smartserve_shared.money import money
 from sqlalchemy import func, select
@@ -34,22 +34,25 @@ def _csv_row(fields: list) -> str:
     return buf.getvalue()
 
 
-def _period_start(period: str) -> datetime:
-    now = datetime.now(UTC)
-    if period == "week":
-        return now - timedelta(days=7)
-    if period == "month":
-        return now - timedelta(days=30)
-    # default: today
-    return now.replace(hour=0, minute=0, second=0, microsecond=0)
+def _created_at_bounds(start: datetime, end: datetime, exclusive_end: bool):
+    if exclusive_end:
+        return Order.created_at >= start, Order.created_at < end
+    return Order.created_at >= start, Order.created_at <= end
 
 
 class ReportService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def summary(self, location_id: str, period: str) -> ReportSummaryOut:
-        since = _period_start(period)
+    async def summary(
+        self,
+        location_id: str,
+        period: str,
+        start: datetime,
+        end: datetime,
+        exclusive_end: bool = True,
+    ) -> ReportSummaryOut:
+        created_at = _created_at_bounds(start, end, exclusive_end)
 
         # Revenue + order count from paid orders in period
         revenue_q = await self.db.execute(
@@ -60,7 +63,7 @@ class ReportService:
             )
             .where(Order.location_id == location_id)
             .where(Order.status == "paid")
-            .where(Order.created_at >= since)
+            .where(*created_at)
         )
         total_revenue, vat_collected, order_count = revenue_q.one()
         total_revenue = money(total_revenue or 0)
@@ -74,7 +77,7 @@ class ReportService:
             select(Order.channel, func.coalesce(func.sum(Order.total), 0.0))
             .where(Order.location_id == location_id)
             .where(Order.status == "paid")
-            .where(Order.created_at >= since)
+            .where(*created_at)
             .group_by(Order.channel)
         )
         revenue_by_channel = {row[0]: money(row[1] or 0) for row in channel_q}
@@ -83,7 +86,7 @@ class ReportService:
         status_q = await self.db.execute(
             select(Order.status, func.count(Order.id))
             .where(Order.location_id == location_id)
-            .where(Order.created_at >= since)
+            .where(*created_at)
             .group_by(Order.status)
         )
         orders_by_status: dict[str, int] = {row[0]: row[1] for row in status_q}
@@ -97,7 +100,7 @@ class ReportService:
             )
             .join(Order, OrderItem.order_id == Order.id)
             .where(Order.location_id == location_id)
-            .where(Order.created_at >= since)
+            .where(*created_at)
             .where(Order.status != "cancelled")
             .group_by(OrderItem.menu_item_name)
             .order_by(func.sum(OrderItem.qty).desc())
@@ -135,7 +138,14 @@ class ReportService:
 
     # ─── New report types (sales by item/category/menu, sales per server, closed orders) ──
 
-    async def sales_report(self, location_id: str, group_by: str, start: datetime, end: datetime) -> SalesReportOut:
+    async def sales_report(
+        self,
+        location_id: str,
+        group_by: str,
+        start: datetime,
+        end: datetime,
+        exclusive_end: bool = True,
+    ) -> SalesReportOut:
         """Sales by item / category / whole-menu over an explicit date range.
 
         Only counts `paid` orders — this reports realized revenue, not open/in-flight order
@@ -144,8 +154,7 @@ class ReportService:
         base_filters = (
             Order.location_id == location_id,
             Order.status == "paid",
-            Order.created_at >= start,
-            Order.created_at <= end,
+            *_created_at_bounds(start, end, exclusive_end),
         )
 
         if group_by == "menu":
@@ -214,6 +223,7 @@ class ReportService:
         end: datetime,
         item_id: str | None = None,
         category_id: str | None = None,
+        exclusive_end: bool = True,
     ) -> ServerSalesReportOut:
         """Sales attributed to whichever staff member created the order (`Order.created_by`).
 
@@ -236,8 +246,7 @@ class ReportService:
                 .where(
                     Order.location_id == location_id,
                     Order.status == "paid",
-                    Order.created_at >= start,
-                    Order.created_at <= end,
+                    *_created_at_bounds(start, end, exclusive_end),
                 )
             )
             if item_id:
@@ -269,8 +278,7 @@ class ReportService:
                 .where(
                     Order.location_id == location_id,
                     Order.status == "paid",
-                    Order.created_at >= start,
-                    Order.created_at <= end,
+                    *_created_at_bounds(start, end, exclusive_end),
                 )
                 .group_by(Order.created_by, User.name)
                 .order_by(func.coalesce(func.sum(Order.total), 0.0).desc())
@@ -288,15 +296,21 @@ class ReportService:
 
         return ServerSalesReportOut(start=start, end=end, item_id=item_id, category_id=category_id, rows=rows)
 
-    def _closed_orders_query(self, location_id: str, start: datetime, end: datetime, status_filter: str | None):
+    def _closed_orders_query(
+        self,
+        location_id: str,
+        start: datetime,
+        end: datetime,
+        status_filter: str | None,
+        exclusive_end: bool = True,
+    ):
         q = (
             select(Order, User.name)
             .select_from(Order)
             .outerjoin(User, User.id == Order.created_by)
             .where(
                 Order.location_id == location_id,
-                Order.created_at >= start,
-                Order.created_at <= end,
+                *_created_at_bounds(start, end, exclusive_end),
             )
         )
         if status_filter == "paid":
@@ -310,14 +324,19 @@ class ReportService:
         return q.order_by(Order.created_at.desc())
 
     async def closed_orders(
-        self, location_id: str, start: datetime, end: datetime, status_filter: str | None = None
+        self,
+        location_id: str,
+        start: datetime,
+        end: datetime,
+        status_filter: str | None = None,
+        exclusive_end: bool = True,
     ) -> ClosedOrdersReportOut:
         """List of closed (terminal) orders over a date range, optionally narrowed to
         paid / cancelled / other (any status outside the currently-known active+terminal
         set — kept for forward compatibility; empty today since ordering only has two
         terminal statuses).
         """
-        q = self._closed_orders_query(location_id, start, end, status_filter)
+        q = self._closed_orders_query(location_id, start, end, status_filter, exclusive_end)
         result = await self.db.execute(q)
         orders = [
             ClosedOrderOut(
@@ -336,9 +355,14 @@ class ReportService:
     # ─── CSV streaming export ──────────────────────────────────────────────────────────────
 
     async def stream_sales_csv(
-        self, location_id: str, group_by: str, start: datetime, end: datetime
+        self,
+        location_id: str,
+        group_by: str,
+        start: datetime,
+        end: datetime,
+        exclusive_end: bool = True,
     ) -> AsyncIterator[str]:
-        report = await self.sales_report(location_id, group_by, start, end)
+        report = await self.sales_report(location_id, group_by, start, end, exclusive_end)
         yield _csv_row(["group_id", "group_label", "qty", "revenue"])
         for row in report.rows:
             yield _csv_row([row.group_id or "", row.group_label, row.qty, row.revenue])
@@ -350,14 +374,20 @@ class ReportService:
         end: datetime,
         item_id: str | None = None,
         category_id: str | None = None,
+        exclusive_end: bool = True,
     ) -> AsyncIterator[str]:
-        report = await self.sales_by_server(location_id, start, end, item_id, category_id)
+        report = await self.sales_by_server(location_id, start, end, item_id, category_id, exclusive_end)
         yield _csv_row(["server_id", "server_name", "order_count", "qty", "revenue"])
         for row in report.rows:
             yield _csv_row([row.server_id or "", row.server_name, row.order_count, row.qty, row.revenue])
 
     async def stream_closed_orders_csv(
-        self, location_id: str, start: datetime, end: datetime, status_filter: str | None = None
+        self,
+        location_id: str,
+        start: datetime,
+        end: datetime,
+        status_filter: str | None = None,
+        exclusive_end: bool = True,
     ) -> AsyncIterator[str]:
         """Row-by-row CSV export using a server-side cursor (`AsyncSession.stream`, not
         `execute`) so an arbitrarily large date range's worth of closed orders never gets
@@ -365,7 +395,9 @@ class ReportService:
         can realistically be unbounded (every individual order, vs. the bounded number of
         menu items/categories/servers the other reports group by).
         """
-        q = self._closed_orders_query(location_id, start, end, status_filter).execution_options(yield_per=200)
+        q = self._closed_orders_query(location_id, start, end, status_filter, exclusive_end).execution_options(
+            yield_per=200
+        )
         yield _csv_row(["order_id", "status", "channel", "total", "created_by", "created_by_name", "created_at"])
         result = await self.db.stream(q)
         async for order, name in result:

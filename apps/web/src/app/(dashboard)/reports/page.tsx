@@ -1,11 +1,10 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { useReportSummary, useSalesReport, useSalesByServerReport, useClosedOrdersReport } from '@/hooks/use-reports'
 import { useCategories, useMenuItems } from '@/hooks/use-menu'
 import { useAuthStore } from '@/lib/auth-store'
-import { dayRangeToIso } from '@/lib/report-utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
@@ -32,7 +31,10 @@ const TAB_KEY: Record<ReportTab, 'tab_sales' | 'tab_salesByServer' | 'tab_closed
 function isoDate(daysAgo: number): string {
   const d = new Date()
   d.setDate(d.getDate() - daysAgo)
-  return d.toISOString().slice(0, 10)
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function OverviewSection() {
@@ -201,8 +203,7 @@ function OverviewSection() {
 
 function SalesTab({ locationId, startDate, endDate }: { locationId: string; startDate: string; endDate: string }) {
   const [groupBy, setGroupBy] = useState<ReportGroupBy>('item')
-  const { start, end } = useMemo(() => dayRangeToIso(startDate, endDate), [startDate, endDate])
-  const { data, isLoading } = useSalesReport(locationId, { groupBy, start, end })
+  const { data, isLoading } = useSalesReport(locationId, { groupBy, startDate, endDate })
 
   return (
     <div className="space-y-4">
@@ -215,7 +216,7 @@ function SalesTab({ locationId, startDate, endDate }: { locationId: string; star
             <option value="menu">Whole menu</option>
           </Select>
         </div>
-        <CsvExportButton locationId={locationId} params={{ reportType: 'sales', groupBy, start, end }} />
+        <CsvExportButton locationId={locationId} params={{ reportType: 'sales', groupBy, startDate, endDate }} />
       </div>
       {isLoading && <Spinner />}
       {data && <SalesReportView report={data} />}
@@ -236,10 +237,9 @@ function SalesByServerTab({
   const [itemId, setItemId] = useState('')
   const { data: categories } = useCategories(locationId)
   const { data: items } = useMenuItems(categoryId || null, !!categoryId)
-  const { start, end } = useMemo(() => dayRangeToIso(startDate, endDate), [startDate, endDate])
   const { data, isLoading } = useSalesByServerReport(locationId, {
-    start,
-    end,
+    startDate,
+    endDate,
     itemId: itemId || undefined,
     categoryId: itemId ? undefined : categoryId || undefined,
   })
@@ -282,8 +282,8 @@ function SalesByServerTab({
           locationId={locationId}
           params={{
             reportType: 'sales-by-server',
-            start,
-            end,
+            startDate,
+            endDate,
             itemId: itemId || undefined,
             categoryId: itemId ? undefined : categoryId || undefined,
           }}
@@ -307,8 +307,7 @@ function ClosedOrdersTab({
   const [status, setStatus] = useState<ClosedOrderStatusFilter | ''>('')
   const t = useTranslations('reports')
   const tOrders = useTranslations('orders')
-  const { start, end } = useMemo(() => dayRangeToIso(startDate, endDate), [startDate, endDate])
-  const { data, isLoading } = useClosedOrdersReport(locationId, { start, end, status: status || undefined })
+  const { data, isLoading } = useClosedOrdersReport(locationId, { startDate, endDate, status: status || undefined })
 
   return (
     <div className="space-y-4">
@@ -328,7 +327,7 @@ function ClosedOrdersTab({
         </div>
         <CsvExportButton
           locationId={locationId}
-          params={{ reportType: 'closed-orders', start, end, status: status || undefined }}
+          params={{ reportType: 'closed-orders', startDate, endDate, status: status || undefined }}
         />
       </div>
       {isLoading && <Spinner />}

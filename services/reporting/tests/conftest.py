@@ -1,5 +1,7 @@
 """Shared test fixtures for the reporting service test suite."""
 
+from datetime import UTC, datetime
+
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from smartserve_shared.money import money, vat_in_inclusive
@@ -77,7 +79,12 @@ async def manager_user(db: AsyncSession) -> tuple[User, str]:
 async def location_id(db: AsyncSession) -> str:
     """Real Location row matching `manager_user`'s business_id ("biz-fixture") — needed
     since reports endpoints now enforce a location-ownership check against this table."""
-    location = Location(id="loc-fixture", business_id="biz-fixture", name="Fixture Location")
+    location = Location(
+        id="loc-fixture",
+        business_id="biz-fixture",
+        name="Fixture Location",
+        timezone="Asia/Jerusalem",
+    )
     db.add(location)
     await db.flush()
     return location.id
@@ -91,6 +98,7 @@ async def create_paid_order(
     status: str = "paid",
     created_by: str | None = None,
     item_meta: list[tuple[str | None, str | None, str | None]] | None = None,
+    created_at=None,
 ) -> ReportingOrder:
     """Build a projected order + line items on reporting-owned tables.
 
@@ -108,6 +116,7 @@ async def create_paid_order(
         total=total,
         tax_amount=vat_in_inclusive(total, "0.18"),
         created_by=created_by,
+        created_at=created_at or datetime.now(UTC),
     )
     db.add(order)
     await db.flush()

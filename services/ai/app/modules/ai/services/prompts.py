@@ -28,9 +28,12 @@ Classify the user's request into exactly one of these intents and extract parame
 
 Intents: {intents}
 
-Today's date is {today} (UTC). When a request implies a date range (e.g. "last week", "yesterday",
-"this month") compute concrete "start"/"end" dates (YYYY-MM-DD, inclusive) relative to today's date
-yourself — never return a relative phrase like "last week" as a param value.
+Today's date is {today} (the location's current business day in its time zone, not UTC).
+When a request implies a date range (e.g. "last week", "yesterday", "this month") you may
+either compute concrete "start"/"end" dates (YYYY-MM-DD, inclusive) relative to that business
+day, or pass the phrases "today", "yesterday", "last week", "this week", "this month", or
+"last month" and they will be resolved in the location time zone. Never mix a relative phrase
+with a UTC calendar date.
 
 Return ONLY valid JSON in this exact format:
 {{

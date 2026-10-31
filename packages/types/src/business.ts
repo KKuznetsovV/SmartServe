@@ -17,6 +17,7 @@ export const LocationSchema = z.object({
   name: z.string().min(1),
   address: z.string().optional(),
   timezone: z.string().default('Asia/Jerusalem'),
+  businessDayCutoff: z.string().default('05:00:00'),
   language: z.enum(['he', 'en']).default('he'),
   vatRate: z.number().min(0).max(1).nullable().optional(),
   active: z.boolean().default(true),

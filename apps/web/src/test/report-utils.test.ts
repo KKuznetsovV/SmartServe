@@ -1,19 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { dayRangeToIso, downloadBlob } from '@/lib/report-utils'
-
-describe('dayRangeToIso', () => {
-  it('produces an inclusive UTC range spanning the full start and end days', () => {
-    const { start, end } = dayRangeToIso('2026-03-01', '2026-03-15')
-    expect(start).toBe('2026-03-01T00:00:00.000Z')
-    expect(end).toBe('2026-03-15T23:59:59.999Z')
-  })
-
-  it('handles a single-day range', () => {
-    const { start, end } = dayRangeToIso('2026-01-01', '2026-01-01')
-    expect(start).toBe('2026-01-01T00:00:00.000Z')
-    expect(end).toBe('2026-01-01T23:59:59.999Z')
-  })
-})
+import { downloadBlob } from '@/lib/report-utils'
 
 describe('downloadBlob', () => {
   afterEach(() => {

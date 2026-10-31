@@ -1,3 +1,6 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 import httpx
 import pytest
 from fastapi import HTTPException
@@ -96,3 +99,24 @@ async def test_generate_report_closed_orders_translates_404(monkeypatch):
             {"report_type": "closed_orders", "start": "2026-01-01", "end": "2026-01-31"}, "loc-1", "tok"
         )
     assert exc_info.value.status_code == 404
+
+
+async def test_generate_report_today_before_cutoff_is_previous_business_day(monkeypatch):
+    captured = {}
+
+    async def fake_reporting_get(path, *, forward_token=None, **kwargs):
+        captured["params"] = kwargs["params"]
+        return httpx.Response(200, json={"rows": []})
+
+    monkeypatch.setattr(reporting_client, "get", fake_reporting_get)
+
+    now = datetime(2026, 11, 1, 3, 0, tzinfo=ZoneInfo("Asia/Jerusalem"))
+    await generate_report(
+        {"report_type": "sales", "start": "today", "end": "today"},
+        "loc-1",
+        "tok",
+        location={"timezone": "Asia/Jerusalem", "businessDayCutoff": "05:00"},
+        now=now,
+    )
+    assert captured["params"]["start_date"] == "2026-10-31"
+    assert captured["params"]["end_date"] == "2026-10-31"

@@ -1,7 +1,8 @@
-from datetime import datetime
+from datetime import datetime, time
 from decimal import Decimal
 
-from pydantic import Field
+from pydantic import Field, field_validator
+from smartserve_shared.business_day import DEFAULT_BUSINESS_DAY_CUTOFF, parse_cutoff
 from smartserve_shared.money import OptionalRate, Rate
 from smartserve_shared.roles import Role
 from smartserve_shared.schemas import BaseSchema as BaseModel
@@ -32,19 +33,31 @@ class LocationOut(BaseModel):
     name: str
     address: str | None = None
     timezone: str
+    business_day_cutoff: time = DEFAULT_BUSINESS_DAY_CUTOFF
     language: str
     vat_rate: OptionalRate = None
     active: bool
 
     model_config = {"from_attributes": True}
 
+    @field_validator("business_day_cutoff", mode="before")
+    @classmethod
+    def _cutoff_out(cls, value: object) -> time:
+        return parse_cutoff(value if isinstance(value, (time, str)) else None)
+
 
 class LocationCreate(BaseModel):
     name: str
     address: str | None = None
     timezone: str = "Asia/Jerusalem"
+    business_day_cutoff: time = DEFAULT_BUSINESS_DAY_CUTOFF
     language: str = "he"
     vat_rate: OptionalRate = Field(None, ge=0, le=1)
+
+    @field_validator("business_day_cutoff", mode="before")
+    @classmethod
+    def _cutoff_create(cls, value: object) -> time:
+        return parse_cutoff(value if isinstance(value, (time, str)) else None)
 
 
 class UserOut(BaseModel):
@@ -63,6 +76,14 @@ class LocationUpdate(BaseModel):
     name: str | None = None
     address: str | None = None
     timezone: str | None = None
+    business_day_cutoff: time | None = None
     language: str | None = None
     vat_rate: OptionalRate = Field(None, ge=0, le=1)
     active: bool | None = None
+
+    @field_validator("business_day_cutoff", mode="before")
+    @classmethod
+    def _cutoff_update(cls, value: object) -> time | None:
+        if value is None:
+            return None
+        return parse_cutoff(value if isinstance(value, (time, str)) else None)

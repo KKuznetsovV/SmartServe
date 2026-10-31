@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { createReportsResource } from '@smartserve/api-client'
 import type { Http } from '@smartserve/api-client'
-import { dayRangeToIso } from '@/lib/report-utils'
 
 function fakeHttp(): Http {
   return {
@@ -16,22 +15,18 @@ function fakeHttp(): Http {
 }
 
 describe('reports resource query building', () => {
-  it('URL-encodes the "+" in a UTC ISO offset so it is not read back as a space', () => {
+  it('sends YYYY-MM-DD start_date and end_date, not UTC instants', () => {
     const http = fakeHttp()
     const reports = createReportsResource(http)
-    const { start, end } = dayRangeToIso('2026-01-01', '2026-01-31')
 
-    reports.sales('loc-1', { groupBy: 'category', start, end })
+    reports.sales('loc-1', { groupBy: 'category', startDate: '2026-01-01', endDate: '2026-01-31' })
 
     const calledPath = (http.get as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
-    const query = calledPath.split('?')[1]
-    const params = new URLSearchParams(query)
-    // dayRangeToIso doesn't include a '+' offset (uses literal 'Z'), but this
-    // guards against a regression to '+00:00'-style offsets breaking query parsing.
-    expect(calledPath).not.toContain(' ')
-    expect(params.get('start')).toBe(start)
-    expect(params.get('end')).toBe(end)
+    const params = new URLSearchParams(calledPath.split('?')[1])
+    expect(params.get('start_date')).toBe('2026-01-01')
+    expect(params.get('end_date')).toBe('2026-01-31')
     expect(params.get('group_by')).toBe('category')
+    expect(params.has('start')).toBe(false)
   })
 
   it('omits itemId/categoryId from the export query when not provided', async () => {
@@ -40,8 +35,8 @@ describe('reports resource query building', () => {
 
     await reports.exportCsv('loc-1', {
       reportType: 'closed-orders',
-      start: '2026-01-01T00:00:00.000Z',
-      end: '2026-01-31T23:59:59.999Z',
+      startDate: '2026-01-01',
+      endDate: '2026-01-31',
       status: 'paid',
     })
 
@@ -58,8 +53,8 @@ describe('reports resource query building', () => {
     const reports = createReportsResource(http)
 
     reports.salesByServer('loc-1', {
-      start: '2026-01-01T00:00:00.000Z',
-      end: '2026-01-31T23:59:59.999Z',
+      startDate: '2026-01-01',
+      endDate: '2026-01-31',
       itemId: 'item-1',
       categoryId: 'cat-1',
     })
