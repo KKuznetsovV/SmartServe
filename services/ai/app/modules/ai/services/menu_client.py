@@ -89,6 +89,10 @@ class MenuClient:
         )
         return resp.json()
 
+    async def get_item(self, item_id: str) -> dict[str, Any]:
+        resp = await _catalog(catalog_client.get(f"/api/v1/menu/items/{item_id}", forward_token=self._token))
+        return resp.json()
+
     async def create_item(
         self,
         *,

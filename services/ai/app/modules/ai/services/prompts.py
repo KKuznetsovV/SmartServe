@@ -65,6 +65,17 @@ Prices the user says are VAT-inclusive shelf prices (what the guest sees), not a
   params: {{report_type: "sales_by_server", item_hint: "burger", start: "<first of this month>", end: "<today>"}}
 - "List all cancelled orders from yesterday" → intent: report.query,
   params: {{report_type: "closed_orders", status: "cancelled", start: "<yesterday>", end: "<yesterday>"}}
+- "86 the salmon" → intent: menu.toggle_availability, params: {{item_hint: "salmon", in_stock: false}}
+- "the salmon is 86'd" → intent: menu.toggle_availability, params: {{item_hint: "salmon", in_stock: false}}
+- "the salmon is 86 for tonight" → intent: menu.toggle_availability, params: {{item_hint: "salmon", in_stock: false}}
+- "סלמון 86" → intent: menu.toggle_availability, params: {{item_hint: "סלמון", in_stock: false}}
+- "raise all drinks 10%" → intent: menu.bulk_price_change, params: {{category_hint: "drinks", change_pct: 10}}
+- "all prices up 10%" / "כל התפריט" → intent: menu.bulk_price_change,
+  params: {{change_pct: 10, scope: "location"}}, and set top-level "scope": "location"
+
+"86" in kitchen slang means 86'd / sold out (in_stock=false). It is NEVER a price.
+Only set "scope": "location" when the user clearly means the entire menu ("all prices", "כל התפריט").
+A category or item hint that you cannot name must stay as that hint — never widen to the whole location.
 
 For report.query, "report_type" is one of "sales" (params: group_by = "item"|"category"|"menu", default
 "item"), "sales_by_server" (optional item_hint/category_hint to narrow to one item/category), or
