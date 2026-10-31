@@ -55,7 +55,7 @@ describe('ServerSalesReportView', () => {
     }
     renderWithIntl(<ServerSalesReportView report={filtered} />)
     expect(screen.getByText('Alice')).toBeInTheDocument()
-    expect(screen.getByText('Qty')).toBeInTheDocument()
+    expect(screen.getByText('Qty sold')).toBeInTheDocument()
   })
 
   it('omits the qty column when unfiltered', () => {
@@ -67,7 +67,7 @@ describe('ServerSalesReportView', () => {
       rows: [{ serverId: 's-1', serverName: 'Alice', orderCount: 3, qty: null, revenue: 140 }],
     }
     renderWithIntl(<ServerSalesReportView report={unfiltered} />)
-    expect(screen.queryByText('Qty')).not.toBeInTheDocument()
+    expect(screen.queryByText('Qty sold')).not.toBeInTheDocument()
   })
 })
 
