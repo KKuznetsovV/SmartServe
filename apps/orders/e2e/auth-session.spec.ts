@@ -1,52 +1,7 @@
-import { test, expect, type APIRequestContext, type Page } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
+import { demoLocationId, registerPosDevice } from './owner-session'
 
-const API = process.env.API_BASE_URL ?? 'http://localhost:8080/api/v1'
 const WAITER_PIN = '1234'
-
-async function demoLocationId(request: APIRequestContext): Promise<string> {
-  const login = await request.post(`${API}/auth/login`, {
-    data: { email: 'owner@demo.com', password: 'demo1234' },
-  })
-  expect(login.ok()).toBeTruthy()
-  const tokens = await login.json()
-  const me = await request.get(`${API}/auth/me`, {
-    headers: { Authorization: `Bearer ${tokens.accessToken}` },
-  })
-  expect(me.ok()).toBeTruthy()
-  const user = await me.json()
-  const locations = await request.get(`${API}/businesses/${user.businessId}/locations`, {
-    headers: { Authorization: `Bearer ${tokens.accessToken}` },
-  })
-  expect(locations.ok()).toBeTruthy()
-  const list = await locations.json()
-  return list[0].id as string
-}
-
-async function configureDevice(page: Page, request: APIRequestContext, locationId: string) {
-  const login = await request.post(`${API}/auth/login`, {
-    data: { email: 'owner@demo.com', password: 'demo1234' },
-  })
-  expect(login.ok()).toBeTruthy()
-  const tokens = await login.json()
-  const registered = await request.post(`${API}/locations/${locationId}/devices`, {
-    headers: { Authorization: `Bearer ${tokens.accessToken}` },
-    data: { name: 'E2E POS', type: 'pos' },
-  })
-  expect(registered.ok()).toBeTruthy()
-  const device = await registered.json()
-  await page.addInitScript(
-    ({ locationId: id, deviceToken }) => {
-      localStorage.setItem(
-        'smartserve-device',
-        JSON.stringify({
-          state: { locationId: id, deviceToken, deviceType: 'pos', deviceName: 'E2E POS' },
-          version: 0,
-        }),
-      )
-    },
-    { locationId, deviceToken: device.token as string },
-  )
-}
 
 async function pinLoginWaiter(page: Page) {
   await page.goto('/login')
@@ -58,7 +13,7 @@ async function pinLoginWaiter(page: Page) {
 
 test('reload and a new tab keep the session on /kitchen', async ({ page, context, request }) => {
   const locationId = await demoLocationId(request)
-  await configureDevice(page, request, locationId)
+  await registerPosDevice(page, request, locationId, 'E2E POS')
   await pinLoginWaiter(page)
   await expect(page).toHaveURL(/\/orders/)
 
@@ -78,7 +33,7 @@ test('reload and a new tab keep the session on /kitchen', async ({ page, context
 
 test('PIN session survives reload and logout returns to login', async ({ page, request }) => {
   const locationId = await demoLocationId(request)
-  await configureDevice(page, request, locationId)
+  await registerPosDevice(page, request, locationId, 'E2E POS')
   await pinLoginWaiter(page)
   await expect(page).toHaveURL(/\/orders/)
 

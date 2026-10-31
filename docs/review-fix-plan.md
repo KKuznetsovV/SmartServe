@@ -942,5 +942,7 @@ fixes* list, and these manual follow-ups that need the owner:
   cancel.
 - UI-1: `python-lockfiles` started failing on `main` after Q10 because CI installed unpinned `uv` and
   `--check` drifted. The job now pins `uv==0.13.6` to match `scripts/lock_deps.py`.
+- UI-2: owner `/login` is `10/minute`. Web + orders Playwright together exceed that unless they share
+  one cached owner token per worker (`apps/orders/e2e/owner-session.ts`).
 
 (Add items here as you find them. Don't fix them in an unrelated branch.)
