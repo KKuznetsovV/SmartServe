@@ -8,6 +8,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import difflib
 import subprocess
 import sys
 import tempfile
@@ -73,8 +74,21 @@ def main() -> int:
                 uv_compile(src, compiled)
                 expected = compiled.read_text(encoding="utf-8")
                 actual = dest.read_text(encoding="utf-8") if dest.exists() else ""
-                if expected.replace("\r\n", "\n") != actual.replace("\r\n", "\n"):
+                expected_n = expected.replace("\r\n", "\n")
+                actual_n = actual.replace("\r\n", "\n")
+                if expected_n != actual_n:
                     stale.append(str(dest.relative_to(REPO_ROOT)))
+                    if len(stale) == 1:
+                        rel = dest.relative_to(REPO_ROOT)
+                        sys.stderr.writelines(
+                            difflib.unified_diff(
+                                actual_n.splitlines(keepends=True),
+                                expected_n.splitlines(keepends=True),
+                                fromfile=str(rel),
+                                tofile=f"{rel} (compiled)",
+                                n=2,
+                            )
+                        )
         else:
             print(f"+ compile {src.relative_to(REPO_ROOT)}")
             uv_compile(src, dest)
