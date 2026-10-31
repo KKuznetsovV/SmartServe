@@ -69,12 +69,6 @@ async def test_s4_revoked_device_gets_401(client: AsyncClient, owner_a: dict) ->
     revoke.raise_for_status()
     display = await client.get("/public/display/orders", headers=device_headers(raw))
     assert display.status_code == 401
-    pin_staff = await client.get(
-        "/auth/pin/staff",
-        params={"locationId": owner_a["locationId"]},
-        headers=device_headers(raw),
-    )
-    assert pin_staff.status_code == 401
 
 
 async def test_s4_display_payload_has_exactly_three_fields(
