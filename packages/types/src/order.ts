@@ -74,3 +74,10 @@ export const OrderSchema = z.object({
   updatedAt: z.string().datetime(),
 })
 export type Order = z.infer<typeof OrderSchema>
+
+export const DisplayOrderSchema = z.object({
+  orderNumber: z.number().int().nullable(),
+  status: OrderStatus,
+  updatedAt: z.string().datetime(),
+})
+export type DisplayOrder = z.infer<typeof DisplayOrderSchema>

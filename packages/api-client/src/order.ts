@@ -1,4 +1,4 @@
-import type { Order, OrderItem, OrderItemModifierInput } from '@smartserve/types'
+import type { DisplayOrder, Order, OrderItem, OrderItemModifierInput } from '@smartserve/types'
 
 import type { Http } from './client'
 
@@ -62,7 +62,8 @@ export function createOrdersResource(http: Http) {
     ) => http.post<Order>(`/orders/${orderId}/items/delete`, { items, override: override ?? null }),
     fireCourse: (orderId: string, course: number) =>
       http.post<Order>(`/orders/${orderId}/fire-course`, { course }),
-    publicActive: (locationId: string) => http.get<Order[]>(`/public/locations/${locationId}/orders`),
+    publicDisplay: (deviceToken: string) =>
+      http.get<DisplayOrder[]>('/public/display/orders', { 'X-Device-Token': deviceToken }),
   }
 }
 

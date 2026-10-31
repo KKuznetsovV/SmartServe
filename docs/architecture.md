@@ -224,6 +224,7 @@ REST API with OpenAPI auto-documentation at `/docs`.
 
 ### WebSocket
 - `POST /api/v1/ws/ticket` issues a one-time Redis ticket (60 s). `ws://api/ws/{location_id}?ticket=` (or a KDS/display device token) streams order/KDS events. Anonymous sockets are closed with 4401. Ordering workers subscribe to Redis `ws:{locationId}` (fed by the committed outbox) and push to local sockets.
+- `GET /api/v1/public/display/orders` (display device token) returns `{orderNumber, status, updatedAt}` only. The customer display URL is `/display`.
 
 ---
 

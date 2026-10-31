@@ -104,6 +104,14 @@ class OrderOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class DisplayOrderOut(BaseModel):
+    order_number: int | None = None
+    status: str
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class OrderCreate(BaseModel):
     location_id: str
     table_id: str | None = None

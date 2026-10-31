@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from fastapi import Depends, Query, Request
+from fastapi import Depends, Header, HTTPException, Query, Request, status
 from smartserve_shared.outbox import enqueue
 from smartserve_shared.routing import APIRouter
 
@@ -11,6 +11,7 @@ from app.modules.ordering.events import order_event_payload
 from app.modules.ordering.schemas import (
     ApplyDiscountIn,
     AssignGuestsRequest,
+    DisplayOrderOut,
     OrderCreate,
     OrderFireCourseRequest,
     OrderItemCompRequest,
@@ -24,6 +25,7 @@ from app.modules.ordering.schemas import (
     ReorderRequest,
 )
 from app.modules.ordering.service import OrderService
+from app.modules.ordering.ws_router import device_for_token
 
 router = APIRouter()
 
@@ -264,10 +266,16 @@ async def fire_course(
     return result
 
 
-@router.get("/public/locations/{location_id}/orders", response_model=list[OrderWithItemsOut])
-async def public_active_orders(
-    location_id: str,
+@router.get("/public/display/orders", response_model=list[DisplayOrderOut])
+async def public_display_orders(
     db: DbSession,
+    x_device_token: str | None = Header(default=None, alias="X-Device-Token"),
 ):
-    """No-auth endpoint for customer-facing display screens."""
-    return await OrderService(db).list_active_for_display(location_id)
+    """Customer display: a paired display device token, three fields per order."""
+    device = await device_for_token(x_device_token)
+    if not device or device.get("type") != "display":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or missing device token")
+    location_id = device.get("locationId") or device.get("location_id")
+    if not location_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or missing device token")
+    return await OrderService(db).list_active_for_display(str(location_id))

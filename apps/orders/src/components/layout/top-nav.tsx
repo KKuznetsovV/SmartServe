@@ -17,7 +17,6 @@ const navItems = [
 export function TopNav() {
   const pathname = usePathname()
   const { user, clearAuth } = useAuthStore()
-  const activeLocationId = useAuthStore((s) => s.activeLocationId)
   const tNav = useTranslations('nav')
   const tAuth = useTranslations('auth')
 
@@ -53,17 +52,15 @@ export function TopNav() {
           <ChefHat className="h-4 w-4 shrink-0" />
           {tNav('kitchenDisplay')}
         </a>
-        {activeLocationId && (
-          <a
-            href={`/display/${activeLocationId}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            <Monitor className="h-4 w-4 shrink-0" />
-            {tNav('customerDisplay')}
-          </a>
-        )}
+        <a
+          href="/display"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          <Monitor className="h-4 w-4 shrink-0" />
+          {tNav('customerDisplay')}
+        </a>
       </nav>
 
       <div className="flex items-center gap-3">

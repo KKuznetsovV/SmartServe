@@ -13,6 +13,13 @@ from app.modules.ordering.schemas import OrderCreate
 from app.modules.ordering.service import OrderService
 
 
+def _patch_display_device(monkeypatch: pytest.MonkeyPatch, location_id: str) -> None:
+    async def _device(_raw: str | None) -> dict:
+        return {"locationId": location_id, "type": "display"}
+
+    monkeypatch.setattr("app.modules.ordering.router.device_for_token", _device)
+
+
 @pytest.mark.asyncio
 async def test_order_lifecycle(
     client: AsyncClient,
@@ -156,6 +163,7 @@ async def test_order_responses_include_table_name(
     db: AsyncSession,
     location: Location,
     manager_user: tuple[User, str],
+    monkeypatch: pytest.MonkeyPatch,
 ):
     _, token = manager_user
     headers = {"Authorization": f"Bearer {token}"}
@@ -184,7 +192,8 @@ async def test_order_responses_include_table_name(
     match = next(row for row in listed.json() if row["id"] == order_id)
     assert match["tableName"] == "T3"
 
-    display = await client.get(f"/api/v1/public/locations/{location.id}/orders")
+    _patch_display_device(monkeypatch, location.id)
+    display = await client.get("/api/v1/public/display/orders", headers={"X-Device-Token": "display-token"})
     assert display.status_code == 200
 
 
@@ -852,6 +861,7 @@ async def test_kitchen_item_status_rolls_up_order_status_for_customer_display(
     location: Location,
     manager_user: tuple[User, str],
     menu_item: MenuItem,
+    monkeypatch: pytest.MonkeyPatch,
 ):
     _, token = manager_user
     headers = {"Authorization": f"Bearer {token}"}
@@ -872,8 +882,10 @@ async def test_kitchen_item_status_rolls_up_order_status_for_customer_display(
     ).json()["id"]
     await client.post(f"/api/v1/orders/{order_id}/submit", headers=headers)
 
-    display = (await client.get(f"/api/v1/public/locations/{location.id}/orders")).json()
-    assert display[0]["id"] == order_id
+    _patch_display_device(monkeypatch, location.id)
+    headers_display = {"X-Device-Token": "display-token"}
+    display = (await client.get("/api/v1/public/display/orders", headers=headers_display)).json()
+    assert set(display[0].keys()) == {"orderNumber", "status", "updatedAt"}
     assert display[0]["status"] == "submitted"
 
     await client.patch(
@@ -881,7 +893,7 @@ async def test_kitchen_item_status_rolls_up_order_status_for_customer_display(
         json={"status": "preparing"},
         headers=headers,
     )
-    display = (await client.get(f"/api/v1/public/locations/{location.id}/orders")).json()
+    display = (await client.get("/api/v1/public/display/orders", headers=headers_display)).json()
     assert display[0]["status"] == "preparing"
 
     await client.patch(
@@ -889,5 +901,5 @@ async def test_kitchen_item_status_rolls_up_order_status_for_customer_display(
         json={"status": "ready"},
         headers=headers,
     )
-    display = (await client.get(f"/api/v1/public/locations/{location.id}/orders")).json()
+    display = (await client.get("/api/v1/public/display/orders", headers=headers_display)).json()
     assert display[0]["status"] == "ready"
