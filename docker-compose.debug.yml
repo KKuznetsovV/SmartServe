@@ -1,0 +1,27 @@
+# Overlay for local debugging. Do not use in CI.
+#   docker compose -f docker-compose.yml -f docker-compose.debug.yml up
+services:
+  auth:
+    ports:
+      - "8001:8000"
+  catalog:
+    ports:
+      - "8002:8000"
+  ordering:
+    ports:
+      - "8003:8000"
+  payments:
+    ports:
+      - "8004:8000"
+  staff:
+    ports:
+      - "8005:8000"
+  printing:
+    ports:
+      - "8006:8000"
+  reporting:
+    ports:
+      - "8007:8000"
+  ai:
+    ports:
+      - "8008:8000"
