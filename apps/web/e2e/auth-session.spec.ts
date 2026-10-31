@@ -28,6 +28,23 @@ test('reload and a new tab keep the session on /reports', async ({ page, context
   await tab.close()
 })
 
+test('logout in one tab sends the other tab to login on reload', async ({ page, context }) => {
+  await login(page)
+  await page.goto('/reports')
+  await expect(page).toHaveURL(/\/reports/)
+
+  const tab = await context.newPage()
+  await tab.goto('/reports')
+  await expect(tab).toHaveURL(/\/reports/)
+
+  await page.getByRole('button', { name: /התנתק|Log out|Logout/i }).click()
+  await expect(page).toHaveURL(/\/login/)
+
+  await tab.reload()
+  await expect(tab).toHaveURL(/\/login/)
+  await tab.close()
+})
+
 test('logged-out deep link to /staff returns there after login', async ({ page }) => {
   await page.goto('/staff')
   await expect(page).toHaveURL(/\/login/)

@@ -1,10 +1,8 @@
 export interface ApiClientConfig {
   baseUrl: string
   getAccessToken: () => string | null
-  /** Return the refresh token to enable automatic retry-on-401 token refresh. */
-  getRefreshToken?: () => string | null
-  /** Called with new tokens after a successful automatic refresh. */
-  onTokensRefreshed?: (accessToken: string, refreshToken: string) => void
+  /** Called with the new access token after a successful cookie-based refresh. */
+  onTokensRefreshed?: (accessToken: string) => void
   onUnauthorized?: () => void
 }
 
@@ -24,21 +22,21 @@ export interface Http {
 let refreshPromise: Promise<boolean> | null = null
 
 async function tryRefresh(config: ApiClientConfig): Promise<boolean> {
-  const refreshToken = config.getRefreshToken?.()
-  if (!refreshToken || !config.onTokensRefreshed) return false
+  if (!config.onTokensRefreshed) return false
 
   if (!refreshPromise) {
     refreshPromise = (async () => {
       try {
         const res = await fetch(`${config.baseUrl}/auth/refresh`, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken }),
+          body: '{}',
         })
         if (!res.ok) return false
         const json = await res.json()
         const data = json.data ?? json
-        config.onTokensRefreshed!(data.accessToken, data.refreshToken)
+        config.onTokensRefreshed!(data.accessToken)
         return true
       } catch {
         return false
@@ -69,11 +67,17 @@ async function fetchAuthed(
 
   const response = await fetch(`${config.baseUrl}${path}`, {
     ...options,
+    credentials: 'include',
     headers,
   })
 
   if (response.status === 401) {
-    if (!isRetry && !path.startsWith('/auth/') && (await tryRefresh(config))) {
+    const skipRefresh =
+      path === '/auth/refresh' ||
+      path === '/auth/login' ||
+      path === '/auth/pin' ||
+      path === '/auth/logout'
+    if (!isRetry && !skipRefresh && (await tryRefresh(config))) {
       return fetchAuthed(config, path, options, true)
     }
     config.onUnauthorized?.()
@@ -143,4 +147,3 @@ export function createHttp(config: ApiClientConfig): Http {
     getBlob: (path) => requestBlob(config, path),
   }
 }
-

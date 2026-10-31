@@ -1,5 +1,6 @@
 """Authentication business logic: credential/PIN verification and token issuance."""
 
+import uuid
 from typing import Any, NoReturn
 
 from fastapi import HTTPException, status
@@ -12,12 +13,20 @@ from smartserve_shared.lockout import (
     raise_now_locked,
     record_failure,
 )
-from smartserve_shared.security import create_access_token, create_refresh_token, decode_token, verify_password
+from smartserve_shared.security import (
+    access_expire_seconds,
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+    verify_password,
+)
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.models import Location, Outbox, User
+from app.modules.auth.refresh_store import register as register_refresh
+from app.modules.auth.refresh_store import rotate as rotate_refresh
 from app.modules.auth.schemas import TokenResponse
 
 
@@ -53,7 +62,7 @@ class AuthService:
             )
         await raise_now_locked(self.db, retry_after)
 
-    async def login(self, email: str, password: str) -> TokenResponse:
+    async def login(self, email: str, password: str) -> tuple[TokenResponse, str]:
         ident = email_ident(email)
         await raise_if_locked(self.redis, ident)
         result = await self.db.execute(select(User).where(func.lower(User.email) == email.lower(), User.active))
@@ -61,7 +70,7 @@ class AuthService:
         if not user or not user.password_hash or not verify_password(password, user.password_hash):
             await self._fail(ident, detail="Invalid credentials", user=user)
         await clear_failures(self.redis, ident)
-        return self._issue_tokens(user)
+        return await self._issue_tokens(user)
 
     async def list_pin_staff(self, location_id: str) -> list[User]:
         loc_result = await self.db.execute(select(Location).where(Location.id == location_id, Location.active))
@@ -77,7 +86,7 @@ class AuthService:
 
     async def pin_login(
         self, location_id: str, user_id: str, pin: str, *, device_id: str | None = None
-    ) -> TokenResponse:
+    ) -> tuple[TokenResponse, str]:
         # Duplicate PINs across staff are allowed (business owner's choice), so the caller
         # must identify which user they're authenticating as (picked via the staff list) —
         # we only verify the PIN against that specific user's hash, never brute-force match.
@@ -100,7 +109,7 @@ class AuthService:
         if not user or not user.pin_hash or not verify_password(pin, user.pin_hash):
             await self._fail(ident, detail="Invalid PIN", user=user, device_id=device_id)
         await clear_failures(self.redis, ident)
-        return self._issue_tokens(user)
+        return await self._issue_tokens(user)
 
     async def verify_manager_pin(
         self, location_id: str, manager_user_id: str, pin: str, *, device_id: str | None = None
@@ -130,21 +139,27 @@ class AuthService:
         await clear_failures(self.redis, ident)
         return user
 
-    async def refresh(self, refresh_token: str) -> TokenResponse:
+    async def refresh(self, refresh_token: str) -> tuple[TokenResponse, str]:
         payload = decode_token(refresh_token, expected_type="refresh")
+        jti = payload.get("jti")
+        family_id = payload.get("fam")
+        if not jti or not family_id:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
         # Reload the user so refreshed tokens keep claims and deactivated users are rejected
         result = await self.db.execute(select(User).where(User.id == payload["sub"], User.active))
         user = result.scalar_one_or_none()
         if not user:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User inactive or not found")
-        return self._issue_tokens(user)
+        new_jti = str(uuid.uuid4())
+        await rotate_refresh(self.redis, presented_jti=jti, family_id=family_id, new_jti=new_jti)
+        return await self._issue_tokens(user, family_id=family_id, jti=new_jti)
 
     async def get_user_profile(self, token: str) -> dict:
         payload = decode_token(token)
-        result = await self.db.execute(select(User).where(User.id == payload["sub"]))
+        result = await self.db.execute(select(User).where(User.id == payload["sub"], User.active))
         user = result.scalar_one_or_none()
         if not user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User inactive or not found")
         return {
             "id": user.id,
             "name": user.name,
@@ -152,13 +167,20 @@ class AuthService:
             "role": user.role,
             "businessId": user.business_id,
             "language": user.language,
+            "active": user.active,
         }
 
-    @staticmethod
-    def _issue_tokens(user: User) -> TokenResponse:
+    async def _issue_tokens(
+        self, user: User, *, family_id: str | None = None, jti: str | None = None
+    ) -> tuple[TokenResponse, str]:
         extra = {"business_id": user.business_id, "role": user.role}
-        return TokenResponse(
-            access_token=create_access_token(user.id, extra),
-            refresh_token=create_refresh_token(user.id),
-            expires_in=900,
+        refresh = create_refresh_token(user.id, family_id=family_id, jti=jti)
+        refresh_payload = decode_token(refresh, expected_type="refresh")
+        await register_refresh(self.redis, family_id=refresh_payload["fam"], jti=refresh_payload["jti"])
+        return (
+            TokenResponse(
+                access_token=create_access_token(user.id, extra),
+                expires_in=access_expire_seconds(),
+            ),
+            refresh,
         )

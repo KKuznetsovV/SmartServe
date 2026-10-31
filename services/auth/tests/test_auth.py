@@ -106,9 +106,10 @@ async def test_refresh_preserves_claims(client: AsyncClient, db: AsyncSession, o
     user, _ = owner_user
     login = await client.post("/api/v1/auth/login", json={"email": user.email, "password": "password123"})
     assert login.status_code == 200
-    refresh_token = login.json()["refreshToken"]
+    assert "refreshToken" not in login.json()
+    assert login.cookies.get("refresh_token")
 
-    resp = await client.post("/api/v1/auth/refresh", json={"refreshToken": refresh_token})
+    resp = await client.post("/api/v1/auth/refresh")
     assert resp.status_code == 200
     payload = decode_token(resp.json()["accessToken"])
     assert payload["business_id"] == user.business_id
@@ -118,12 +119,41 @@ async def test_refresh_preserves_claims(client: AsyncClient, db: AsyncSession, o
 async def test_refresh_rejects_deactivated_user(client: AsyncClient, db: AsyncSession, owner_user: tuple[User, str]):
     user, _ = owner_user
     login = await client.post("/api/v1/auth/login", json={"email": user.email, "password": "password123"})
-    refresh_token = login.json()["refreshToken"]
+    assert login.status_code == 200
 
     user.active = False
     await db.flush()
 
-    resp = await client.post("/api/v1/auth/refresh", json={"refreshToken": refresh_token})
+    resp = await client.post("/api/v1/auth/refresh")
+    assert resp.status_code == 401
+
+
+async def test_refresh_reuse_revokes_family(client: AsyncClient, owner_user: tuple[User, str]):
+    user, _ = owner_user
+    login = await client.post("/api/v1/auth/login", json={"email": user.email, "password": "password123"})
+    old = login.cookies.get("refresh_token")
+    assert old
+
+    first = await client.post("/api/v1/auth/refresh")
+    assert first.status_code == 200
+
+    client.cookies.set("refresh_token", old, path="/api/v1/auth")
+    reused = await client.post("/api/v1/auth/refresh")
+    assert reused.status_code == 401
+
+    after = await client.post("/api/v1/auth/refresh")
+    assert after.status_code == 401
+
+
+async def test_logout_revokes_refresh(client: AsyncClient, owner_user: tuple[User, str]):
+    user, _ = owner_user
+    login = await client.post("/api/v1/auth/login", json={"email": user.email, "password": "password123"})
+    assert login.status_code == 200
+
+    logout = await client.post("/api/v1/auth/logout")
+    assert logout.status_code == 204
+
+    resp = await client.post("/api/v1/auth/refresh")
     assert resp.status_code == 401
 
 

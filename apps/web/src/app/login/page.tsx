@@ -67,10 +67,10 @@ function LoginForm() {
     setLoading(true)
     try {
       const tokens = await apiClient.auth.login(data.email, data.password)
-      // Store tokens first so the /auth/me request carries the Authorization header
-      setTokens(tokens.accessToken, tokens.refreshToken)
+      // Store the access token first so the /auth/me request carries Authorization
+      setTokens(tokens.accessToken)
       const user = await apiClient.auth.me()
-      setAuth(tokens.accessToken, tokens.refreshToken, user)
+      setAuth(tokens.accessToken, user)
 
       // Fetch first available location for this business
       if (user.businessId) {

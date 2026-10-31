@@ -24,6 +24,9 @@ class FakeRedis:
     async def setex(self, key, ttl, value):
         self._store[key] = value
 
+    async def set(self, key, value, ex=None):
+        self._store[key] = value
+
     async def getdel(self, key):
         return self._store.pop(key, None)
 
@@ -38,7 +41,13 @@ class FakeRedis:
 
 
 def make_token(*, sub="user-1", business_id="biz-1", role="manager", location_id=None):
-    payload = {"sub": sub, "business_id": business_id, "role": role, "location_id": location_id}
+    payload = {
+        "sub": sub,
+        "business_id": business_id,
+        "role": role,
+        "location_id": location_id,
+        "type": "access",
+    }
     return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
 
 
@@ -50,6 +59,22 @@ def manager_token():
 @pytest.fixture
 def staff_token():
     return make_token(role="staff", sub="user-2")
+
+
+@pytest.fixture(autouse=True)
+def stub_auth_profile(request, monkeypatch):
+    if request.node.get_closest_marker("real_auth_lookup"):
+        return
+    from smartserve_shared.security import TokenError, verify_token
+
+    async def fake_lookup(_request, token, user_id):
+        try:
+            role = verify_token(token).role
+        except TokenError:
+            role = "manager"
+        return {"id": user_id, "role": role, "active": True, "businessId": "biz-1"}
+
+    monkeypatch.setattr("app.api.v1.deps.lookup_cached_user", fake_lookup)
 
 
 @pytest_asyncio.fixture(scope="function")

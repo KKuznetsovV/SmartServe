@@ -46,6 +46,19 @@ def test_refresh_token_rejected_as_access() -> None:
     assert payload["sub"] == "user-1"
 
 
+def test_verify_token_rejects_refresh_type() -> None:
+    token = create_refresh_token("user-1")
+    with pytest.raises(TokenError, match="type"):
+        verify_token(token)
+
+
+def test_refresh_token_includes_jti_and_family() -> None:
+    token = create_refresh_token("user-1")
+    payload = decode_token(token, expected_type="refresh")
+    assert payload["jti"]
+    assert payload["fam"]
+
+
 def test_verify_token_returns_claims() -> None:
     token = create_access_token("user-1", {"business_id": "b1", "role": "waiter", "location_id": "loc-1"})
     claims = verify_token(token)

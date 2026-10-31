@@ -7,8 +7,6 @@ const BASE_URL =
 export const apiClient = createApiClient({
   baseUrl: BASE_URL,
   getAccessToken: () => useAuthStore.getState().accessToken,
-  getRefreshToken: () => useAuthStore.getState().refreshToken,
-  onTokensRefreshed: (accessToken, refreshToken) =>
-    useAuthStore.getState().setTokens(accessToken, refreshToken),
+  onTokensRefreshed: (accessToken) => useAuthStore.getState().setTokens(accessToken),
   onUnauthorized: () => useAuthStore.getState().clearAuth(),
 })
