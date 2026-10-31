@@ -33,6 +33,8 @@ async def test_report_summary_empty(
     assert data["orderCount"] == 0
     assert data["avgOrderValue"] == 0
     assert data["topItems"] == []
+    assert data["openOrderCount"] == 0
+    assert data["openOrderValue"] == 0
 
 
 @pytest.mark.asyncio
@@ -62,6 +64,35 @@ async def test_report_summary_with_paid_order(
     assert data["topItems"][0]["menuItemName"] == "Burger"
     assert data["topItems"][0]["qty"] == 2
     assert "dine_in" in data["revenueByChannel"]
+    assert data["topItems"][0]["revenue"] == pytest.approx(order.total, rel=1e-3)
+    assert data["openOrderCount"] == 0
+
+
+@pytest.mark.asyncio
+async def test_summary_revenue_matches_paid_top_items_not_open_orders(
+    client: AsyncClient,
+    db: AsyncSession,
+    location_id: str,
+    manager_user: tuple[User, str],
+):
+    _, token = manager_user
+    headers = {"Authorization": f"Bearer {token}"}
+
+    paid = await create_paid_order(db, location_id, [("Burger", 2, 50.0)])
+    await create_paid_order(db, location_id, [("Open tab", 10, 100.0)], status="open")
+
+    resp = await client.get(
+        f"/api/v1/locations/{location_id}/reports/summary?period=today",
+        headers=headers,
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    top_revenue = sum(item["revenue"] for item in data["topItems"])
+    assert data["totalRevenue"] == pytest.approx(paid.total, rel=1e-3)
+    assert top_revenue == pytest.approx(paid.total, rel=1e-3)
+    assert data["orderCount"] == 1
+    assert data["openOrderCount"] == 1
+    assert data["openOrderValue"] == pytest.approx(1000.0, rel=1e-3)
 
 
 @pytest.mark.asyncio
@@ -298,7 +329,7 @@ async def test_export_sales_report_csv(
     assert resp.status_code == 200
     assert resp.headers["content-type"].startswith("text/csv")
     body = resp.text
-    assert body.splitlines()[0] == "group_id,group_label,qty,revenue"
+    assert body.splitlines()[0] == "group_id,group_label,qty_sold,revenue_gross"
     assert "Burger" in body
 
 

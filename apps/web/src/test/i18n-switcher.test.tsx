@@ -31,8 +31,8 @@ describe('language switcher: app vocabulary vs. user-entered content', () => {
     renderWithLocale('en', <SalesReportView report={report} />)
 
     // App vocabulary — translated.
-    expect(screen.getByText('Qty')).toBeInTheDocument()
-    expect(screen.getByText('Revenue')).toBeInTheDocument()
+    expect(screen.getByText('Qty sold')).toBeInTheDocument()
+    expect(screen.getByText('Revenue (incl. VAT)')).toBeInTheDocument()
 
     // User-entered business data — never translated, rendered verbatim.
     expect(screen.getByText('Burger')).toBeInTheDocument()
@@ -44,12 +44,12 @@ describe('language switcher: app vocabulary vs. user-entered content', () => {
     renderWithLocale('he', <SalesReportView report={report} />)
 
     // App vocabulary — now in Hebrew.
-    expect(screen.getByText('כמות')).toBeInTheDocument()
-    expect(screen.getByText('הכנסות')).toBeInTheDocument()
+    expect(screen.getByText('כמות שנמכרה')).toBeInTheDocument()
+    expect(screen.getByText('הכנסות (כולל מע״מ)')).toBeInTheDocument()
 
     // English app-vocabulary strings must be gone now that the locale switched.
-    expect(screen.queryByText('Qty')).not.toBeInTheDocument()
-    expect(screen.queryByText('Revenue')).not.toBeInTheDocument()
+    expect(screen.queryByText('Qty sold')).not.toBeInTheDocument()
+    expect(screen.queryByText('Revenue (incl. VAT)')).not.toBeInTheDocument()
 
     // User-entered business data is identical regardless of locale — never translated.
     expect(screen.getByText('Burger')).toBeInTheDocument()

@@ -76,7 +76,7 @@ function OverviewSection() {
       {data && (
         <>
           {/* KPI cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-4">
             <Card>
               <CardHeader className="pb-1">
                 <CardTitle className="text-sm font-medium text-muted-foreground">{t('revenue')}</CardTitle>
@@ -115,6 +115,17 @@ function OverviewSection() {
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold">₪{data.avgOrderValue.toFixed(2)}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-1">
+                <CardTitle className="text-sm font-medium text-muted-foreground">{t('openOrders')}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">{data.openOrderCount ?? 0}</p>
+                <p className="text-sm text-muted-foreground tabular-nums">
+                  ₪{(data.openOrderValue ?? 0).toFixed(2)}
+                </p>
               </CardContent>
             </Card>
           </div>

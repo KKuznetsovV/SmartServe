@@ -77,6 +77,10 @@ class ReportingOrderItem(Base):
     category_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     qty: Mapped[int] = mapped_column(Integer, default=1)
     unit_price: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, nullable=False)
+    discount_amount: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
+    is_comped: Mapped[bool] = mapped_column(Boolean, default=False)
+    status: Mapped[str] = mapped_column(String(50), default="pending")
+    revenue: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
 
 
 class EventLog(Base):

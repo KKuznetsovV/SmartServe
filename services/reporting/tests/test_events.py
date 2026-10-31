@@ -12,7 +12,7 @@ import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.db.models import Base, EventLog, ReportingOrder
+from app.db.models import Base, EventLog, ReportingOrder, ReportingOrderItem
 from app.modules.reports.events import handle_any_event
 
 
@@ -182,3 +182,46 @@ async def test_stale_order_event_does_not_overwrite_newer_projection(events_engi
         row = result.scalar_one()
         assert row.status == "ready"
         assert row.version == 3
+
+
+@pytest.mark.asyncio
+async def test_projected_item_revenue_is_net_of_comp_discount_and_order_total(events_engine):
+    session_factory = async_sessionmaker(events_engine, class_=AsyncSession, expire_on_commit=False)
+
+    await _handle(
+        session_factory,
+        "order.created",
+        {
+            "orderId": "order-net",
+            "locationId": "loc-1",
+            "status": "paid",
+            "total": 90.0,
+            "version": 1,
+            "items": [
+                {
+                    "id": "line-1",
+                    "menuItemName": "Burger",
+                    "qty": 1,
+                    "unitPrice": 100.0,
+                    "discountAmount": 10.0,
+                    "isComped": False,
+                    "status": "served",
+                },
+                {
+                    "id": "line-2",
+                    "menuItemName": "Fries",
+                    "qty": 1,
+                    "unitPrice": 20.0,
+                    "isComped": True,
+                    "status": "served",
+                },
+            ],
+        },
+    )
+
+    async with session_factory() as session:
+        result = await session.execute(select(ReportingOrderItem).where(ReportingOrderItem.order_id == "order-net"))
+        rows = {row.menu_item_name: row for row in result.scalars()}
+        assert rows["Burger"].revenue == 90.0
+        assert rows["Fries"].revenue == 0.0
+        assert rows["Fries"].is_comped is True

@@ -53,6 +53,9 @@ def _item_snapshot(item: OrderItem) -> dict[str, Any]:
         "categoryName": item.category_name,
         "qty": item.qty,
         "unitPrice": item.unit_price,
+        "discountAmount": item.discount_amount,
+        "isComped": item.is_comped,
+        "status": item.status,
     }
 
 

@@ -129,6 +129,7 @@ async def create_paid_order(
                 menu_item_name=name,
                 qty=qty,
                 unit_price=money(price),
+                revenue=money(price) * qty,
                 menu_item_id=menu_item_id,
                 category_id=category_id,
                 category_name=category_name,
