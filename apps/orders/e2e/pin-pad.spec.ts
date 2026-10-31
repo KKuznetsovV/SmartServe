@@ -3,33 +3,42 @@ import { expectNoSeriousAxeViolations } from './a11y'
 
 const API = process.env.API_BASE_URL ?? 'http://localhost:8080/api/v1'
 
-async function demoLocationId(request: APIRequestContext): Promise<string> {
+/** Owner `/login` is limited to 10/minute across the whole stack E2E run. */
+let ownerAccessToken: string | undefined
+let cachedLocationId: string | undefined
+
+async function ownerToken(request: APIRequestContext): Promise<string> {
+  if (ownerAccessToken) return ownerAccessToken
   const login = await request.post(`${API}/auth/login`, {
     data: { email: 'owner@demo.com', password: 'demo1234' },
   })
-  expect(login.ok()).toBeTruthy()
+  expect(login.ok(), await login.text()).toBeTruthy()
   const tokens = await login.json()
+  ownerAccessToken = tokens.accessToken as string
+  return ownerAccessToken
+}
+
+async function demoLocationId(request: APIRequestContext): Promise<string> {
+  if (cachedLocationId) return cachedLocationId
+  const token = await ownerToken(request)
   const me = await request.get(`${API}/auth/me`, {
-    headers: { Authorization: `Bearer ${tokens.accessToken}` },
+    headers: { Authorization: `Bearer ${token}` },
   })
   expect(me.ok()).toBeTruthy()
   const user = await me.json()
   const locations = await request.get(`${API}/businesses/${user.businessId}/locations`, {
-    headers: { Authorization: `Bearer ${tokens.accessToken}` },
+    headers: { Authorization: `Bearer ${token}` },
   })
   expect(locations.ok()).toBeTruthy()
   const list = await locations.json()
-  return list[0].id as string
+  cachedLocationId = list[0].id as string
+  return cachedLocationId
 }
 
 async function configureDevice(page: Page, request: APIRequestContext, locationId: string) {
-  const login = await request.post(`${API}/auth/login`, {
-    data: { email: 'owner@demo.com', password: 'demo1234' },
-  })
-  expect(login.ok()).toBeTruthy()
-  const tokens = await login.json()
+  const token = await ownerToken(request)
   const registered = await request.post(`${API}/locations/${locationId}/devices`, {
-    headers: { Authorization: `Bearer ${tokens.accessToken}` },
+    headers: { Authorization: `Bearer ${token}` },
     data: { name: 'E2E PIN pad', type: 'pos' },
   })
   expect(registered.ok()).toBeTruthy()
