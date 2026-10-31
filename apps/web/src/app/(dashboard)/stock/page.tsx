@@ -2,7 +2,8 @@
 
 import { useAuthStore } from '@/lib/auth-store'
 import { useLocationStock, useSetStock } from '@/hooks/use-stock'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import { formatPrice, localizedName } from '@smartserve/ui'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,6 +11,7 @@ import { Spinner } from '@/components/ui/spinner'
 
 export default function StockPage() {
   const t = useTranslations('stock')
+  const locale = useLocale()
   const activeLocationId = useAuthStore((s) => s.activeLocationId)
   const { data: items, isLoading } = useLocationStock(activeLocationId)
   const setStock = useSetStock()
@@ -43,8 +45,8 @@ export default function StockPage() {
             {outOfStock.map((item) => (
               <div key={item.id} className="flex items-center justify-between py-2 border-b last:border-0">
                 <div>
-                  <p className="text-sm font-medium">{item.name}</p>
-                  <p className="text-xs text-muted-foreground">₪{item.price.toFixed(2)}</p>
+                  <p className="text-sm font-medium">{localizedName(item, locale)}</p>
+                  <p className="text-xs text-muted-foreground">{formatPrice(item.price)}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="destructive">{t('outOfStockTitle')}</Badge>
@@ -76,8 +78,8 @@ export default function StockPage() {
           {inStock.map((item) => (
             <div key={item.id} className="flex items-center justify-between py-2 border-b last:border-0">
               <div>
-                <p className="text-sm font-medium">{item.name}</p>
-                <p className="text-xs text-muted-foreground">₪{item.price.toFixed(2)}</p>
+                <p className="text-sm font-medium">{localizedName(item, locale)}</p>
+                <p className="text-xs text-muted-foreground">{formatPrice(item.price)}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant="success">{t('inStockBadge')}</Badge>

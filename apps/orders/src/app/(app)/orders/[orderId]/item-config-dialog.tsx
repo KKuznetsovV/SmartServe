@@ -1,14 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import { formatPrice, localizedName } from '@smartserve/ui'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
-import { formatPrice } from '@/lib/utils'
 import type { MenuItem, Modifier, ModifierGroup, OrderItemModifierInput } from '@smartserve/types'
 
 export interface ItemConfigResult {
@@ -51,6 +51,7 @@ export function ItemConfigDialog({
 }: Props) {
   const t = useTranslations('itemConfigDialog')
   const tCommon = useTranslations('common')
+  const locale = useLocale()
   const [qty, setQty] = useState(1)
   const [notes, setNotes] = useState('')
   const [selectedModifiers, setSelectedModifiers] = useState<Record<string, string[]>>({})
@@ -115,7 +116,7 @@ export function ItemConfigDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{title ?? item?.name}</DialogTitle>
+          <DialogTitle>{title ?? (item ? localizedName(item, locale) : '')}</DialogTitle>
         </DialogHeader>
 
         {!item && (
@@ -131,7 +132,7 @@ export function ItemConfigDialog({
             {modifierGroups.map((group) => (
               <div key={group.id} className="space-y-1">
                 <Label>
-                  {group.name}
+                  {localizedName(group, locale)}
                   {group.required && <span className="text-destructive"> *</span>}
                   <span className="ms-1 text-xs text-muted-foreground">
                     {group.maxSelect > 1 ? t('upTo', { max: group.maxSelect }) : t('chooseOne')}
@@ -147,13 +148,13 @@ export function ItemConfigDialog({
                           key={mod.id}
                           type="button"
                           onClick={() => toggleModifier(group, mod)}
-                          className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                          className={`min-h-12 rounded-full border px-4 py-2 text-xs transition-colors ${
                             selected
                               ? 'border-primary bg-primary/10 font-medium text-primary'
                               : 'border-border hover:bg-muted'
                           }`}
                         >
-                          {mod.name}
+                          {localizedName(mod, locale)}
                           {mod.priceDelta !== 0 &&
                             ` (${mod.priceDelta > 0 ? '+' : ''}${formatPrice(mod.priceDelta)})`}
                         </button>

@@ -342,10 +342,11 @@ export function PaymentDialog({ open, onOpenChange, orderId, order, payments, re
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button variant="outline" className="min-h-12" onClick={() => onOpenChange(false)}>
               {tCommon('cancel')}
             </Button>
             <Button
+              className="min-h-16"
               onClick={handleConfirm}
               disabled={createPayment.isPending || remaining <= 0 || baseAmount <= 0}
             >

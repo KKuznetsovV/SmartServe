@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { ChevronRight, ChevronDown, Pencil, Trash2, Plus, GripVertical } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import { localizedName } from '@smartserve/ui'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -36,6 +37,7 @@ export function CategoryNode({
   onEditItem: (item: MenuItem) => void
 }) {
   const t = useTranslations('menu')
+  const locale = useLocale()
   const [expanded, setExpanded] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const children = categories.filter((c) => c.parentId === category.id)
@@ -95,10 +97,7 @@ export function CategoryNode({
             ) : (
               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground rtl:-scale-x-100" />
             )}
-            <span className="font-medium truncate">{category.name}</span>
-            {category.nameHe && (
-              <span className="text-sm text-muted-foreground dir-rtl">{category.nameHe}</span>
-            )}
+            <span className="font-medium truncate">{localizedName(category, locale)}</span>
             <Badge variant={category.active ? 'success' : 'secondary'}>
               {category.active ? t('active') : t('hidden')}
             </Badge>

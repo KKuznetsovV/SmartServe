@@ -5,7 +5,8 @@ import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Plus, Pencil, Trash2, Power, PowerOff, ChevronDown, ChevronUp } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import { localizedName } from '@smartserve/ui'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -183,6 +184,7 @@ export function ItemCard({
   onEdit: (item: MenuItem) => void
 }) {
   const t = useTranslations('menu')
+  const locale = useLocale()
   const [expanded, setExpanded] = useState(false)
   const [mgDialogOpen, setMgDialogOpen] = useState(false)
   const deleteItem = useDeleteMenuItem()
@@ -201,12 +203,7 @@ export function ItemCard({
         {/* Compact rectangle: name + price + stock badge, always visible */}
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <span className="block truncate font-medium">{item.name}</span>
-            {item.nameHe && (
-              <span className="block truncate text-xs text-muted-foreground" dir="rtl">
-                {item.nameHe}
-              </span>
-            )}
+            <span className="block truncate font-medium">{localizedName(item, locale)}</span>
           </div>
           {expanded ? (
             <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -257,7 +254,7 @@ export function ItemCard({
                 {item.modifierGroups.map((mg: ModifierGroup) => (
                   <div key={mg.id} className="rounded-md bg-muted/50 p-3">
                     <div className="mb-2 flex items-center justify-between">
-                      <span className="text-sm font-medium">{mg.name}</span>
+                      <span className="text-sm font-medium">{localizedName(mg, locale)}</span>
                       <Button variant="ghost" size="sm" onClick={() => deleteMG.mutate({ id: mg.id, itemId: item.id })}>
                         <Trash2 className="h-3 w-3 text-destructive" />
                       </Button>
@@ -265,7 +262,7 @@ export function ItemCard({
                     <div className="flex flex-wrap gap-1">
                       {mg.modifiers?.map((mod) => (
                         <Badge key={mod.id} variant="outline" className="text-xs">
-                          {mod.name}
+                          {localizedName(mod, locale)}
                           {mod.priceDelta !== 0 && (
                             <span className="ms-1 text-muted-foreground">
                               {mod.priceDelta > 0 ? '+' : ''}

@@ -156,7 +156,7 @@
     "removeComp": "Remove Comp",
     "subtotal": "Subtotal",
     "tax": "Tax ({rate}%)",
-    "includesVat": "includes VAT {rate}%: ₪{amount}",
+    "includesVat": "includes VAT {rate}%: {amount}",
     "total": "Total",
     "paid": "Paid",
     "remaining": "Remaining",
@@ -167,6 +167,7 @@
     "collectPayment": "Collect Payment",
     "fireCourse": "Fire Course {course}",
     "cancelOrder": "Cancel Order",
+    "moreActions": "More actions",
     "orderNotFound": "Order not found.",
     "cancelOrderConfirm": "Cancel this order?",
     "deleteItemsConfirm": "{count, plural, one {Delete # item?} other {Delete # items?}}"
@@ -264,6 +265,7 @@
   "itemStatus": {
     "held": "Held",
     "pending": "Pending",
+    "notSent": "Not sent",
     "preparing": "Preparing",
     "ready": "Ready",
     "served": "Served",

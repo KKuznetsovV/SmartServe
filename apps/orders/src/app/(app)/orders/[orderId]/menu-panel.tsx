@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useDraggable } from '@dnd-kit/core'
 import { GlassWater, UtensilsCrossed } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import { formatPrice, localizedName } from '@smartserve/ui'
 import { useCategories, useMenuItems } from '@/hooks/use-menu'
 import { Spinner } from '@/components/ui/spinner'
-import { formatPrice } from '@/lib/utils'
 import type { MenuItem } from '@smartserve/types'
 
 interface Props {
@@ -17,6 +17,7 @@ interface Props {
 /** Menu browser: two top-level branches (e.g. Food/Drinks) → subcategories → draggable/tappable item cards. */
 export function MenuPanel({ locationId, onItemTap }: Props) {
   const t = useTranslations('menuPanel')
+  const locale = useLocale()
   const { data: categories, isLoading: categoriesLoading } = useCategories(locationId)
 
   const roots = useMemo(
@@ -63,20 +64,23 @@ export function MenuPanel({ locationId, onItemTap }: Props) {
     <div className="space-y-4">
       <div className="flex gap-2">
         {roots.map((root) => {
-          const Icon = /drink/i.test(root.name) ? GlassWater : UtensilsCrossed
+          const label = localizedName(root, locale)
+          const Icon = /drink|שתייה|משקאות/i.test(`${root.name} ${root.nameHe ?? ''}`)
+            ? GlassWater
+            : UtensilsCrossed
           return (
             <button
               key={root.id}
               type="button"
               onClick={() => setActiveRootId(root.id)}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-lg border px-4 py-3 text-sm font-semibold transition-colors sm:flex-none sm:px-6 ${
+              className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-lg border px-4 py-3 text-sm font-semibold transition-colors sm:flex-none sm:px-6 ${
                 activeRootId === root.id
                   ? 'border-primary bg-primary text-primary-foreground'
                   : 'border-border bg-card hover:bg-muted'
               }`}
             >
               <Icon className="h-4 w-4" />
-              {root.name}
+              {label}
             </button>
           )
         })}
@@ -89,19 +93,19 @@ export function MenuPanel({ locationId, onItemTap }: Props) {
               key={cat.id}
               type="button"
               onClick={() => setActiveCategoryId(cat.id)}
-              className={`rounded-full border px-3.5 py-1.5 text-sm transition-colors ${
+              className={`min-h-12 rounded-full border px-4 py-2 text-sm transition-colors ${
                 activeCategoryId === cat.id
                   ? 'border-primary bg-primary/10 font-medium text-primary'
                   : 'border-border hover:bg-muted'
               }`}
             >
-              {cat.name}
+              {localizedName(cat, locale)}
             </button>
           ))}
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {itemsLoading && (
           <div className="col-span-full flex justify-center py-8">
             <Spinner />
@@ -109,7 +113,7 @@ export function MenuPanel({ locationId, onItemTap }: Props) {
         )}
         {!itemsLoading &&
           availableItems.map((item) => (
-            <DraggableItemCard key={item.id} item={item} onTap={() => onItemTap(item)} />
+            <DraggableItemCard key={item.id} item={item} locale={locale} onTap={() => onItemTap(item)} />
           ))}
         {!itemsLoading && availableItems.length === 0 && (
           <p className="col-span-full py-8 text-center text-sm text-muted-foreground">{t('noAvailableItems')}</p>
@@ -119,7 +123,15 @@ export function MenuPanel({ locationId, onItemTap }: Props) {
   )
 }
 
-function DraggableItemCard({ item, onTap }: { item: MenuItem; onTap: () => void }) {
+function DraggableItemCard({
+  item,
+  locale,
+  onTap,
+}: {
+  item: MenuItem
+  locale: string
+  onTap: () => void
+}) {
   const t = useTranslations('menuPanel')
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `menu-item-${item.id}`,
@@ -130,14 +142,15 @@ function DraggableItemCard({ item, onTap }: { item: MenuItem; onTap: () => void 
     <button
       ref={setNodeRef}
       type="button"
+      data-testid="menu-tile"
       onClick={onTap}
       {...listeners}
       {...attributes}
-      className={`touch-none select-none rounded-lg border bg-card p-3 text-start shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing ${
+      className={`flex min-h-16 touch-none select-none flex-col justify-center rounded-lg border bg-card p-3 text-start shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing ${
         isDragging ? 'opacity-40' : ''
       }`}
     >
-      <p className="text-sm font-medium leading-tight">{item.name}</p>
+      <p className="text-sm font-medium leading-tight">{localizedName(item, locale)}</p>
       <p className="mt-1 text-sm font-semibold text-primary">{formatPrice(item.price)}</p>
       {item.modifierGroups.length > 0 && (
         <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{t('customizable')}</p>
@@ -148,9 +161,10 @@ function DraggableItemCard({ item, onTap }: { item: MenuItem; onTap: () => void 
 
 /** Floating clone rendered inside DragOverlay while a menu item card is being dragged. */
 export function MenuItemCardPreview({ item }: { item: MenuItem }) {
+  const locale = useLocale()
   return (
     <div className="w-40 cursor-grabbing rounded-lg border bg-card p-3 text-start shadow-lg">
-      <p className="text-sm font-medium leading-tight">{item.name}</p>
+      <p className="text-sm font-medium leading-tight">{localizedName(item, locale)}</p>
       <p className="mt-1 text-sm font-semibold text-primary">{formatPrice(item.price)}</p>
     </div>
   )

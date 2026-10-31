@@ -156,7 +156,7 @@
     "removeComp": "הסר פטור",
     "subtotal": "סך ביניים",
     "tax": "מע\"מ ({rate}%)",
-    "includesVat": "כולל מע\"מ {rate}%: ₪{amount}",
+    "includesVat": "כולל מע\"מ {rate}%: {amount}",
     "total": "סה\"כ",
     "paid": "שולם",
     "remaining": "נותר לתשלום",
@@ -167,6 +167,7 @@
     "collectPayment": "גביית תשלום",
     "fireCourse": "שלח מנה {course}",
     "cancelOrder": "בטל הזמנה",
+    "moreActions": "עוד פעולות",
     "orderNotFound": "ההזמנה לא נמצאה.",
     "cancelOrderConfirm": "בטל את ההזמנה הזאת?",
     "deleteItemsConfirm": "{count, plural, one {האם למחוק פריט אחד?} other {האם למחוק # פריטים?}}"
@@ -264,6 +265,7 @@
   "itemStatus": {
     "held": "מוקפא",
     "pending": "בהמתנה",
+    "notSent": "לא נשלח",
     "preparing": "בהכנה",
     "ready": "מוכן",
     "served": "הוגש",

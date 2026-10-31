@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import { localizedName } from '@smartserve/ui'
 import {
   usePrinters,
   usePrinterRoutes,
@@ -44,6 +45,7 @@ type PrinterForm = z.infer<typeof printerSchema>
 export default function PrintersPage() {
   const t = useTranslations('printers')
   const tCommon = useTranslations('common')
+  const locale = useLocale()
   const locationId = useAuthStore((s) => s.activeLocationId)
   const { data: printers, isLoading } = usePrinters(locationId)
   const { data: routes } = usePrinterRoutes(locationId)
@@ -171,7 +173,7 @@ export default function PrintersPage() {
                 ?.filter((cat) => (itemsByCategory.get(cat.id)?.length ?? 0) > 0)
                 .map((cat) => (
                   <div key={cat.id} className="space-y-2">
-                    <h3 className="text-sm font-semibold text-muted-foreground">{cat.name}</h3>
+                    <h3 className="text-sm font-semibold text-muted-foreground">{localizedName(cat, locale)}</h3>
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
@@ -187,7 +189,7 @@ export default function PrintersPage() {
                         <tbody>
                           {itemsByCategory.get(cat.id)?.map((item) => (
                             <tr key={item.id} className="border-t">
-                              <td className="py-1.5 pe-4">{item.name}</td>
+                              <td className="py-1.5 pe-4">{localizedName(item, locale)}</td>
                               {printers?.map((p) => (
                                 <td key={p.id} className="py-1.5 px-2 text-center">
                                   <input

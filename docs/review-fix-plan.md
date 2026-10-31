@@ -57,8 +57,8 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 37 | E13 | `fix/e13-gateway-routing` | merged | https://github.com/KKuznetsovV/SmartServe/pull/125 |
 | 38 | Q9 | `fix/q9-business-day-reports` | merged | https://github.com/KKuznetsovV/SmartServe/pull/126 |
 | 39 | Q10 | `fix/q10-report-consistency` | merged | https://github.com/KKuznetsovV/SmartServe/pull/127 |
-| 40 | UI-1 | `ui/pin-pad-ltr` | in progress | https://github.com/KKuznetsovV/SmartServe/pull/128 |
-| 41 | UI-2 | `ui/order-screen-localization-and-layout` | todo | |
+| 40 | UI-1 | `ui/pin-pad-ltr` | merged | https://github.com/KKuznetsovV/SmartServe/pull/128 |
+| 41 | UI-2 | `ui/order-screen-localization-and-layout` | in progress | |
 | 42 | UI-3 | `ui/kds-redesign` | todo | |
 | 43 | UI-4 | `ui/floor-plan-live-status` | todo | |
 | 44 | UI-5 | `ui/customer-display` | todo | |

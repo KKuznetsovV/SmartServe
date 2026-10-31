@@ -2,12 +2,10 @@ import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import type { Order, OrderItem, Payment } from '@smartserve/types'
 
+export { formatPrice } from '@smartserve/ui'
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
-}
-
-export function formatPrice(amount: number, currency = 'ILS'): string {
-  return new Intl.NumberFormat('he-IL', { style: 'currency', currency }).format(amount)
 }
 
 /** An item's contribution to the bill: 0 when comped, otherwise qty*unitPrice less any
