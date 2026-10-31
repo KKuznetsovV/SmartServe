@@ -1,5 +1,6 @@
 """Shared test fixtures for the auth service test suite."""
 
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from smartserve_shared.lockout import InMemoryRedis
@@ -9,10 +10,20 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.db.models import Business, Location, User
 from app.db.session import Base, get_db
+from smartserve_shared.app_factory import limiter
+
 from app.main import app
 
 # In-memory SQLite for tests — no Postgres needed
 TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    storage = getattr(limiter, "_storage", None)
+    backend = getattr(storage, "storage", None)
+    if isinstance(backend, dict):
+        backend.clear()
 
 
 @pytest_asyncio.fixture(scope="function")

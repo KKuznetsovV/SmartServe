@@ -75,3 +75,17 @@ test('reload and a new tab keep the session on /kitchen', async ({ page, context
   await expect(tab.getByRole('heading', { name: /תצוגת מטבח|Kitchen/i })).toBeVisible()
   await tab.close()
 })
+
+test('PIN session survives reload and logout returns to login', async ({ page, request }) => {
+  const locationId = await demoLocationId(request)
+  await configureDevice(page, request, locationId)
+  await pinLoginWaiter(page)
+  await expect(page).toHaveURL(/\/orders/)
+
+  await page.reload()
+  await expect(page).toHaveURL(/\/orders/)
+
+  await page.getByRole('button', { name: /יציאה|התנתק|Log out|Logout/i }).click()
+  await expect(page).toHaveURL(/\/login/)
+  await expect(page.getByRole('button', { name: /Demo Waiter/i })).toBeVisible()
+})

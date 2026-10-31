@@ -42,10 +42,5 @@ class PinStaffOut(BaseSchema):
 
 class TokenResponse(BaseSchema):
     access_token: str
-    refresh_token: str
     expires_in: int
     token_type: str = "bearer"
-
-
-class RefreshRequest(BaseSchema):
-    refresh_token: str

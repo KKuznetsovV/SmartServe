@@ -14,6 +14,7 @@ import { Select } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { apiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
+import { signOut } from '@/lib/auth-session'
 import { useDeviceStore } from '@/lib/device-store'
 import { useAuthReady } from '@/hooks/use-auth-ready'
 import { LocaleToggle } from '@/components/layout/locale-toggle'
@@ -25,7 +26,6 @@ export default function SetupPage() {
   const { ready, deviceConfigured } = useAuthReady()
   const setDevice = useDeviceStore((s) => s.setDevice)
   const setTokens = useAuthStore((s) => s.setTokens)
-  const clearAuth = useAuthStore((s) => s.clearAuth)
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -47,12 +47,12 @@ export default function SetupPage() {
     setBusy(true)
     try {
       const tokens = await apiClient.auth.login(email.trim(), password)
-      setTokens(tokens.accessToken, tokens.refreshToken)
+      setTokens(tokens.accessToken)
       const user = await apiClient.auth.me()
       const listed = await apiClient.locations.list(user.businessId)
       if (!listed.length) {
         toast.error(t('noLocations'))
-        clearAuth()
+        await signOut()
         return
       }
       setLocations(listed)
@@ -60,7 +60,7 @@ export default function SetupPage() {
       setStep('device')
     } catch {
       toast.error(t('invalidCredentials'))
-      clearAuth()
+      await signOut()
     } finally {
       setBusy(false)
     }
@@ -81,7 +81,7 @@ export default function SetupPage() {
         deviceType,
         deviceName: registered.name,
       })
-      clearAuth()
+      await signOut()
       router.push(deviceType === 'display' ? '/display' : '/login')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('registerFailed'))

@@ -87,9 +87,9 @@ function LoginForm() {
     setSubmitting(true)
     try {
       const tokens = await apiClient.auth.pinLogin(locationId, selected.id, value, deviceToken)
-      setTokens(tokens.accessToken, tokens.refreshToken)
+      setTokens(tokens.accessToken)
       const user = await apiClient.auth.me()
-      setAuth(tokens.accessToken, tokens.refreshToken, user)
+      setAuth(tokens.accessToken, user)
       setActiveLocation(user.businessId, locationId)
       router.push(afterLogin)
     } catch {

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/lib/auth-store'
+import { signOut } from '@/lib/auth-session'
 import { useTranslations } from 'next-intl'
 import { LocaleToggle } from './locale-toggle'
 import { ThemeToggle } from './theme-toggle'
@@ -37,7 +38,7 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname()
-  const { user, clearAuth } = useAuthStore()
+  const { user } = useAuthStore()
   const isManager = user?.role === 'owner' || user?.role === 'manager'
   const tNav = useTranslations('nav')
   const tAuth = useTranslations('auth')
@@ -83,7 +84,7 @@ export function Sidebar() {
       <div className="border-t p-4">
         <div className="mb-2 text-sm font-medium truncate">{user?.name ?? user?.email}</div>
         <button
-          onClick={clearAuth}
+          onClick={() => void signOut()}
           className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
         >
           <LogOut className="h-4 w-4" />

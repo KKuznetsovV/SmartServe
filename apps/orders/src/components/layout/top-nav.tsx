@@ -6,6 +6,7 @@ import { ChefHat, ClipboardList, Grid3x3, LogOut, Monitor } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/lib/auth-store'
+import { signOut } from '@/lib/auth-session'
 import { LocaleToggle } from './locale-toggle'
 import { ThemeToggle } from './theme-toggle'
 
@@ -16,7 +17,7 @@ const navItems = [
 
 export function TopNav() {
   const pathname = usePathname()
-  const { user, clearAuth } = useAuthStore()
+  const { user } = useAuthStore()
   const tNav = useTranslations('nav')
   const tAuth = useTranslations('auth')
 
@@ -68,7 +69,7 @@ export function TopNav() {
         <ThemeToggle />
         <span className="truncate text-sm font-medium">{user?.name}</span>
         <button
-          onClick={clearAuth}
+          onClick={() => void signOut()}
           className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <LogOut className="h-4 w-4" />

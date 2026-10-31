@@ -50,8 +50,8 @@ export type PinStaff = z.infer<typeof PinStaffSchema>
 
 export const TokenPairSchema = z.object({
   accessToken: z.string(),
-  refreshToken: z.string(),
   expiresIn: z.number(),
+  tokenType: z.string().optional(),
 })
 export type TokenPair = z.infer<typeof TokenPairSchema>
 

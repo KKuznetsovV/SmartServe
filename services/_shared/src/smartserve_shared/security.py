@@ -7,6 +7,7 @@ JWTs locally with this module — there is no per-request round-trip to `auth`.
 from __future__ import annotations
 
 import os
+import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -86,9 +87,25 @@ def create_access_token(subject: str, extra: dict[str, Any] | None = None) -> st
     return jwt.encode(payload, _secret_key(), algorithm=_algorithm())
 
 
-def create_refresh_token(subject: str) -> str:
+def access_expire_seconds() -> int:
+    return _access_expire_minutes * 60
+
+
+def refresh_expire_seconds() -> int:
+    return _refresh_expire_days * 86400
+
+
+def create_refresh_token(
+    subject: str, *, family_id: str | None = None, jti: str | None = None
+) -> str:
     expire = datetime.now(UTC) + timedelta(days=_refresh_expire_days)
-    payload = {"sub": subject, "exp": expire, "type": "refresh"}
+    payload = {
+        "sub": subject,
+        "exp": expire,
+        "type": "refresh",
+        "jti": jti or str(uuid.uuid4()),
+        "fam": family_id or str(uuid.uuid4()),
+    }
     return jwt.encode(payload, _secret_key(), algorithm=_algorithm())
 
 
@@ -114,6 +131,9 @@ def verify_token(token: str) -> TokenClaims:
         payload = jwt.decode(token, _secret_key(), algorithms=[_algorithm()])
     except jwt.PyJWTError as exc:
         raise TokenError(str(exc)) from exc
+
+    if payload.get("type") != "access":
+        raise TokenError("invalid token type")
 
     sub = payload.get("sub")
     if not sub:

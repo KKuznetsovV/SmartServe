@@ -49,7 +49,7 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 30c | S4c | `fix/s4c-public-display-token` | merged | https://github.com/KKuznetsovV/SmartServe/pull/115 |
 | 31 | S5 | `fix/s5-pin-lockout-and-proxy-ip` | merged | https://github.com/KKuznetsovV/SmartServe/pull/117 |
 | 31b | S5b | `fix/s5b-edge-client-ip` | merged | https://github.com/KKuznetsovV/SmartServe/pull/119 |
-| 32 | S8 | `fix/s8-token-handling` | todo | |
+| 32 | S8 | `fix/s8-token-handling` | merged | https://github.com/KKuznetsovV/SmartServe/pull/120 |
 | 33 | S9 | `fix/s9-ai-limits` | todo | |
 | 34 | S11 | `fix/s11-secure-defaults` | todo | |
 | 35 | E10 | `fix/e10-ai-nonblocking-inference` | todo | |

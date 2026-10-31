@@ -19,7 +19,8 @@ export function createAuthResource(http: Http) {
     registerDevice: (locationId: string, data: { name: string; type: DeviceType }) =>
       http.post<DeviceRegister>(`/locations/${locationId}/devices`, data),
     revokeDevice: (deviceId: string) => http.post<Device>(`/devices/${deviceId}/revoke`, {}),
-    refresh: (refreshToken: string) => http.post<TokenPair>('/auth/refresh', { refreshToken }),
+    refresh: () => http.post<TokenPair>('/auth/refresh', {}),
+    logout: () => http.post<void>('/auth/logout', {}),
     me: () => http.get<User>('/auth/me'),
   }
 }

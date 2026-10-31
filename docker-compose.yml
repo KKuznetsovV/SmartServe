@@ -50,6 +50,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       RABBITMQ_URL: amqp://smartserve:smartserve@rabbitmq:5672/
       ENVIRONMENT: development
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
     env_file:
       - ./.env
     depends_on:
