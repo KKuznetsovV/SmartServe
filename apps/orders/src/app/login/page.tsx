@@ -41,6 +41,8 @@ function LoginForm() {
   const tRoles = useTranslations('roles')
   const { ready, authenticated, deviceConfigured } = useAuthReady()
   const locationId = useDeviceStore((s) => s.locationId)
+  const deviceToken = useDeviceStore((s) => s.deviceToken)
+  const clearDevice = useDeviceStore((s) => s.clearDevice)
   const setAuth = useAuthStore((s) => s.setAuth)
   const setTokens = useAuthStore((s) => s.setTokens)
   const setActiveLocation = useAuthStore((s) => s.setActiveLocation)
@@ -64,15 +66,15 @@ function LoginForm() {
   }, [ready, deviceConfigured, authenticated, afterLogin, router])
 
   useEffect(() => {
-    if (!ready || !deviceConfigured || !locationId || authenticated) return
+    if (!ready || !deviceConfigured || !locationId || !deviceToken || authenticated) return
     apiClient.auth
-      .pinStaff(locationId)
+      .pinStaff(locationId, deviceToken)
       .then(setStaff)
       .catch(() => toast.error(t('failedLoadStaff')))
       .finally(() => setLoadingStaff(false))
-  }, [ready, deviceConfigured, locationId, authenticated, router, t])
+  }, [ready, deviceConfigured, locationId, deviceToken, authenticated, router, t])
 
-  if (!ready || !deviceConfigured || authenticated || !locationId) {
+  if (!ready || !deviceConfigured || authenticated || !locationId || !deviceToken) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Spinner />
@@ -84,7 +86,7 @@ function LoginForm() {
     if (!selected) return
     setSubmitting(true)
     try {
-      const tokens = await apiClient.auth.pinLogin(locationId, selected.id, value)
+      const tokens = await apiClient.auth.pinLogin(locationId, selected.id, value, deviceToken)
       setTokens(tokens.accessToken, tokens.refreshToken)
       const user = await apiClient.auth.me()
       setAuth(tokens.accessToken, tokens.refreshToken, user)
@@ -140,7 +142,14 @@ function LoginForm() {
             )}
           </div>
         )}
-        <Button variant="ghost" className="mt-6 text-xs" onClick={() => router.push('/setup')}>
+        <Button
+          variant="ghost"
+          className="mt-6 text-xs"
+          onClick={() => {
+            clearDevice()
+            router.push('/setup')
+          }}
+        >
           {t('changeLocation')}
         </Button>
       </div>

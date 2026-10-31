@@ -54,3 +54,23 @@ export const TokenPairSchema = z.object({
   expiresIn: z.number(),
 })
 export type TokenPair = z.infer<typeof TokenPairSchema>
+
+export const DeviceType = z.enum(['pos', 'kds', 'display'])
+export type DeviceType = z.infer<typeof DeviceType>
+
+export const DeviceSchema = z.object({
+  id: z.string().uuid(),
+  locationId: z.string().uuid(),
+  name: z.string().min(1),
+  type: DeviceType,
+  createdBy: z.string().uuid(),
+  lastSeenAt: z.string().nullable().optional(),
+  revokedAt: z.string().nullable().optional(),
+  createdAt: z.string(),
+})
+export type Device = z.infer<typeof DeviceSchema>
+
+export const DeviceRegisterSchema = DeviceSchema.extend({
+  token: z.string().min(1),
+})
+export type DeviceRegister = z.infer<typeof DeviceRegisterSchema>

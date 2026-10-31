@@ -65,9 +65,7 @@ async def test_list_locations_rejects_other_business(
     client: AsyncClient, business: Business, other_owner: tuple[User, str]
 ):
     _, token = other_owner
-    resp = await client.get(
-        f"/api/v1/businesses/{business.id}/locations", headers={"Authorization": f"Bearer {token}"}
-    )
+    resp = await client.get(f"/api/v1/businesses/{business.id}/locations", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 404
 
 

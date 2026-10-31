@@ -1,14 +1,24 @@
-import type { PinStaff, TokenPair, User } from '@smartserve/types'
+import type { Device, DeviceRegister, DeviceType, PinStaff, TokenPair, User } from '@smartserve/types'
 
 import type { Http } from './client'
 
 export function createAuthResource(http: Http) {
   return {
     login: (email: string, password: string) => http.post<TokenPair>('/auth/login', { email, password }),
-    pinLogin: (locationId: string, userId: string, pin: string) =>
-      http.post<TokenPair>('/auth/pin', { locationId, userId, pin }),
-    pinStaff: (locationId: string) =>
-      http.get<PinStaff[]>(`/auth/pin/staff?locationId=${encodeURIComponent(locationId)}`),
+    pinLogin: (locationId: string, userId: string, pin: string, deviceToken: string) =>
+      http.post<TokenPair>(
+        '/auth/pin',
+        { locationId, userId, pin },
+        { 'X-Device-Token': deviceToken },
+      ),
+    pinStaff: (locationId: string, deviceToken: string) =>
+      http.get<PinStaff[]>(`/auth/pin/staff?locationId=${encodeURIComponent(locationId)}`, {
+        'X-Device-Token': deviceToken,
+      }),
+    listDevices: (locationId: string) => http.get<Device[]>(`/locations/${locationId}/devices`),
+    registerDevice: (locationId: string, data: { name: string; type: DeviceType }) =>
+      http.post<DeviceRegister>(`/locations/${locationId}/devices`, data),
+    revokeDevice: (deviceId: string) => http.post<Device>(`/devices/${deviceId}/revoke`, {}),
     refresh: (refreshToken: string) => http.post<TokenPair>('/auth/refresh', { refreshToken }),
     me: () => http.get<User>('/auth/me'),
   }

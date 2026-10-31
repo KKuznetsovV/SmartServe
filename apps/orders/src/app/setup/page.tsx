@@ -4,11 +4,16 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { MapPin } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import { toast } from 'sonner'
+import type { DeviceType, Location } from '@smartserve/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Select } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
+import { apiClient } from '@/lib/api'
+import { useAuthStore } from '@/lib/auth-store'
 import { useDeviceStore } from '@/lib/device-store'
 import { useAuthReady } from '@/hooks/use-auth-ready'
 import { LocaleToggle } from '@/components/layout/locale-toggle'
@@ -18,13 +23,18 @@ export default function SetupPage() {
   const router = useRouter()
   const t = useTranslations('setup')
   const { ready, deviceConfigured } = useAuthReady()
-  const locationId = useDeviceStore((s) => s.locationId)
-  const setLocationId = useDeviceStore((s) => s.setLocationId)
-  const [value, setValue] = useState(locationId ?? '')
+  const setDevice = useDeviceStore((s) => s.setDevice)
+  const setTokens = useAuthStore((s) => s.setTokens)
+  const clearAuth = useAuthStore((s) => s.clearAuth)
 
-  useEffect(() => {
-    if (locationId && value === '') setValue(locationId)
-  }, [locationId, value])
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [locations, setLocations] = useState<Location[]>([])
+  const [locationId, setLocationId] = useState('')
+  const [deviceName, setDeviceName] = useState('')
+  const [deviceType, setDeviceType] = useState<DeviceType>('pos')
+  const [step, setStep] = useState<'login' | 'device'>('login')
+  const [busy, setBusy] = useState(false)
 
   useEffect(() => {
     if (ready && deviceConfigured) {
@@ -32,11 +42,52 @@ export default function SetupPage() {
     }
   }, [ready, deviceConfigured, router])
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!value.trim()) return
-    setLocationId(value.trim())
-    router.push('/login')
+    setBusy(true)
+    try {
+      const tokens = await apiClient.auth.login(email.trim(), password)
+      setTokens(tokens.accessToken, tokens.refreshToken)
+      const user = await apiClient.auth.me()
+      const listed = await apiClient.locations.list(user.businessId)
+      if (!listed.length) {
+        toast.error(t('noLocations'))
+        clearAuth()
+        return
+      }
+      setLocations(listed)
+      setLocationId(listed[0].id)
+      setStep('device')
+    } catch {
+      toast.error(t('invalidCredentials'))
+      clearAuth()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const onRegister = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!locationId || !deviceName.trim()) return
+    setBusy(true)
+    try {
+      const registered = await apiClient.auth.registerDevice(locationId, {
+        name: deviceName.trim(),
+        type: deviceType,
+      })
+      setDevice({
+        locationId,
+        deviceToken: registered.token,
+        deviceType,
+        deviceName: registered.name,
+      })
+      clearAuth()
+      router.push('/login')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('registerFailed'))
+    } finally {
+      setBusy(false)
+    }
   }
 
   if (!ready || deviceConfigured) {
@@ -62,20 +113,77 @@ export default function SetupPage() {
           <p className="text-sm text-muted-foreground">{t('description')}</p>
         </CardHeader>
         <CardContent>
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div className="space-y-1">
-              <Label htmlFor="locationId">{t('locationIdLabel')}</Label>
-              <Input
-                id="locationId"
-                placeholder="00000000-0000-0000-0000-000000000000"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-              />
-            </div>
-            <Button type="submit" className="w-full">
-              {t('saveContinue')}
-            </Button>
-          </form>
+          {step === 'login' ? (
+            <form onSubmit={onLogin} className="space-y-4">
+              <div className="space-y-1">
+                <Label htmlFor="email">{t('email')}</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="username"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="password">{t('password')}</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={busy}>
+                {busy ? <Spinner /> : t('continue')}
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={onRegister} className="space-y-4">
+              <div className="space-y-1">
+                <Label htmlFor="location">{t('location')}</Label>
+                <Select
+                  id="location"
+                  value={locationId}
+                  onChange={(e) => setLocationId(e.target.value)}
+                >
+                  {locations.map((loc) => (
+                    <option key={loc.id} value={loc.id}>
+                      {loc.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="deviceName">{t('deviceName')}</Label>
+                <Input
+                  id="deviceName"
+                  value={deviceName}
+                  onChange={(e) => setDeviceName(e.target.value)}
+                  placeholder={t('deviceNamePlaceholder')}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="deviceType">{t('deviceType')}</Label>
+                <Select
+                  id="deviceType"
+                  value={deviceType}
+                  onChange={(e) => setDeviceType(e.target.value as DeviceType)}
+                >
+                  <option value="pos">{t('typePos')}</option>
+                  <option value="kds">{t('typeKds')}</option>
+                  <option value="display">{t('typeDisplay')}</option>
+                </Select>
+              </div>
+              <Button type="submit" className="w-full" disabled={busy}>
+                {busy ? <Spinner /> : t('saveContinue')}
+              </Button>
+            </form>
+          )}
         </CardContent>
       </Card>
     </div>

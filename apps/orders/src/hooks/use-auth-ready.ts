@@ -16,9 +16,10 @@ export function useAuthReady() {
   const ready = authReady && deviceReady
   const accessToken = useAuthStore((s) => s.accessToken)
   const locationId = useDeviceStore((s) => s.locationId)
+  const deviceToken = useDeviceStore((s) => s.deviceToken)
   return {
     ready,
     authenticated: ready && Boolean(accessToken),
-    deviceConfigured: ready && Boolean(locationId),
+    deviceConfigured: ready && Boolean(locationId && deviceToken),
   }
 }
