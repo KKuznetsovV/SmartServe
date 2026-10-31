@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     AI_INTENT_MODEL: str = "claude-haiku-4-5"  # fast, cheap — intent classification
     AI_COMPLEX_MODEL: str = "claude-sonnet-4-5"  # complex reasoning, menu import, reorg
     AI_INTENT_CONFIDENCE_THRESHOLD: float = 0.85
+    AI_RATE_LIMIT: str = "20/minute"
+    AI_DAILY_CALL_BUDGET: int = 500
 
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:3001", "http://localhost:8081"]

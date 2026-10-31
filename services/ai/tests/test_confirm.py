@@ -210,7 +210,7 @@ async def test_command_then_confirm_rename_item(client, manager_token, monkeypat
     async def fake_auth_get(path, *, forward_token=None, **kwargs):
         return httpx.Response(200, json={"id": "loc-1", "businessId": "biz-1"})
 
-    async def fake_create_message(client_obj, **kwargs):
+    async def fake_create_message(*_args, **kwargs):
         return FakeMessage(
             {
                 "intent": "menu.update_item",

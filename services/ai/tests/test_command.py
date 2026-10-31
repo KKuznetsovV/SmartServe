@@ -69,7 +69,7 @@ async def test_command_returns_execution_id(client, manager_token, monkeypatch):
 
     monkeypatch.setattr(auth_client, "get", fake_auth_get)
 
-    async def fake_create_message(client_obj, **kwargs):
+    async def fake_create_message(*_args, **kwargs):
         return FakeMessage(
             {
                 "intent": "menu.create_item",
@@ -106,7 +106,7 @@ async def test_command_report_query_bypasses_confirm(client, manager_token, monk
 
     monkeypatch.setattr(auth_client, "get", fake_auth_get)
 
-    async def fake_create_message(client_obj, **kwargs):
+    async def fake_create_message(*_args, **kwargs):
         return FakeMessage(
             {
                 "intent": "report.query",
@@ -156,7 +156,7 @@ async def test_command_report_query_requires_manager_role(client, staff_token, m
 
     monkeypatch.setattr(auth_client, "get", fake_auth_get)
 
-    async def fake_create_message(client_obj, **kwargs):
+    async def fake_create_message(*_args, **kwargs):
         return FakeMessage(
             {
                 "intent": "report.query",

@@ -26,7 +26,7 @@ async def test_menu_import_start(client, manager_token, monkeypatch):
     async def fake_printing_get(path, *, forward_token=None, **kwargs):
         return httpx.Response(200, json=[{"id": "p-1", "name": "Kitchen", "type": "kitchen"}])
 
-    async def fake_create_message(client_obj, **kwargs):
+    async def fake_create_message(*_args, **kwargs):
         return FakeMessage(
             {
                 "items": [{"name": "Pizza", "price": 42, "category": "Mains", "printerTypes": ["kitchen"]}],

@@ -7,17 +7,20 @@ from datetime import UTC, datetime
 import anthropic
 from fastapi import Depends, File, Form, HTTPException, Request, UploadFile, status
 from httpx import HTTPStatusError
+from smartserve_shared.app_factory import limiter
 from smartserve_shared.money import money
 from smartserve_shared.outbox import enqueue
 from smartserve_shared.routing import APIRouter
+from smartserve_shared.security import TokenError, verify_token
 
-from app.api.v1.deps import AuthContext, get_auth_context, require_manager
+from app.api.v1.deps import AuthContext, require_manager
 from app.clients import auth_client
 from app.core.config import settings
 from app.db.models import Outbox
 from app.db.session import DbSession
 from app.modules.ai.schemas import CommandRequest, ConfirmRequest, MenuImportApplyRequest, MenuImportMessageRequest
-from app.modules.ai.services.client import create_message, parse_json_reply, parse_menu_import_reply
+from app.modules.ai.services.budget import billed_create_message as create_message
+from app.modules.ai.services.client import parse_json_reply, parse_menu_import_reply
 from app.modules.ai.services.dispatch import IMPLEMENTED_INTENTS, Plan, apply_plan, assert_plan_fresh, plan_intent
 from app.modules.ai.services.import_parsing import MAX_UPLOAD_SIZE, build_content_block, fetch_menu_context
 from app.modules.ai.services.local_classifier import classify as local_classify
@@ -35,11 +38,27 @@ def _hebrew(message: str) -> bool:
     return any("\u0590" <= ch <= "\u05ff" for ch in message)
 
 
+def _ai_user_key(request: Request) -> str:
+    header = request.headers.get("authorization") or ""
+    if not header.lower().startswith("bearer "):
+        return "ai:anon"
+    try:
+        claims = verify_token(header.split(" ", 1)[1])
+    except TokenError:
+        return "ai:anon"
+    return f"ai:{claims.sub}"
+
+
+def _ai_rate_limit() -> str:
+    return settings.AI_RATE_LIMIT
+
+
 @router.post("/command")
+@limiter.limit(_ai_rate_limit, key_func=_ai_user_key)
 async def ai_command(
     body: CommandRequest,
     request: Request,
-    ctx: AuthContext = Depends(get_auth_context),  # validates the JWT; any authenticated role may ask
+    ctx: AuthContext = Depends(require_manager),
 ):
     # location_id/business_id are never trusted bare from the body — the location is
     # confirmed to belong to the caller's own (JWT-verified) business here, same check
@@ -48,7 +67,9 @@ async def ai_command(
     location_id = body.context.get("locationId") if isinstance(body.context, dict) else None
     if not location_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing location context")
-    await _get_owned_location(location_id, ctx)
+    location = await _get_owned_location(location_id, ctx)
+    tz_name = location.get("timezone")
+    redis = request.app.state.redis
 
     # Tier 1 — local model: fast, free, no network call.
     local_result = local_classify(body.message)
@@ -69,6 +90,9 @@ async def ai_command(
         )
 
         message = await create_message(
+            redis,
+            ctx.claims.business_id,
+            tz_name,
             client,
             model=settings.AI_INTENT_MODEL,
             max_tokens=256,
@@ -81,6 +105,9 @@ async def ai_command(
         except json.JSONDecodeError, IndexError, KeyError:
             # Fallback to Sonnet when Haiku produces malformed output
             message = await create_message(
+                redis,
+                ctx.claims.business_id,
+                tz_name,
                 client,
                 model=settings.AI_COMPLEX_MODEL,
                 max_tokens=512,
@@ -95,6 +122,9 @@ async def ai_command(
         # If confidence is low, use Sonnet for a more careful classification
         if confidence < settings.AI_INTENT_CONFIDENCE_THRESHOLD:
             message = await create_message(
+                redis,
+                ctx.claims.business_id,
+                tz_name,
                 client,
                 model=settings.AI_COMPLEX_MODEL,
                 max_tokens=512,
@@ -201,7 +231,7 @@ async def ai_confirm(
     if not pending:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Execution not found or already confirmed")
 
-    if pending.get("business_id") and pending["business_id"] != ctx.claims.business_id:
+    if pending.get("user_id") != ctx.claims.sub or pending.get("business_id") != ctx.claims.business_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Execution not found or already confirmed")
 
     intent = pending["intent"]
@@ -260,6 +290,7 @@ async def _get_owned_location(location_id: str, ctx: AuthContext) -> dict:
 
 
 @router.post("/menu-import")
+@limiter.limit(_ai_rate_limit, key_func=_ai_user_key)
 async def menu_import_start(
     request: Request,
     location_id: str = Form(...),
@@ -288,6 +319,9 @@ async def menu_import_start(
     user_content = [block, {"type": "text", "text": "Extract the menu items from this file."}]
 
     message = await create_message(
+        request.app.state.redis,
+        ctx.claims.business_id,
+        location.get("timezone"),
         client,
         model=settings.AI_COMPLEX_MODEL,
         max_tokens=8192,
@@ -322,6 +356,7 @@ async def menu_import_start(
 
 
 @router.post("/menu-import/message")
+@limiter.limit(_ai_rate_limit, key_func=_ai_user_key)
 async def menu_import_message(
     body: MenuImportMessageRequest,
     request: Request,
@@ -346,7 +381,11 @@ async def menu_import_message(
 
     history = [*session["history"], {"role": "user", "content": body.message}]
 
+    location = await _get_owned_location(session["location_id"], ctx)
     message = await create_message(
+        request.app.state.redis,
+        ctx.claims.business_id,
+        location.get("timezone"),
         client,
         model=settings.AI_COMPLEX_MODEL,
         max_tokens=8192,
