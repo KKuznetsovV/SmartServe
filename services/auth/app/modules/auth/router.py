@@ -1,7 +1,6 @@
 from fastapi import Depends, Header, Query, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from slowapi import Limiter
-from slowapi.util import get_remote_address
+from smartserve_shared.app_factory import limiter
 from smartserve_shared.routing import APIRouter
 
 from app.db.session import DbSession
@@ -11,13 +10,16 @@ from app.modules.auth.service import AuthService
 
 router = APIRouter()
 bearer = HTTPBearer()
-limiter = Limiter(key_func=get_remote_address)
+
+
+def _redis(request: Request):
+    return getattr(request.app.state, "redis", None)
 
 
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit("10/minute")
 async def login(request: Request, body: LoginRequest, db: DbSession):
-    return await AuthService(db).login(body.email, body.password)
+    return await AuthService(db, _redis(request)).login(body.email, body.password)
 
 
 @router.get("/pin/staff", response_model=list[PinStaffOut])
@@ -30,7 +32,7 @@ async def pin_staff(
 ):
     """Staff-picker list for the PIN-login screen (name + role only). Requires a paired device."""
     await DeviceService(db).authenticate(x_device_token, location_id)
-    return await AuthService(db).list_pin_staff(location_id)
+    return await AuthService(db, _redis(request)).list_pin_staff(location_id)
 
 
 @router.post("/pin", response_model=TokenResponse)
@@ -41,8 +43,10 @@ async def pin_login(
     db: DbSession,
     x_device_token: str | None = Header(default=None, alias="X-Device-Token"),
 ):
-    await DeviceService(db).authenticate(x_device_token, body.location_id)
-    return await AuthService(db).pin_login(body.location_id, body.user_id, body.pin)
+    device = await DeviceService(db).authenticate(x_device_token, body.location_id)
+    return await AuthService(db, _redis(request)).pin_login(
+        body.location_id, body.user_id, body.pin, device_id=device.id
+    )
 
 
 @router.post("/refresh", response_model=TokenResponse)

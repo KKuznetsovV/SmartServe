@@ -25,5 +25,9 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:3001", "http://localhost:8081"]
 
+    # PIN brute-force protection (manager override)
+    MAX_PIN_ATTEMPTS: int = 5
+    PIN_LOCKOUT_MINUTES: int = 15
+
 
 settings = Settings()

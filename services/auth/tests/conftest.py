@@ -2,6 +2,7 @@
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from smartserve_shared.lockout import InMemoryRedis
 from smartserve_shared.security import create_access_token, hash_password
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -42,8 +43,10 @@ async def client(db: AsyncSession):
         yield db
 
     app.dependency_overrides[get_db] = _override_db
+    app.state.redis = InMemoryRedis()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
+    app.state.redis = None
     app.dependency_overrides.clear()
 
 

@@ -5,6 +5,14 @@ from decimal import Decimal
 from typing import Any
 
 from fastapi import HTTPException, status
+from smartserve_shared.lockout import (
+    clear_failures,
+    emit_lockout,
+    pin_ident,
+    raise_if_locked,
+    raise_now_locked,
+    record_failure,
+)
 from smartserve_shared.money import money, rate, vat_in_inclusive
 from smartserve_shared.security import verify_password
 from smartserve_shared.tenancy import verify_location_owned
@@ -12,6 +20,7 @@ from sqlalchemy import inspect, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.config import settings
 from app.db.models import (
     Business,
     Discount,
@@ -22,6 +31,7 @@ from app.db.models import (
     Order,
     OrderItem,
     OrderNumberCounter,
+    Outbox,
     Table,
     User,
 )
@@ -80,16 +90,28 @@ class OrderService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def _verify_manager_pin(self, location_id: str, manager_user_id: str, pin: str) -> User:
+    async def _verify_manager_pin(
+        self, location_id: str, manager_user_id: str, pin: str, redis: Any | None = None
+    ) -> User:
         """Confirm a manager/owner override PIN without issuing a session token.
 
         `auth` (services/auth) owns the `users`/`locations` tables and is the source of truth
         for login/PIN issuance, but this is a same-database, read-only check — no need for a
         network round trip to `auth` for every override (see docs/microservices-plan.md §4).
         """
+        ident = pin_ident(manager_user_id)
+        await raise_if_locked(redis, ident)
         loc_result = await self.db.execute(select(Location).where(Location.id == location_id, Location.active))
         location = loc_result.scalar_one_or_none()
         if not location:
+            retry_after = await record_failure(
+                redis,
+                ident,
+                max_failures=settings.MAX_PIN_ATTEMPTS,
+                lockout_seconds=settings.PIN_LOCKOUT_MINUTES * 60,
+            )
+            if retry_after is not None:
+                await raise_now_locked(self.db, retry_after)
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid manager PIN")
 
         result = await self.db.execute(
@@ -103,7 +125,23 @@ class OrderService:
         )
         user = result.scalar_one_or_none()
         if not user or not user.pin_hash or not verify_password(pin, user.pin_hash):
+            retry_after = await record_failure(
+                redis,
+                ident,
+                max_failures=settings.MAX_PIN_ATTEMPTS,
+                lockout_seconds=settings.PIN_LOCKOUT_MINUTES * 60,
+            )
+            if retry_after is not None:
+                if user is not None:
+                    await emit_lockout(
+                        self.db,
+                        Outbox,
+                        business_id=user.business_id,
+                        user_id=user.id,
+                    )
+                await raise_now_locked(self.db, retry_after)
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid manager PIN")
+        await clear_failures(redis, ident)
         return user
 
     async def apply_discount(self, order_id: str, data: ApplyDiscountIn, business_id: str | None = None) -> Order:
@@ -617,7 +655,13 @@ class OrderService:
         await self.db.flush()
         return await self.get_order(order_id)
 
-    async def delete_items(self, order_id: str, data: OrderItemDeleteRequest, business_id: str | None = None) -> Order:
+    async def delete_items(
+        self,
+        order_id: str,
+        data: OrderItemDeleteRequest,
+        business_id: str | None = None,
+        redis: Any | None = None,
+    ) -> Order:
         """Permanently remove one or more items. Items on an order still 'open' (not yet sent
         to the kitchen) can be removed freely; once submitted, a manager PIN + reason is
         required since the kitchen may already be preparing them."""
@@ -633,7 +677,9 @@ class OrderService:
                 )
             if not data.override.reason.strip():
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A reason is required")
-            await self._verify_manager_pin(order.location_id, data.override.manager_user_id, data.override.pin)
+            await self._verify_manager_pin(
+                order.location_id, data.override.manager_user_id, data.override.pin, redis=redis
+            )
 
         item_map = {item.id: item for item in order.items}
         items_to_delete = []

@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 from contextlib import asynccontextmanager
 
+import redis.asyncio as aioredis
 from fastapi import FastAPI
 from smartserve_shared import mq
 from smartserve_shared.app_factory import create_service_app
@@ -16,6 +17,8 @@ from app.db.session import AsyncSessionLocal, engine, get_db
 
 @asynccontextmanager
 async def lifespan_hooks(app: FastAPI):
+    redis = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+    app.state.redis = redis
     reconnect = asyncio.create_task(mq.maintain_connection(app, settings.RABBITMQ_URL))
     relay = asyncio.create_task(relay_forever(lambda: app.state.mq_connection, AsyncSessionLocal, Outbox))
     yield
@@ -25,6 +28,8 @@ async def lifespan_hooks(app: FastAPI):
         await reconnect
     with contextlib.suppress(asyncio.CancelledError):
         await relay
+    await redis.aclose()
+    app.state.redis = None
     if app.state.mq_connection is not None:
         await app.state.mq_connection.close()
     await engine.dispose()

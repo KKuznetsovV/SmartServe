@@ -475,6 +475,43 @@ async def test_delete_submitted_item_requires_manager_override(
 
 
 @pytest.mark.asyncio
+async def test_manager_override_pin_lockout(
+    client: AsyncClient,
+    db: AsyncSession,
+    business: Business,
+    manager_user: tuple[User, str],
+):
+    manager, token = manager_user
+    manager.pin_hash = hash_password("1234")
+    await db.flush()
+    headers = {"Authorization": f"Bearer {token}"}
+    _location, order_id, burger_item, _fries_item = await _make_order_with_two_items(client, db, business, headers)
+    await client.post(f"/api/v1/orders/{order_id}/submit", headers=headers)
+
+    wrong = {
+        "items": [{"itemId": burger_item["id"]}],
+        "override": {"managerUserId": manager.id, "pin": "0000", "reason": "wrong item"},
+    }
+    for i in range(4):
+        resp = await client.post(f"/api/v1/orders/{order_id}/items/delete", json=wrong, headers=headers)
+        assert resp.status_code == 401, i
+
+    fifth = await client.post(f"/api/v1/orders/{order_id}/items/delete", json=wrong, headers=headers)
+    assert fifth.status_code == 423
+    assert int(fifth.headers["Retry-After"]) > 0
+
+    correct = await client.post(
+        f"/api/v1/orders/{order_id}/items/delete",
+        json={
+            "items": [{"itemId": burger_item["id"]}],
+            "override": {"managerUserId": manager.id, "pin": "1234", "reason": "wrong item"},
+        },
+        headers=headers,
+    )
+    assert correct.status_code == 423
+
+
+@pytest.mark.asyncio
 async def test_partial_quantity_split_on_item_action(
     client: AsyncClient,
     db: AsyncSession,
