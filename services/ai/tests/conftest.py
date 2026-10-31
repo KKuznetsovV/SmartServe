@@ -36,6 +36,14 @@ class FakeRedis:
     async def delete(self, key):
         self._store.pop(key, None)
 
+    async def incr(self, key):
+        value = int(self._store.get(key, "0")) + 1
+        self._store[key] = str(value)
+        return value
+
+    async def expire(self, key, seconds):
+        return True
+
     async def aclose(self):
         pass
 
@@ -59,6 +67,21 @@ def manager_token():
 @pytest.fixture
 def staff_token():
     return make_token(role="staff", sub="user-2")
+
+
+@pytest.fixture
+def waiter_token():
+    return make_token(role="waiter", sub="user-waiter")
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    from smartserve_shared.app_factory import limiter
+
+    storage = getattr(limiter, "_storage", None)
+    backend = getattr(storage, "storage", None)
+    if isinstance(backend, dict):
+        backend.clear()
 
 
 @pytest.fixture(autouse=True)

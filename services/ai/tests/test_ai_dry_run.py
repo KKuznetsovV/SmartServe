@@ -78,7 +78,7 @@ async def _command(client, token, monkeypatch, payload, message):
     fake_get, store = _catalog()
     monkeypatch.setattr(catalog_client, "get", fake_get)
 
-    async def fake_create_message(client_obj, **kwargs):
+    async def fake_create_message(*_args, **kwargs):
         return FakeMessage(payload)
 
     monkeypatch.setattr("app.modules.ai.router.create_message", fake_create_message)
