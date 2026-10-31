@@ -247,7 +247,9 @@ async def bulk_delete_items(
     db: DbSession,
     current_user: User = Depends(require_staff),
 ):
-    order = await OrderService(db).delete_items(order_id, data, current_user.business_id)
+    order = await OrderService(db).delete_items(
+        order_id, data, current_user.business_id, redis=getattr(request.app.state, "redis", None)
+    )
     await _publish_order_event(db, order, current_user.business_id, "order.updated")
     return order
 

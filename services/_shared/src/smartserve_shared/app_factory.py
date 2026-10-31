@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import AsyncIterator, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from inspect import isasyncgenfunction
@@ -22,9 +23,19 @@ from smartserve_shared.security import configure_security_from_settings
 
 logger = structlog.get_logger()
 
-limiter = Limiter(key_func=get_remote_address)
 
-LifespanHooks = Callable[[FastAPI], AsyncIterator[None] | AbstractAsyncContextManager[Any]]
+def _limiter_storage_uri() -> str:
+    uri = os.environ.get("REDIS_URL", "")
+    if uri.startswith("redis://") or uri.startswith("rediss://"):
+        return uri
+    return "memory://"
+
+
+limiter = Limiter(key_func=get_remote_address, storage_uri=_limiter_storage_uri())
+
+LifespanHooks = Callable[
+    [FastAPI], AsyncIterator[None] | AbstractAsyncContextManager[Any]
+]
 
 
 def create_service_app(
@@ -47,7 +58,10 @@ def create_service_app(
             getattr(settings, "SECRET_KEY", "")
         ).startswith("change-me"):
             raise RuntimeError("SECRET_KEY must be changed in production!")
-        logger.info(f"{name} service starting", env=getattr(settings, "ENVIRONMENT", "development"))
+        logger.info(
+            f"{name} service starting",
+            env=getattr(settings, "ENVIRONMENT", "development"),
+        )
         if lifespan_hooks is not None:
             hook_cm = (
                 asynccontextmanager(lifespan_hooks)(app)
@@ -63,7 +77,9 @@ def create_service_app(
     app = FastAPI(
         title=title or f"SmartServe {name.title()} Service",
         version="0.1.0",
-        docs_url="/docs" if getattr(settings, "ENVIRONMENT", "development") != "production" else None,
+        docs_url="/docs"
+        if getattr(settings, "ENVIRONMENT", "development") != "production"
+        else None,
         redoc_url=None,
         lifespan=lifespan,
     )
@@ -73,7 +89,9 @@ def create_service_app(
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
     @app.exception_handler(IntegrityError)
-    async def integrity_error_handler(_request: Request, exc: IntegrityError) -> JSONResponse:
+    async def integrity_error_handler(
+        _request: Request, exc: IntegrityError
+    ) -> JSONResponse:
         orig = getattr(exc, "orig", None)
         logger.warning("database_integrity_error", error=str(orig or exc))
         return JSONResponse(
@@ -98,7 +116,9 @@ def create_service_app(
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["X-Served-By"] = name
         if getattr(settings, "ENVIRONMENT", "development") == "production":
-            response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=63072000; includeSubDomains"
+            )
         return response
 
     async def _db_ping() -> None:
@@ -132,9 +152,15 @@ def create_service_app(
             if missing:
                 return JSONResponse(
                     status_code=503,
-                    content={"status": "not_ready", "missing": missing, "service": f"smartserve-{name}"},
+                    content={
+                        "status": "not_ready",
+                        "missing": missing,
+                        "service": f"smartserve-{name}",
+                    },
                 )
-            return JSONResponse(content={"status": "ok", "service": f"smartserve-{name}"})
+            return JSONResponse(
+                content={"status": "ok", "service": f"smartserve-{name}"}
+            )
 
     else:
 
@@ -147,9 +173,15 @@ def create_service_app(
             if _broker_missing():
                 return JSONResponse(
                     status_code=503,
-                    content={"status": "not_ready", "missing": ["broker"], "service": f"smartserve-{name}"},
+                    content={
+                        "status": "not_ready",
+                        "missing": ["broker"],
+                        "service": f"smartserve-{name}",
+                    },
                 )
-            return JSONResponse(content={"status": "ok", "service": f"smartserve-{name}"})
+            return JSONResponse(
+                content={"status": "ok", "service": f"smartserve-{name}"}
+            )
 
     app.include_router(api_router, prefix="/api/v1")
     return app
