@@ -202,7 +202,9 @@ jobs:
           cache: "pip"
 
       - name: Prepare env
-        run: cp .env.example .env
+        run: |
+          cp .env.example .env
+          python -c "import pathlib,secrets; p=pathlib.Path('.env'); p.write_text(p.read_text().replace('SECRET_KEY=replace-with-openssl-rand-hex-32','SECRET_KEY='+secrets.token_hex(32),1))"
 
       - name: Start demo stack
         run: python scripts/demo.py --reset --stack
