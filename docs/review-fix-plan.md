@@ -940,5 +940,7 @@ fixes* list, and these manual follow-ups that need the owner:
 - E6: recomputing from non-cancelled lines makes `test_q4_cancelling_item_lowers_total` pass, so its
   strict xfail was removed here (otherwise CI XPASS-fails). Q4 still owns emitting `order.updated` on
   cancel.
+- UI-1: `python-lockfiles` started failing on `main` after Q10 because CI installed unpinned `uv` and
+  `--check` drifted. The job now pins `uv==0.13.6` to match `scripts/lock_deps.py`.
 
 (Add items here as you find them. Don't fix them in an unrelated branch.)
