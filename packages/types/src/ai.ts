@@ -9,6 +9,11 @@ export const AiIntent = z.enum([
   'menu.toggle_availability',
   'menu.create_category',
   'menu.create_modifier_group',
+  'menu.reorganize_categories',
+  'menu.move_items_to_category',
+  'menu.move_to_trash',
+  'menu.restore_item',
+  'menu.permanently_delete_item',
   'printer.route',
   'printer.troubleshoot',
   'report.query',
@@ -19,6 +24,17 @@ export const AiIntent = z.enum([
   'help.general',
 ])
 export type AiIntent = z.infer<typeof AiIntent>
+
+export const AiChangeSchema = z.object({
+  entity: z.string(),
+  id: z.string().nullable().optional(),
+  name: z.string(),
+  field: z.string(),
+  from: z.unknown().optional(),
+  to: z.unknown().optional(),
+  extra: z.record(z.unknown()).optional(),
+})
+export type AiChange = z.infer<typeof AiChangeSchema>
 
 export const AiCommandRequestSchema = z.object({
   message: z.string().min(1).max(500),
@@ -34,6 +50,11 @@ export const AiCommandResponseSchema = z.object({
   confidence: z.number().min(0).max(1),
   params: z.record(z.unknown()),
   preview: z.string(),
+  summary: z.string().optional(),
+  message: z.string().optional(),
+  supported: z.boolean().optional(),
+  scope: z.enum(['items', 'category', 'location']).optional(),
+  changes: z.array(AiChangeSchema).optional(),
   requiresConfirmation: z.boolean().default(true),
   executionId: z.string().uuid().optional(),
   // Present only for the read-only 'report.query' intent, which returns its

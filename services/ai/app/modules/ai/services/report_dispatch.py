@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from fastapi import HTTPException, status
 from httpx import HTTPStatusError
 
-from app.modules.ai.services.dispatch import fuzzy_match
+from app.modules.ai.services.match import MatchError, match_index
 from app.modules.ai.services.menu_client import MenuClient
 from app.modules.ai.services.reports_client import ReportingClient
 
@@ -49,12 +49,18 @@ async def _resolve_item_and_category_hints(params: dict, location_id: str, token
     category_id = None
     if item_hint:
         items = await menu.list_all_items(location_id)
-        idx = fuzzy_match(item_hint, [i["name"] for i in items])
+        try:
+            idx = match_index(item_hint, items)
+        except MatchError:
+            idx = None
         if idx is not None:
             item_id = items[idx]["id"]
     if category_hint:
         categories = await menu.list_categories(location_id)
-        idx = fuzzy_match(category_hint, [c["name"] for c in categories])
+        try:
+            idx = match_index(category_hint, categories)
+        except MatchError:
+            idx = None
         if idx is not None:
             category_id = categories[idx]["id"]
     return item_id, category_id

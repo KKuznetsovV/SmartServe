@@ -18,7 +18,7 @@ from app.db.models import Outbox
 from app.db.session import DbSession
 from app.modules.ai.schemas import CommandRequest, ConfirmRequest, MenuImportApplyRequest, MenuImportMessageRequest
 from app.modules.ai.services.client import create_message, parse_json_reply, parse_menu_import_reply
-from app.modules.ai.services.dispatch import dispatch_intent
+from app.modules.ai.services.dispatch import IMPLEMENTED_INTENTS, Plan, apply_plan, assert_plan_fresh, plan_intent
 from app.modules.ai.services.import_parsing import MAX_UPLOAD_SIZE, build_content_block, fetch_menu_context
 from app.modules.ai.services.local_classifier import classify as local_classify
 from app.modules.ai.services.menu_client import MenuClient, PrintingClient
@@ -29,6 +29,10 @@ router = APIRouter()
 
 _PENDING_TTL = 600  # 10 minutes
 _IMPORT_TTL = 1800  # 30 minutes
+
+
+def _hebrew(message: str) -> bool:
+    return any("\u0590" <= ch <= "\u05ff" for ch in message)
 
 
 @router.post("/command")
@@ -101,7 +105,8 @@ async def ai_command(
             source = "sonnet"
 
     intent = result.get("intent")
-    params = result.get("params", {})
+    params = result.get("params") or {}
+    classifier_scope = result.get("scope")
 
     # report.query is read-only and never mutates data, so it skips the pending-execution/
     # /confirm flow entirely and answers immediately — but reports are still sensitive
@@ -116,16 +121,56 @@ async def ai_command(
             "params": params,
             "preview": result.get("preview", ""),
             "requiresConfirmation": False,
+            "supported": True,
             "report": report,
             "source": source,
         }
+
+    if intent not in IMPLEMENTED_INTENTS:
+        unsupported = (
+            "הפעולה הזו עדיין לא אוטומטית — אפשר לבצע אותה ידנית בלוח הבקרה"
+            if _hebrew(body.message)
+            else "That isn't automated yet — please make this change in the dashboard"
+        )
+        return {
+            "intent": intent,
+            "confidence": result.get("confidence"),
+            "params": params,
+            "preview": result.get("preview") or unsupported,
+            "summary": unsupported,
+            "message": unsupported,
+            "requiresConfirmation": False,
+            "supported": False,
+            "source": source,
+        }
+
+    menu = MenuClient(ctx.token)
+    printing = PrintingClient(ctx.token)
+    plan = await plan_intent(
+        intent,
+        params,
+        location_id,
+        menu,
+        printing,
+        classifier_scope=classifier_scope,
+        original_message=body.message,
+    )
 
     execution_id = str(uuid.uuid4())
     await request.app.state.redis.setex(
         f"ai:pending:{execution_id}",
         _PENDING_TTL,
         json.dumps(
-            {"intent": intent, "params": params, "context": body.context, "message": body.message, "source": source}
+            {
+                "intent": intent,
+                "params": params,
+                "context": body.context,
+                "message": body.message,
+                "source": source,
+                "user_id": ctx.claims.sub,
+                "business_id": ctx.claims.business_id,
+                "plan": plan.as_dict(),
+            }
         ),
     )
 
@@ -133,8 +178,12 @@ async def ai_command(
         "intent": intent,
         "confidence": result.get("confidence"),
         "params": params,
-        "preview": result.get("preview", ""),
+        "preview": result.get("preview") or plan.summary,
+        "summary": plan.summary,
+        "changes": [change.as_dict() for change in plan.changes],
+        "scope": plan.scope,
         "requiresConfirmation": True,
+        "supported": True,
         "executionId": execution_id,
         "source": source,
     }
@@ -152,6 +201,9 @@ async def ai_confirm(
     if not pending:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Execution not found or already confirmed")
 
+    if pending.get("business_id") and pending["business_id"] != ctx.claims.business_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Execution not found or already confirmed")
+
     intent = pending["intent"]
     params = pending.get("params") or {}
     context = pending.get("context") or {}
@@ -164,7 +216,12 @@ async def ai_confirm(
     menu = MenuClient(ctx.token)
     printing = PrintingClient(ctx.token)
     original_message = pending.get("message", "")
-    message = await dispatch_intent(intent, params, location_id, menu, printing)
+    raw_plan = pending.get("plan")
+    if not raw_plan:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Execution not found or already confirmed")
+    plan = Plan.from_dict(raw_plan)
+    await assert_plan_fresh(plan, menu)
+    message = await apply_plan(plan, location_id, menu, printing)
 
     # Audit log: who ran the assistant, what it was asked, and what it actually did —
     # consumed by `reporting`'s wildcard EventLog subscriber (GET /reports/events).

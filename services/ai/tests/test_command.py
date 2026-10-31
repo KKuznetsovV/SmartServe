@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import httpx
 
-from app.clients import auth_client, reporting_client
+from app.clients import auth_client, catalog_client, reporting_client
 from app.core.config import settings
 
 
@@ -80,6 +80,11 @@ async def test_command_returns_execution_id(client, manager_token, monkeypatch):
         )
 
     monkeypatch.setattr("app.modules.ai.router.create_message", fake_create_message)
+
+    async def fake_catalog_get(path, *, forward_token=None, **kwargs):
+        return httpx.Response(200, json=[{"id": "cat-1", "name": "Mains", "parentId": None}])
+
+    monkeypatch.setattr(catalog_client, "get", fake_catalog_get)
 
     resp = await client.post(
         "/api/v1/ai/command",

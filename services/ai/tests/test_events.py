@@ -14,7 +14,32 @@ async def _seed_pending(execution_id, intent, params, location_id="loc-1"):
     await app.state.redis.setex(
         f"ai:pending:{execution_id}",
         600,
-        json.dumps({"intent": intent, "params": params, "context": {"locationId": location_id}, "message": ""}),
+        json.dumps(
+            {
+                "intent": intent,
+                "params": params,
+                "context": {"locationId": location_id},
+                "message": "",
+                "user_id": "user-1",
+                "business_id": "biz-1",
+                "plan": {
+                    "intent": intent,
+                    "scope": "items",
+                    "summary": f"Created '{params['name']}' ({params['price']:.2f}) in 'Mains'",
+                    "changes": [
+                        {
+                            "entity": "item",
+                            "id": None,
+                            "name": params["name"],
+                            "field": "create",
+                            "from": None,
+                            "to": {"name": params["name"], "price": float(params["price"]), "categoryId": "cat-1"},
+                            "extra": {"categoryId": "cat-1"},
+                        }
+                    ],
+                },
+            }
+        ),
     )
 
 

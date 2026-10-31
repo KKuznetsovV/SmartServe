@@ -13,11 +13,42 @@ class FakeMessage:
         self.content = [SimpleNamespace(text=json.dumps(data))]
 
 
-async def _seed_pending(execution_id, intent, params, location_id="loc-1"):
+def _create_plan(name, price, category_id="cat-1"):
+    return {
+        "intent": "menu.create_item",
+        "scope": "items",
+        "summary": f"Created '{name}' ({price:.2f}) in 'Mains'",
+        "changes": [
+            {
+                "entity": "item",
+                "id": None,
+                "name": name,
+                "field": "create",
+                "from": None,
+                "to": {"name": name, "price": float(price), "categoryId": category_id},
+                "extra": {"categoryId": category_id},
+            }
+        ],
+    }
+
+
+async def _seed_pending(execution_id, intent, params, location_id="loc-1", plan=None):
+    if plan is None and intent == "menu.create_item":
+        plan = _create_plan(params["name"], params["price"])
     await app.state.redis.setex(
         f"ai:pending:{execution_id}",
         600,
-        json.dumps({"intent": intent, "params": params, "context": {"locationId": location_id}, "message": ""}),
+        json.dumps(
+            {
+                "intent": intent,
+                "params": params,
+                "context": {"locationId": location_id},
+                "message": "",
+                "user_id": "user-1",
+                "business_id": "biz-1",
+                "plan": plan,
+            }
+        ),
     )
 
 
@@ -123,13 +154,35 @@ async def test_confirm_catalog_422_is_readable(client, manager_token, monkeypatc
 
 
 async def test_confirm_toggle_availability(client, manager_token, monkeypatch):
-    await _seed_pending("exec-4", "menu.toggle_availability", {"name": "Pizza", "in_stock": False})
+    pizza = {"id": "item-1", "name": "Pizza", "inStock": True, "price": 42.0}
+    await _seed_pending(
+        "exec-4",
+        "menu.toggle_availability",
+        {"name": "Pizza", "in_stock": False},
+        plan={
+            "intent": "menu.toggle_availability",
+            "scope": "items",
+            "summary": "Marked 'Pizza' as out of stock",
+            "changes": [
+                {
+                    "entity": "item",
+                    "id": "item-1",
+                    "name": "Pizza",
+                    "field": "inStock",
+                    "from": True,
+                    "to": False,
+                }
+            ],
+        },
+    )
 
     async def fake_auth_get(path, *, forward_token=None, **kwargs):
         return httpx.Response(200, json={"id": "loc-1", "businessId": "biz-1"})
 
     async def fake_catalog_get(path, *, forward_token=None, **kwargs):
-        return httpx.Response(200, json=[{"id": "item-1", "name": "Pizza", "inStock": True}])
+        if path.endswith("/stock"):
+            return httpx.Response(200, json=[pizza])
+        return httpx.Response(200, json=pizza)
 
     async def fake_catalog_patch(path, *, forward_token=None, **kwargs):
         return httpx.Response(200, json={"id": "item-1", "name": "Pizza", "inStock": False})
@@ -167,12 +220,18 @@ async def test_command_then_confirm_rename_item(client, manager_token, monkeypat
             }
         )
 
+    coke = {"id": "item-1", "name": "Coke", "inStock": True, "price": 12.0, "description": None}
+
     async def fake_catalog_get(path, *, forward_token=None, **kwargs):
-        return httpx.Response(200, json=[{"id": "item-1", "name": "Coke", "inStock": True}])
+        if path.endswith("/stock"):
+            return httpx.Response(200, json=[coke])
+        if path.endswith("/categories"):
+            return httpx.Response(200, json=[{"id": "cat-1", "name": "Drinks"}])
+        return httpx.Response(200, json=coke)
 
     async def fake_catalog_patch(path, *, forward_token=None, **kwargs):
         body = kwargs["json"]
-        return httpx.Response(200, json={"id": "item-1", "name": body["name"]})
+        return httpx.Response(200, json={"id": "item-1", "name": body.get("name", "Coca-Cola")})
 
     monkeypatch.setattr(auth_client, "get", fake_auth_get)
     monkeypatch.setattr("app.modules.ai.router.create_message", fake_create_message)
