@@ -6,7 +6,7 @@ import { useTransition } from 'react'
 import { LanguageSwitcher, type AppLocale } from '@smartserve/ui'
 import { setUserLocale } from '@/i18n/set-locale'
 
-export function LocaleToggle() {
+export function LocaleToggle({ className }: { className?: string }) {
   const locale = useLocale() as AppLocale
   const t = useTranslations('common')
   const router = useRouter()
@@ -19,5 +19,13 @@ export function LocaleToggle() {
     })
   }
 
-  return <LanguageSwitcher locale={locale} onChange={onChange} disabled={isPending} ariaLabel={t('language')} />
+  return (
+    <LanguageSwitcher
+      locale={locale}
+      onChange={onChange}
+      disabled={isPending}
+      ariaLabel={t('language')}
+      className={className}
+    />
+  )
 }

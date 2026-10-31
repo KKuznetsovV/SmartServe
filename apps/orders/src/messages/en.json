@@ -46,7 +46,8 @@
     "changeLocation": "Change location",
     "noStaffFound": "No staff found for this location.",
     "invalidPin": "Invalid PIN",
-    "failedLoadStaff": "Failed to load staff list"
+    "failedLoadStaff": "Failed to load staff list",
+    "deleteDigit": "Delete last digit"
   },
   "roles": {
     "owner": "Owner",

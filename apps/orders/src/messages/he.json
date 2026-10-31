@@ -46,7 +46,8 @@
     "changeLocation": "החלף מיקום",
     "noStaffFound": "לא נמצא צוות עבור מיקום זה.",
     "invalidPin": "קוד PIN שגוי",
-    "failedLoadStaff": "טעינת רשימת הצוות נכשלה"
+    "failedLoadStaff": "טעינת רשימת הצוות נכשלה",
+    "deleteDigit": "מחק ספרה אחרונה"
   },
   "roles": {
     "owner": "בעלים",
