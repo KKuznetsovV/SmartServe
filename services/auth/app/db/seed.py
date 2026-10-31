@@ -67,7 +67,7 @@ async def seed(*, with_second_tenant: bool = False) -> None:
             loc = Location(business_id=biz.id, name="Main Branch", address="1 Rothschild Blvd, Tel Aviv")
             db.add(loc)
             await db.flush()
-            await _ensure_user(
+            owner_user = await _ensure_user(
                 db,
                 business_id=biz.id,
                 email=DEMO_EMAIL,
@@ -100,10 +100,9 @@ async def seed(*, with_second_tenant: bool = False) -> None:
                 role="kitchen",
                 pin=KITCHEN_PIN,
             )
+            await db.flush()
             logger.info("demo tenant seeded", business_id=biz.id, location_id=loc.id)
-            loc_id = loc.id
-            creator = (await db.execute(select(User).where(func.lower(User.email) == DEMO_EMAIL))).scalar_one()
-            await _ensure_pos_device(db, location_id=loc_id, created_by=creator.id)
+            await _ensure_pos_device(db, location_id=loc.id, created_by=owner_user.id)
         else:
             logger.info("demo tenant already present, skipping")
             existing_loc = (
