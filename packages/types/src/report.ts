@@ -17,6 +17,8 @@ export const ReportSummarySchema = z.object({
   revenueByChannel: z.record(z.number()),
   topItems: z.array(TopItemSchema),
   ordersByStatus: z.record(z.number().int()),
+  openOrderCount: z.number().int().default(0),
+  openOrderValue: z.number().default(0),
 })
 export type ReportSummary = z.infer<typeof ReportSummarySchema>
 

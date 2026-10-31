@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 import structlog
@@ -19,6 +20,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import EventLog, ReportingOrder, ReportingOrderItem
 
 logger = structlog.get_logger()
+
+
+def _line_net(item: dict[str, Any]) -> Decimal:
+    if item.get("status") == "cancelled" or item.get("isComped"):
+        return money(0)
+    qty = int(item.get("qty") or 1)
+    gross = money(item.get("unitPrice") or 0) * qty
+    return money(max(Decimal("0"), gross - money(item.get("discountAmount") or 0)))
 
 
 def _business_id_from_payload(payload: dict[str, Any]) -> str | None:
@@ -120,21 +129,26 @@ async def _project_order(db, payload: dict[str, Any]) -> None:
 
     if "items" in payload:
         await db.execute(delete(ReportingOrderItem).where(ReportingOrderItem.order_id == order_id))
-        for item in payload.get("items") or []:
-            item_id = item.get("id")
-            name = item.get("menuItemName")
-            if not item_id or not name:
-                continue
+        snapshots = [item for item in payload.get("items") or [] if item.get("id") and item.get("menuItemName")]
+        nets = [_line_net(item) for item in snapshots]
+        subtotal = sum(nets, money(0))
+        order_total = money(payload["total"] if "total" in payload else row.total)
+        for item, net in zip(snapshots, nets, strict=True):
+            share = money(order_total * net / subtotal) if subtotal > 0 else money(0)
             db.add(
                 ReportingOrderItem(
-                    id=item_id,
+                    id=item["id"],
                     order_id=order_id,
                     menu_item_id=item.get("menuItemId"),
-                    menu_item_name=name,
+                    menu_item_name=item["menuItemName"],
                     category_id=item.get("categoryId"),
                     category_name=item.get("categoryName"),
                     qty=int(item.get("qty") or 1),
                     unit_price=money(item.get("unitPrice") or 0),
+                    discount_amount=money(item.get("discountAmount") or 0),
+                    is_comped=bool(item.get("isComped")),
+                    status=str(item.get("status") or "pending"),
+                    revenue=share,
                 )
             )
 

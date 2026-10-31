@@ -4,7 +4,7 @@ from collections.abc import AsyncIterator
 from datetime import datetime
 
 from smartserve_shared.money import money
-from sqlalchemy import func, select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import EventLog, User
@@ -26,6 +26,14 @@ from app.modules.reports.schemas import (
 # so a status filter of "other" only ever matches genuinely unrecognized future statuses.
 _TERMINAL_STATUSES = ("paid", "cancelled")
 _ACTIVE_STATUSES = ("open", "submitted", "preparing", "ready", "served")
+_UNPAID_STATUSES = ("open", "submitted", "preparing", "ready", "served", "split")
+
+
+def _sold_qty():
+    return case(
+        (and_(OrderItem.is_comped.is_(False), OrderItem.status != "cancelled"), OrderItem.qty),
+        else_=0,
+    )
 
 
 def _csv_row(fields: list) -> str:
@@ -91,22 +99,36 @@ class ReportService:
         )
         orders_by_status: dict[str, int] = {row[0]: row[1] for row in status_q}
 
-        # Top items by qty (orders in period, any status except cancelled)
+        open_q = await self.db.execute(
+            select(
+                func.count(Order.id),
+                func.coalesce(func.sum(Order.total), 0.0),
+            )
+            .where(Order.location_id == location_id)
+            .where(Order.status.in_(_UNPAID_STATUSES))
+            .where(*created_at)
+        )
+        open_order_count, open_order_value = open_q.one()
+        open_order_count = int(open_order_count)
+        open_order_value = money(open_order_value or 0)
+
         items_q = await self.db.execute(
             select(
                 OrderItem.menu_item_name,
-                func.sum(OrderItem.qty).label("total_qty"),
-                func.sum(OrderItem.qty * OrderItem.unit_price).label("total_revenue"),
+                func.coalesce(func.sum(_sold_qty()), 0).label("total_qty"),
+                func.coalesce(func.sum(OrderItem.revenue), 0.0).label("total_revenue"),
             )
             .join(Order, OrderItem.order_id == Order.id)
             .where(Order.location_id == location_id)
+            .where(Order.status == "paid")
             .where(*created_at)
-            .where(Order.status != "cancelled")
             .group_by(OrderItem.menu_item_name)
-            .order_by(func.sum(OrderItem.qty).desc())
+            .order_by(func.coalesce(func.sum(OrderItem.revenue), 0.0).desc())
             .limit(10)
         )
-        top_items = [TopItemOut(menu_item_name=row[0], qty=int(row[1]), revenue=money(row[2] or 0)) for row in items_q]
+        top_items = [
+            TopItemOut(menu_item_name=row[0], qty=int(row[1] or 0), revenue=money(row[2] or 0)) for row in items_q
+        ]
 
         return ReportSummaryOut(
             period=period,
@@ -118,6 +140,8 @@ class ReportService:
             revenue_by_channel=revenue_by_channel,
             top_items=top_items,
             orders_by_status=orders_by_status,
+            open_order_count=open_order_count,
+            open_order_value=open_order_value,
         )
 
     async def list_events(
@@ -160,8 +184,8 @@ class ReportService:
         if group_by == "menu":
             totals_q = await self.db.execute(
                 select(
-                    func.coalesce(func.sum(OrderItem.qty), 0),
-                    func.coalesce(func.sum(OrderItem.qty * OrderItem.unit_price), 0.0),
+                    func.coalesce(func.sum(_sold_qty()), 0),
+                    func.coalesce(func.sum(OrderItem.revenue), 0.0),
                 )
                 .join(Order, OrderItem.order_id == Order.id)
                 .where(*base_filters)
@@ -190,13 +214,13 @@ class ReportService:
             select(
                 group_id_col,
                 group_label_col,
-                func.sum(OrderItem.qty),
-                func.sum(OrderItem.qty * OrderItem.unit_price),
+                func.coalesce(func.sum(_sold_qty()), 0),
+                func.coalesce(func.sum(OrderItem.revenue), 0.0),
             )
             .join(Order, OrderItem.order_id == Order.id)
             .where(*base_filters)
             .group_by(group_id_col, group_label_col)
-            .order_by(func.sum(OrderItem.qty * OrderItem.unit_price).desc())
+            .order_by(func.coalesce(func.sum(OrderItem.revenue), 0.0).desc())
         )
         rows = [
             SalesReportGroupOut(
@@ -237,8 +261,8 @@ class ReportService:
                     Order.created_by,
                     User.name,
                     func.count(func.distinct(Order.id)),
-                    func.sum(OrderItem.qty),
-                    func.sum(OrderItem.qty * OrderItem.unit_price),
+                    func.coalesce(func.sum(_sold_qty()), 0),
+                    func.coalesce(func.sum(OrderItem.revenue), 0.0),
                 )
                 .select_from(Order)
                 .join(OrderItem, OrderItem.order_id == Order.id)
@@ -253,7 +277,7 @@ class ReportService:
                 q = q.where(OrderItem.menu_item_id == item_id)
             if category_id:
                 q = q.where(OrderItem.category_id == category_id)
-            q = q.group_by(Order.created_by, User.name).order_by(func.sum(OrderItem.qty * OrderItem.unit_price).desc())
+            q = q.group_by(Order.created_by, User.name).order_by(func.coalesce(func.sum(OrderItem.revenue), 0.0).desc())
             result = await self.db.execute(q)
             rows = [
                 ServerSalesOut(
@@ -363,7 +387,7 @@ class ReportService:
         exclusive_end: bool = True,
     ) -> AsyncIterator[str]:
         report = await self.sales_report(location_id, group_by, start, end, exclusive_end)
-        yield _csv_row(["group_id", "group_label", "qty", "revenue"])
+        yield _csv_row(["group_id", "group_label", "qty_sold", "revenue_gross"])
         for row in report.rows:
             yield _csv_row([row.group_id or "", row.group_label, row.qty, row.revenue])
 

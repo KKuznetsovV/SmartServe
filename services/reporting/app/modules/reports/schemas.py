@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 
 from smartserve_shared.money import Money
 from smartserve_shared.schemas import BaseSchema
@@ -20,6 +21,8 @@ class ReportSummaryOut(BaseSchema):
     revenue_by_channel: dict[str, Money]
     top_items: list[TopItemOut]
     orders_by_status: dict[str, int]
+    open_order_count: int = 0
+    open_order_value: Money = Decimal("0")
 
 
 class EventLogOut(BaseSchema):

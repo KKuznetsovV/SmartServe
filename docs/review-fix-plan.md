@@ -55,8 +55,8 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 35 | E10 | `fix/e10-ai-nonblocking-inference` | merged | https://github.com/KKuznetsovV/SmartServe/pull/123 |
 | 36 | E11 | `chore/e11-lock-dependencies` | merged | https://github.com/KKuznetsovV/SmartServe/pull/124 |
 | 37 | E13 | `fix/e13-gateway-routing` | merged | https://github.com/KKuznetsovV/SmartServe/pull/125 |
-| 38 | Q9 | `fix/q9-business-day-reports` | in progress | https://github.com/KKuznetsovV/SmartServe/pull/126 |
-| 39 | Q10 | `fix/q10-report-consistency` | todo | |
+| 38 | Q9 | `fix/q9-business-day-reports` | merged | https://github.com/KKuznetsovV/SmartServe/pull/126 |
+| 39 | Q10 | `fix/q10-report-consistency` | in progress | |
 | 40 | UI-1 | `ui/pin-pad-ltr` | todo | |
 | 41 | UI-2 | `ui/order-screen-localization-and-layout` | todo | |
 | 42 | UI-3 | `ui/kds-redesign` | todo | |
