@@ -85,7 +85,7 @@ test('PIN session survives reload and logout returns to login', async ({ page, r
   await page.reload()
   await expect(page).toHaveURL(/\/orders/)
 
-  await page.getByRole('button', { name: /התנתק|Log out|Logout/i }).click()
+  await page.getByRole('button', { name: /יציאה|התנתק|Log out|Logout/i }).click()
   await expect(page).toHaveURL(/\/login/)
   await expect(page.getByRole('button', { name: /Demo Waiter/i })).toBeVisible()
 })
