@@ -45,7 +45,7 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 28 | NUM | `feat/daily-order-numbers` | merged | https://github.com/KKuznetsovV/SmartServe/pull/107 |
 | 29 | AI | `fix/ai-dry-run-preview` | merged | https://github.com/KKuznetsovV/SmartServe/pull/109 |
 | 30a | S4a | `fix/s4a-device-registration` | merged | https://github.com/KKuznetsovV/SmartServe/pull/111 |
-| 30b | S4b | `fix/s4b-ws-tickets` | todo | |
+| 30b | S4b | `fix/s4b-ws-tickets` | merged | https://github.com/KKuznetsovV/SmartServe/pull/113 |
 | 30c | S4c | `fix/s4c-public-display-token` | todo | |
 | 31 | S5 | `fix/s5-pin-lockout-and-proxy-ip` | todo | |
 | 32 | S8 | `fix/s8-token-handling` | todo | |
