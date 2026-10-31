@@ -317,6 +317,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8080:80"
+    environment:
+      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-}
     networks:
       default:
         ipv4_address: 172.28.0.254
