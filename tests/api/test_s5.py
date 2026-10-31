@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+import json
 import os
+import subprocess
 import uuid
+from pathlib import Path
 
-import httpx
 from httpx import AsyncClient
 
 from conftest import add_item, bearer, create_order, device_headers, submit_order
 
-AUTH_DIRECT_URL = os.environ.get("AUTH_DIRECT_URL", "http://localhost:8001/api/v1")
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 async def _staff_with_pin(client: AsyncClient, owner: dict, *, name: str, role: str, pin: str) -> str:
@@ -93,15 +95,36 @@ async def test_s5_gateway_forged_xff_shares_one_bucket(client: AsyncClient) -> N
 
 
 async def test_s5_direct_auth_port_ignores_forged_xff() -> None:
+    """Hit auth from another compose service so forged X-Forwarded-For is untrusted."""
     stamp = uuid.uuid4().hex
-    async with httpx.AsyncClient(base_url=AUTH_DIRECT_URL, timeout=30.0) as direct:
-        statuses: list[int] = []
-        for i in range(12):
-            resp = await direct.post(
-                "/auth/login",
-                json={"email": f"s5-direct-{stamp}-{i}@example.com", "password": "nope"},
-                headers={"X-Forwarded-For": f"203.0.113.{i}"},
-            )
-            statuses.append(resp.status_code)
+    script = f"""
+import json, urllib.error, urllib.request
+statuses = []
+for i in range(12):
+    data = json.dumps({{"email": f"s5-direct-{stamp}-{{i}}@example.com", "password": "nope"}}).encode()
+    req = urllib.request.Request(
+        "http://auth:8000/api/v1/auth/login",
+        data=data,
+        method="POST",
+        headers={{
+            "Content-Type": "application/json",
+            "X-Forwarded-For": f"203.0.113.{{i}}",
+        }},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            statuses.append(resp.status)
+    except urllib.error.HTTPError as exc:
+        statuses.append(exc.code)
+print(json.dumps(statuses))
+"""
+    proc = subprocess.run(
+        ["docker", "compose", "exec", "-T", "catalog", "python", "-c", script],
+        cwd=REPO_ROOT,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    statuses = json.loads(proc.stdout.strip().splitlines()[-1])
     assert 429 in statuses
     assert all(code in {401, 429} for code in statuses)

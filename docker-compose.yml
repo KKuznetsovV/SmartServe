@@ -44,8 +44,6 @@ services:
     build:
       context: ./services
       dockerfile: auth/Dockerfile
-    ports:
-      - "8001:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-smartserve}:${POSTGRES_PASSWORD:-smartserve}@db:5432/${POSTGRES_DB:-smartserve}
       REDIS_URL: redis://:${REDIS_PASSWORD:-smartserve}@redis:6379/0
@@ -76,8 +74,6 @@ services:
     build:
       context: ./services
       dockerfile: catalog/Dockerfile
-    ports:
-      - "8002:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-smartserve}:${POSTGRES_PASSWORD:-smartserve}@db:5432/${POSTGRES_DB:-smartserve}
       REDIS_URL: redis://:${REDIS_PASSWORD:-smartserve}@redis:6379/0
@@ -107,8 +103,6 @@ services:
     build:
       context: ./services
       dockerfile: ordering/Dockerfile
-    ports:
-      - "8003:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-smartserve}:${POSTGRES_PASSWORD:-smartserve}@db:5432/${POSTGRES_DB:-smartserve}
       REDIS_URL: redis://:${REDIS_PASSWORD:-smartserve}@redis:6379/0
@@ -141,8 +135,6 @@ services:
     build:
       context: ./services
       dockerfile: payments/Dockerfile
-    ports:
-      - "8004:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-smartserve}:${POSTGRES_PASSWORD:-smartserve}@db:5432/${POSTGRES_DB:-smartserve}
       REDIS_URL: redis://:${REDIS_PASSWORD:-smartserve}@redis:6379/0
@@ -174,8 +166,6 @@ services:
     build:
       context: ./services
       dockerfile: staff/Dockerfile
-    ports:
-      - "8005:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-smartserve}:${POSTGRES_PASSWORD:-smartserve}@db:5432/${POSTGRES_DB:-smartserve}
       REDIS_URL: redis://:${REDIS_PASSWORD:-smartserve}@redis:6379/0
@@ -207,8 +197,6 @@ services:
     build:
       context: ./services
       dockerfile: printing/Dockerfile
-    ports:
-      - "8006:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-smartserve}:${POSTGRES_PASSWORD:-smartserve}@db:5432/${POSTGRES_DB:-smartserve}
       REDIS_URL: redis://:${REDIS_PASSWORD:-smartserve}@redis:6379/0
@@ -238,8 +226,6 @@ services:
     build:
       context: ./services
       dockerfile: reporting/Dockerfile
-    ports:
-      - "8007:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-smartserve}:${POSTGRES_PASSWORD:-smartserve}@db:5432/${POSTGRES_DB:-smartserve}
       REDIS_URL: redis://:${REDIS_PASSWORD:-smartserve}@redis:6379/0
@@ -269,8 +255,6 @@ services:
     build:
       context: ./services
       dockerfile: ai/Dockerfile
-    ports:
-      - "8008:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-smartserve}:${POSTGRES_PASSWORD:-smartserve}@db:5432/${POSTGRES_DB:-smartserve}
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production-use-a-256-bit-random-string}

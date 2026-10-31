@@ -53,8 +53,8 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 33 | S9 | `fix/s9-ai-limits` | merged | https://github.com/KKuznetsovV/SmartServe/pull/121 |
 | 34 | S11 | `fix/s11-secure-defaults` | merged | https://github.com/KKuznetsovV/SmartServe/pull/122 |
 | 35 | E10 | `fix/e10-ai-nonblocking-inference` | merged | https://github.com/KKuznetsovV/SmartServe/pull/123 |
-| 36 | E11 | `chore/e11-lock-dependencies` | in progress | |
-| 37 | E13 | `fix/e13-gateway-routing` | todo | |
+| 36 | E11 | `chore/e11-lock-dependencies` | merged | https://github.com/KKuznetsovV/SmartServe/pull/124 |
+| 37 | E13 | `fix/e13-gateway-routing` | in progress | |
 | 38 | Q9 | `fix/q9-business-day-reports` | todo | |
 | 39 | Q10 | `fix/q10-report-consistency` | todo | |
 | 40 | UI-1 | `ui/pin-pad-ltr` | todo | |

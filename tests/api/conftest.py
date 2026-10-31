@@ -13,8 +13,8 @@ import pytest_asyncio
 
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8080/api/v1")
 WEB_BASE_URL = os.environ.get("WEB_BASE_URL", "http://localhost:3000")
-PRINTING_BASE_URL = os.environ.get("PRINTING_BASE_URL", "http://localhost:8006/api/v1")
-REPORTING_BASE_URL = os.environ.get("REPORTING_BASE_URL", "http://localhost:8007/api/v1")
+PRINTING_BASE_URL = os.environ.get("PRINTING_BASE_URL", "http://localhost:8080/api/v1")
+REPORTING_BASE_URL = os.environ.get("REPORTING_BASE_URL", "http://localhost:8080/api/v1")
 
 OWNER_A_EMAIL = "owner@demo.com"
 OWNER_A_PASSWORD = "demo1234"
