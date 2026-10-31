@@ -82,7 +82,7 @@ export default function SetupPage() {
         deviceName: registered.name,
       })
       clearAuth()
-      router.push('/login')
+      router.push(deviceType === 'display' ? '/display' : '/login')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('registerFailed'))
     } finally {

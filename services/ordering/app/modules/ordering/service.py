@@ -174,7 +174,6 @@ class OrderService:
         q = (
             select(Order)
             .where(Order.location_id == location_id, Order.status.in_(["submitted", "preparing", "ready"]))
-            .options(selectinload(Order.items), selectinload(Order.table))
             .order_by(Order.created_at.asc())
             .limit(50)
         )

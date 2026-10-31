@@ -1,9 +1,12 @@
 'use client'
 
-import { use } from 'react'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
 import { apiClient } from '@/lib/api'
+import { useDeviceStore } from '@/lib/device-store'
+import { useAuthReady } from '@/hooks/use-auth-ready'
 import { useLocationWs } from '@/hooks/use-ws'
 
 const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
@@ -12,27 +15,37 @@ const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
   ready: { bg: 'bg-emerald-500', text: 'text-emerald-950' },
 }
 
-interface Props {
-  params: Promise<{ locationId: string }>
-}
-
-export default function CustomerDisplayPage({ params }: Props) {
-  const { locationId } = use(params)
+export default function CustomerDisplayPage() {
+  const router = useRouter()
   const t = useTranslations('display')
-  const tOrders = useTranslations('orders')
+  const { ready, deviceConfigured } = useAuthReady()
+  const locationId = useDeviceStore((s) => s.locationId)
+  const deviceToken = useDeviceStore((s) => s.deviceToken)
+  const deviceType = useDeviceStore((s) => s.deviceType)
+
+  useEffect(() => {
+    if (ready && (!deviceConfigured || deviceType !== 'display')) {
+      router.replace('/setup')
+    }
+  }, [ready, deviceConfigured, deviceType, router])
+
   const { data: orders = [], dataUpdatedAt } = useQuery({
     queryKey: ['orders', locationId, 'display'],
-    queryFn: () => apiClient.orders.publicActive(locationId),
+    queryFn: () => apiClient.orders.publicDisplay(deviceToken as string),
+    enabled: Boolean(deviceToken && deviceType === 'display'),
     refetchInterval: 15_000,
   })
 
-  useLocationWs(locationId)
+  useLocationWs(deviceType === 'display' ? locationId : null)
 
   const lastUpdated = dataUpdatedAt ? new Date(dataUpdatedAt) : new Date()
 
+  if (!ready || !deviceConfigured || deviceType !== 'display') {
+    return null
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white p-6">
-      {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
         <p className="text-sm text-zinc-500">
@@ -56,32 +69,15 @@ export default function CustomerDisplayPage({ params }: Props) {
                   : t('received')
             return (
               <div
-                key={order.id}
+                key={`${order.orderNumber}-${order.updatedAt}`}
                 className={`rounded-2xl p-5 ${style.bg} ${style.text} flex flex-col gap-3`}
               >
-                {/* Order number + status */}
                 <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold font-mono">
-                    #{order.orderNumber ?? order.id.slice(0, 6).toUpperCase()}
-                  </span>
+                  <span className="text-2xl font-bold font-mono">#{order.orderNumber}</span>
                   <span className="text-sm font-semibold uppercase tracking-wide opacity-80">
                     {statusLabel}
                   </span>
                 </div>
-
-                {/* Table / channel */}
-                <p className="text-sm opacity-70 capitalize">
-                  {order.tableName ?? tOrders(`channel.${order.channel}` as never)}
-                </p>
-
-                {/* Items */}
-                <ul className="text-sm space-y-0.5">
-                  {order.items.map((item) => (
-                    <li key={item.id}>
-                      {item.qty}× {item.menuItemName}
-                    </li>
-                  ))}
-                </ul>
               </div>
             )
           })}
