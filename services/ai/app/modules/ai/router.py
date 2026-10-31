@@ -1,10 +1,10 @@
 """AI command endpoint — intent classification, action preview, and menu import."""
 
+import asyncio
 import json
 import uuid
 from datetime import UTC, datetime
 
-import anthropic
 from fastapi import Depends, File, Form, HTTPException, Request, UploadFile, status
 from httpx import HTTPStatusError
 from smartserve_shared.app_factory import limiter
@@ -71,8 +71,9 @@ async def ai_command(
     tz_name = location.get("timezone")
     redis = request.app.state.redis
 
-    # Tier 1 — local model: fast, free, no network call.
-    local_result = local_classify(body.message)
+    # Tier 1 — local model: fast, free, no network call. llama.cpp is sync and
+    # not thread-safe; run it off the loop behind the module lock in classify().
+    local_result = await asyncio.to_thread(local_classify, body.message)
     if local_result is not None and local_result["confidence"] >= settings.LOCAL_MODEL_CONFIDENCE_THRESHOLD:
         result = local_result
         source = "local_model"
@@ -84,7 +85,6 @@ async def ai_command(
                 detail="AI service not configured (set ANTHROPIC_API_KEY)",
             )
 
-        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
         system = INTENT_SYSTEM_PROMPT.format(
             intents=", ".join(SUPPORTED_INTENTS), today=datetime.now(UTC).date().isoformat()
         )
@@ -93,7 +93,6 @@ async def ai_command(
             redis,
             ctx.claims.business_id,
             tz_name,
-            client,
             model=settings.AI_INTENT_MODEL,
             max_tokens=256,
             system=system,
@@ -108,7 +107,6 @@ async def ai_command(
                 redis,
                 ctx.claims.business_id,
                 tz_name,
-                client,
                 model=settings.AI_COMPLEX_MODEL,
                 max_tokens=512,
                 system=system,
@@ -125,7 +123,6 @@ async def ai_command(
                 redis,
                 ctx.claims.business_id,
                 tz_name,
-                client,
                 model=settings.AI_COMPLEX_MODEL,
                 max_tokens=512,
                 system=system,
@@ -314,7 +311,6 @@ async def menu_import_start(
     printing = PrintingClient(ctx.token)
     categories, printers = await fetch_menu_context(menu, printing, location["id"])
 
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
     system = MENU_IMPORT_SYSTEM_PROMPT.format(categories=categories, printers=printers)
     user_content = [block, {"type": "text", "text": "Extract the menu items from this file."}]
 
@@ -322,7 +318,6 @@ async def menu_import_start(
         request.app.state.redis,
         ctx.claims.business_id,
         location.get("timezone"),
-        client,
         model=settings.AI_COMPLEX_MODEL,
         max_tokens=8192,
         system=system,
@@ -376,7 +371,6 @@ async def menu_import_message(
     menu = MenuClient(ctx.token)
     printing = PrintingClient(ctx.token)
     categories, printers = await fetch_menu_context(menu, printing, session["location_id"])
-    client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
     system = MENU_IMPORT_SYSTEM_PROMPT.format(categories=categories, printers=printers)
 
     history = [*session["history"], {"role": "user", "content": body.message}]
@@ -386,7 +380,6 @@ async def menu_import_message(
         request.app.state.redis,
         ctx.claims.business_id,
         location.get("timezone"),
-        client,
         model=settings.AI_COMPLEX_MODEL,
         max_tokens=8192,
         system=system,

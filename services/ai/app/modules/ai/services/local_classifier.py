@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 
 logger = logging.getLogger(__name__)
 
 _llm = None  # loaded once at service startup; None = feature disabled
+_lock = threading.Lock()  # llama.cpp is not thread-safe
 
 # Map the local model's flat intent names to the namespaced intent strings
 # the dispatch layer (and the rest of the Haiku pipeline) already understands.
@@ -89,9 +91,17 @@ def classify(message: str) -> dict | None:
     if _llm is None:
         return None
 
+    with _lock:
+        return _classify_locked(message)
+
+
+def _classify_locked(message: str) -> dict | None:
+    model = _llm
+    if model is None:
+        return None
     prompt = f"### Instruction:\n{_INSTRUCTION}\n\n### Input:\n{message}\n\n### Response:\n"
     try:
-        output = _llm(prompt, max_tokens=200, stop=["###"], temperature=0.0)
+        output = model(prompt, max_tokens=200, stop=["###"], temperature=0.0)
         text = output["choices"][0]["text"].strip()  # type: ignore[index]
         parsed = json.loads(text)
     except Exception as exc:

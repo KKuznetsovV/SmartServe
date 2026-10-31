@@ -1,10 +1,14 @@
-"""Thin wrapper around the Anthropic SDK: off-loop calls plus JSON reply parsing."""
+"""Thin wrapper around the Anthropic SDK: async calls plus JSON reply parsing."""
 
-import asyncio
 import json
 
 import anthropic
 from fastapi import HTTPException, status
+
+from app.core.config import settings
+
+_CLIENT_TIMEOUT_SECONDS = 20.0
+_async_client: anthropic.AsyncAnthropic | None = None
 
 
 def parse_json_reply(message: anthropic.types.Message) -> dict:
@@ -31,11 +35,20 @@ def parse_menu_import_reply(message: anthropic.types.Message) -> dict:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail) from exc
 
 
-async def create_message(client: anthropic.Anthropic, **kwargs) -> anthropic.types.Message:
-    """Call the Anthropic API off the event loop, turning SDK errors into clean HTTP responses."""
+def _client() -> anthropic.AsyncAnthropic:
+    global _async_client
+    if _async_client is None:
+        _async_client = anthropic.AsyncAnthropic(
+            api_key=settings.ANTHROPIC_API_KEY,
+            timeout=_CLIENT_TIMEOUT_SECONDS,
+        )
+    return _async_client
+
+
+async def create_message(**kwargs) -> anthropic.types.Message:
+    """Call the Anthropic API without blocking the event loop."""
     try:
-        # SDK's overloaded create() signature doesn't line up with to_thread's expected callable type
-        return await asyncio.to_thread(client.messages.create, **kwargs)  # type: ignore[arg-type]
+        return await _client().messages.create(**kwargs)
     except anthropic.RateLimitError as exc:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="AI service is busy, please try again shortly"

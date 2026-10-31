@@ -62,11 +62,11 @@ async def record_call(redis: Any, business_id: str | None, tz_name: str | None) 
         await redis.expire(key, _ttl_seconds(tz_name))
 
 
-async def billed_create_message(redis: Any, business_id: str | None, tz_name: str | None, client, **kwargs):
+async def billed_create_message(redis: Any, business_id: str | None, tz_name: str | None, **kwargs):
     from app.modules.ai.services.client import create_message
 
     await ensure_budget(redis, business_id, tz_name)
     try:
-        return await create_message(client, **kwargs)
+        return await create_message(**kwargs)
     finally:
         await record_call(redis, business_id, tz_name)

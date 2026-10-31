@@ -7,7 +7,6 @@ from dataclasses import field as dc_field
 from decimal import Decimal
 from typing import Any, Literal
 
-import anthropic
 from fastapi import HTTPException, status
 from smartserve_shared.money import money
 
@@ -696,13 +695,11 @@ async def _plan_reorganize_categories(params: dict, location_id: str, menu: Menu
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="AI service not configured (set ANTHROPIC_API_KEY)",
             )
-        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
         system = MENU_REORG_SYSTEM_PROMPT.format(
             new_top_categories=", ".join(c["name"] for c in new_top_cats),
             existing_categories=", ".join(c["name"] for c in to_reassign),
         )
         message = await create_message(
-            client,
             model=settings.AI_COMPLEX_MODEL,
             max_tokens=1024,
             system=system,
