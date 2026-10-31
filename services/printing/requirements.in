@@ -1,0 +1,15 @@
+-e ../_shared
+fastapi>=0.121.0
+uvicorn[standard]>=0.34.0
+sqlalchemy[asyncio]>=2.0.41
+asyncpg>=0.31.0
+alembic>=1.13.0
+pydantic[email]>=2.9.0
+pydantic-settings>=2.4.0
+bcrypt>=4.0.0
+python-multipart>=0.0.20
+redis>=6.1.0
+httpx>=0.28.1
+slowapi>=0.1.9
+structlog>=25.4.0
+aio-pika>=9.4.0

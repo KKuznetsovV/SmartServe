@@ -1,5 +1,7 @@
 version: 2
 updates:
+  # pip still targets the compiled requirements*.txt files (and their .in sources)
+  # under each service, so Dependabot continues to open version PRs for pins.
   - package-ecosystem: pip
     directories:
       - /services/*
