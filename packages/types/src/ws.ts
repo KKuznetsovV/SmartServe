@@ -19,3 +19,9 @@ export const WsEventSchema = z.object({
   timestamp: z.string().datetime(),
 })
 export type WsEvent = z.infer<typeof WsEventSchema>
+
+export const WsTicketSchema = z.object({
+  ticket: z.string().min(1),
+  expiresIn: z.number().int(),
+})
+export type WsTicket = z.infer<typeof WsTicketSchema>

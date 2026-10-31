@@ -113,3 +113,16 @@ async def test_pin_staff_updates_last_seen(client: AsyncClient, manager_user: tu
     )
     row = next(r for r in listed.json() if r["id"] == device_id)
     assert row["lastSeenAt"]
+
+
+async def test_current_device_from_token(client: AsyncClient, manager_user: tuple[User, str], location: Location):
+    _, token = manager_user
+    created = await _register(client, token, location.id, type_="kds")
+    raw = created.json()["token"]
+    missing = await client.get("/api/v1/devices/current")
+    assert missing.status_code == 401
+    current = await client.get("/api/v1/devices/current", headers={"X-Device-Token": raw})
+    assert current.status_code == 200
+    assert current.json()["id"] == created.json()["id"]
+    assert current.json()["type"] == "kds"
+    assert current.json()["locationId"] == location.id

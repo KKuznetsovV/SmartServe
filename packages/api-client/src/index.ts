@@ -11,6 +11,7 @@ import { createReportsResource } from './report'
 import { createShiftsResource } from './shift'
 import { createStaffResource } from './staff'
 import { createTablesResource } from './table'
+import { createWsResource } from './ws'
 
 export type { ApiClientConfig } from './client'
 export type { ItemSelection } from './order'
@@ -41,6 +42,7 @@ export function createApiClient(config: ApiClientConfig) {
     discounts: createDiscountsResource(http),
     shifts: createShiftsResource(http),
     ai: createAiResource(http),
+    ws: createWsResource(http),
   }
 }
 

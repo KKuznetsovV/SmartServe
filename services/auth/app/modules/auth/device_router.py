@@ -1,4 +1,4 @@
-from fastapi import Depends
+from fastapi import Depends, Header
 from smartserve_shared.routing import APIRouter
 
 from app.api.v1.deps import require_manager
@@ -38,3 +38,11 @@ async def revoke_device(
     current_user: User = Depends(require_manager),
 ):
     return await DeviceService(db).revoke(device_id, current_user)
+
+
+@router.get("/devices/current", response_model=DeviceOut)
+async def current_device(
+    db: DbSession,
+    x_device_token: str | None = Header(default=None, alias="X-Device-Token"),
+):
+    return await DeviceService(db).resolve(x_device_token)

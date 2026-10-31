@@ -11,7 +11,7 @@ import websockets
 from httpx import AsyncClient
 
 from conftest import add_item, bearer, create_order, get_order, submit_order
-from test_s4 import _ws_url
+from test_s4 import connect_location_ws
 
 _CONTROL_TYPES = {"hello", "ping"}
 
@@ -25,7 +25,9 @@ async def test_e9_two_sockets_see_submitted_order(
 
     location_id = waiter_a["locationId"]
     token = waiter_a["token"]
-    first, second, first_id, second_id = await _connect_distinct_workers(_ws_url(location_id))
+    first, second, first_id, second_id = await _connect_distinct_workers(
+        lambda: connect_location_ws(client, token, location_id)
+    )
     try:
         assert first_id != second_id
         order = await create_order(client, token, location_id)
@@ -59,7 +61,9 @@ async def test_e9_failed_commit_is_not_broadcast(
     order = await create_order(client, token, location_id)
     await add_item(client, token, order["id"], catalog["burgerId"])
 
-    first, second, first_id, second_id = await _connect_distinct_workers(_ws_url(location_id))
+    first, second, first_id, second_id = await _connect_distinct_workers(
+        lambda: connect_location_ws(client, token, location_id)
+    )
     try:
         assert first_id != second_id
         # Create/add enqueue outbox events that may arrive after the sockets open.
@@ -86,13 +90,13 @@ async def test_e9_failed_commit_is_not_broadcast(
 
 
 async def _connect_distinct_workers(
-    url: str, *, attempts: int = 20
+    connect, *, attempts: int = 20
 ) -> tuple[websockets.ClientConnection, websockets.ClientConnection, str, str]:
-    first = await websockets.connect(url, open_timeout=10)
+    first = await connect()
     first_id = await _worker_id(first)
     try:
         for _ in range(attempts):
-            candidate = await websockets.connect(url, open_timeout=10)
+            candidate = await connect()
             candidate_id = await _worker_id(candidate)
             if candidate_id != first_id:
                 return first, candidate, first_id, candidate_id
