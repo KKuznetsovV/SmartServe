@@ -60,7 +60,7 @@ async def test_e5_outbox_survives_broker_outage(
         _compose(["start", "rabbitmq"])
         await _wait_rabbit()
 
-    db = await asyncpg.connect(DATABASE_URL)
+    db = await asyncpg.connect(_database_url())
     try:
         reporting_count = 0
         print_jobs = 0
