@@ -56,7 +56,7 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 36 | E11 | `chore/e11-lock-dependencies` | merged | https://github.com/KKuznetsovV/SmartServe/pull/124 |
 | 37 | E13 | `fix/e13-gateway-routing` | merged | https://github.com/KKuznetsovV/SmartServe/pull/125 |
 | 38 | Q9 | `fix/q9-business-day-reports` | merged | https://github.com/KKuznetsovV/SmartServe/pull/126 |
-| 39 | Q10 | `fix/q10-report-consistency` | in progress | |
+| 39 | Q10 | `fix/q10-report-consistency` | in progress | https://github.com/KKuznetsovV/SmartServe/pull/127 |
 | 40 | UI-1 | `ui/pin-pad-ltr` | todo | |
 | 41 | UI-2 | `ui/order-screen-localization-and-layout` | todo | |
 | 42 | UI-3 | `ui/kds-redesign` | todo | |
