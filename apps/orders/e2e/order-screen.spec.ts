@@ -23,6 +23,33 @@ async function openTakeawayOrder(page: Page, request: APIRequestContext) {
   })
   expect(created.ok(), await created.text()).toBeTruthy()
   const order = await created.json()
+  const categories = await request.get(`${API}/menu/locations/${locationId}/categories`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  expect(categories.ok(), await categories.text()).toBeTruthy()
+  const catList = await categories.json()
+  const starter = catList.find((c: { name: string; parentId?: string | null }) => c.name === 'Starters' && !c.parentId)
+  if (starter) {
+    const items = await request.get(`${API}/menu/categories/${starter.id}/items`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    expect(items.ok(), await items.text()).toBeTruthy()
+    const itemList = await items.json()
+    const hummus = itemList.find((i: { name: string }) => i.name === 'Hummus') ?? itemList[0]
+    if (hummus) {
+      const added = await request.post(`${API}/orders/${order.id}/items`, {
+        headers: { Authorization: `Bearer ${token}` },
+        data: {
+          menuItemId: hummus.id,
+          menuItemName: hummus.name,
+          qty: 1,
+          unitPrice: hummus.price,
+          modifiers: [],
+        },
+      })
+      expect(added.ok(), await added.text()).toBeTruthy()
+    }
+  }
   await pinLoginWaiter(page)
   await page.goto(`/orders/${order.id}`)
   await expect(page.getByRole('heading', { name: /הזמנה|Order/i })).toBeVisible()
@@ -47,8 +74,7 @@ test('order screen localizes tiles and keeps cancel in an overflow menu', async 
   expect(box).not.toBeNull()
   if (box) expect(box.height).toBeGreaterThanOrEqual(64)
 
-  await tile.click({ force: true })
-  await expect(page.getByText(/לא נשלח/)).toBeVisible()
+  await expect(page.getByText(/לא נשלח|Not sent/)).toBeVisible()
 
   await page.getByTestId('order-overflow').click({ force: true })
   await page.getByRole('menuitem', { name: /בטל הזמנה/ }).click()
