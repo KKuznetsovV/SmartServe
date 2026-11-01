@@ -285,7 +285,16 @@
     "deleteConfirm": "Delete table \"{name}\"?",
     "toastCreated": "Table created",
     "toastUpdated": "Table updated",
-    "toastDeleted": "Table deleted"
+    "toastDeleted": "Table deleted",
+    "editLayout": "Edit layout",
+    "doneLayout": "Done",
+    "stateFree": "Free",
+    "stateSeated": "Seated",
+    "stateOrdered": "Ordered",
+    "stateFoodReady": "Food ready",
+    "stateWaitingToPay": "Waiting to pay",
+    "seatedSince": "Seated {time}",
+    "guests": "{count, plural, one {# guest} other {# guests}}"
   },
   "kitchen": {
     "title": "Kitchen Display",

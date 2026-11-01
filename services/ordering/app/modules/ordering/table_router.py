@@ -1,4 +1,4 @@
-from fastapi import Depends
+from fastapi import Depends, Query
 from smartserve_shared.routing import APIRouter
 
 from app.api.v1.deps import get_current_user, require_manager
@@ -15,8 +15,12 @@ async def list_tables(
     location_id: str,
     db: DbSession,
     current_user: User = Depends(get_current_user),
+    include: str | None = Query(default=None),
 ):
-    return await TableService(db).list_tables(location_id, current_user.business_id)
+    service = TableService(db)
+    if include == "status":
+        return await service.list_tables_with_status(location_id, current_user.business_id)
+    return await service.list_tables(location_id, current_user.business_id)
 
 
 @router.post("/tables", response_model=TableOut, status_code=201)

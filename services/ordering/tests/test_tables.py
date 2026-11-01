@@ -33,6 +33,14 @@ async def test_table_crud(
     assert resp.status_code == 200
     assert len(resp.json()) == 1
 
+    status_resp = await client.get(
+        f"/api/v1/locations/{location.id}/tables?include=status",
+        headers=headers,
+    )
+    assert status_resp.status_code == 200
+    assert status_resp.json()[0]["floorState"] == "free"
+    assert status_resp.json()[0]["openOrder"] is None
+
     # Update
     resp = await client.patch(
         f"/api/v1/tables/{table_id}",

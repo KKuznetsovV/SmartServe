@@ -1,11 +1,16 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslations } from 'next-intl'
+import { ROLE_RANK, type UserRole } from '@smartserve/types'
+import { formatPrice } from '@smartserve/ui'
 import { useTables, useCreateTable, useUpdateTable, useDeleteTable } from '@/hooks/use-tables'
+import { useCreateOrder } from '@/hooks/use-orders'
+import { useLocationWs } from '@/hooks/use-ws'
 import { useAuthStore } from '@/lib/auth-store'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,7 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Spinner } from '@/components/ui/spinner'
-import type { Table } from '@smartserve/types'
+import type { Table, TableFloorState } from '@smartserve/types'
 
 const tableSchema = z.object({
   name: z.string().min(1, 'Required'),
@@ -22,28 +27,39 @@ const tableSchema = z.object({
 })
 type TableForm = z.infer<typeof tableSchema>
 
-const SECTION_COLORS: Record<string, string> = {
-  Main: 'bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:border-blue-900',
-  Bar: 'bg-amber-50 border-amber-200 dark:bg-amber-950/40 dark:border-amber-900',
-  Terrace: 'bg-green-50 border-green-200 dark:bg-green-950/40 dark:border-green-900',
-  Private: 'bg-purple-50 border-purple-200 dark:bg-purple-950/40 dark:border-purple-900',
+const STATE_CLASS: Record<TableFloorState, string> = {
+  free: 'border-zinc-300 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900',
+  seated: 'border-sky-400 bg-sky-50 dark:border-sky-700 dark:bg-sky-950/50',
+  ordered: 'border-amber-400 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/50',
+  food_ready: 'border-emerald-400 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-950/50',
+  waiting_to_pay: 'border-violet-400 bg-violet-50 dark:border-violet-700 dark:bg-violet-950/50',
 }
 
-function sectionColor(section?: string) {
-  return (section && SECTION_COLORS[section]) ?? 'bg-gray-50 border-gray-200 dark:bg-gray-900/40 dark:border-gray-800'
+const STATE_KEY: Record<TableFloorState, 'stateFree' | 'stateSeated' | 'stateOrdered' | 'stateFoodReady' | 'stateWaitingToPay'> = {
+  free: 'stateFree',
+  seated: 'stateSeated',
+  ordered: 'stateOrdered',
+  food_ready: 'stateFoodReady',
+  waiting_to_pay: 'stateWaitingToPay',
 }
 
 export default function TablesPage() {
   const t = useTranslations('tables')
   const tCommon = useTranslations('common')
+  const router = useRouter()
   const locationId = useAuthStore((s) => s.activeLocationId)
-  const { data: tables, isLoading } = useTables(locationId)
+  const role = useAuthStore((s) => s.user?.role) as UserRole | undefined
+  const canEditLayout = !!role && ROLE_RANK[role] >= ROLE_RANK.manager
+  const { data: tables, isLoading } = useTables(locationId, true)
   const createTable = useCreateTable()
   const updateTable = useUpdateTable()
   const deleteTable = useDeleteTable()
+  const createOrder = useCreateOrder()
+  useLocationWs(locationId)
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Table | null>(null)
+  const [layoutMode, setLayoutMode] = useState(false)
 
   const {
     register,
@@ -58,9 +74,9 @@ export default function TablesPage() {
     setDialogOpen(true)
   }
 
-  function openEdit(t: Table) {
-    setEditing(t)
-    reset({ name: t.name, capacity: t.capacity, section: t.section ?? '' })
+  function openEdit(tbl: Table) {
+    setEditing(tbl)
+    reset({ name: tbl.name, capacity: tbl.capacity, section: tbl.section ?? '' })
     setDialogOpen(true)
   }
 
@@ -80,17 +96,45 @@ export default function TablesPage() {
     await deleteTable.mutateAsync({ id: tbl.id, locationId: tbl.locationId })
   }
 
-  const grouped = (tables ?? []).reduce<Record<string, Table[]>>((acc, t) => {
-    const key = t.section ?? 'Main'
-    ;(acc[key] ??= []).push(t)
-    return acc
-  }, {})
+  async function openTable(tbl: Table) {
+    if (layoutMode) return
+    if (tbl.openOrder?.id) {
+      router.push(`/orders/${tbl.openOrder.id}`)
+      return
+    }
+    if (!locationId) return
+    const order = await createOrder.mutateAsync({
+      locationId,
+      tableId: tbl.id,
+      channel: 'dine_in',
+      guestCount: 1,
+    })
+    router.push(`/orders/${order.id}`)
+  }
+
+  const placed = (tables ?? []).filter((tbl) => tbl.posX || tbl.posY)
+  const usePositions = placed.length > 0
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <main className="space-y-6 p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">{t('title')}</h1>
-        <Button onClick={openCreate}>+ {t('addTable')}</Button>
+        <div className="flex gap-2">
+          {canEditLayout && (
+            <Button
+              variant="outline"
+              className="min-h-12"
+              onClick={() => setLayoutMode((v) => !v)}
+            >
+              {layoutMode ? t('doneLayout') : t('editLayout')}
+            </Button>
+          )}
+          {canEditLayout && layoutMode && (
+            <Button className="min-h-12" onClick={openCreate}>
+              + {t('addTable')}
+            </Button>
+          )}
+        </div>
       </div>
 
       {isLoading && <Spinner />}
@@ -99,41 +143,75 @@ export default function TablesPage() {
         <p className="text-muted-foreground">{t('noTables')}</p>
       )}
 
-      {Object.entries(grouped).map(([section, sectionTables]) => (
-        <div key={section}>
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-            {section}
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {sectionTables.map((tbl) => (
-              <Card
-                key={tbl.id}
-                className={`border-2 cursor-default ${sectionColor(tbl.section)} ${!tbl.active ? 'opacity-50' : ''}`}
-              >
-                <CardHeader className="p-3 pb-0">
-                  <CardTitle className="text-base">{tbl.name}</CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 pt-1">
-                  <p className="text-xs text-muted-foreground">{t('seats', { count: tbl.capacity })}</p>
-                  <div className="flex gap-1 mt-2">
-                    <Button variant="outline" size="sm" className="h-6 text-xs px-2" onClick={() => openEdit(tbl)}>
+      <div
+        className={
+          usePositions
+            ? 'relative min-h-[28rem] rounded-lg border bg-muted/30'
+            : 'grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'
+        }
+      >
+        {(tables ?? []).map((tbl) => {
+          const state = (tbl.floorState ?? 'free') as TableFloorState
+          const style = usePositions
+            ? {
+                position: 'absolute' as const,
+                insetInlineStart: `${Math.min(90, Math.max(0, tbl.posX))}%`,
+                top: `${Math.min(90, Math.max(0, tbl.posY))}%`,
+                width: '7rem',
+              }
+            : undefined
+          return (
+            <Card
+              key={tbl.id}
+              data-testid="table-card"
+              data-floor-state={state}
+              role="button"
+              tabIndex={0}
+              onClick={() => void openTable(tbl)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') void openTable(tbl)
+              }}
+              style={style}
+              className={`min-h-16 cursor-pointer border-2 ${STATE_CLASS[state]} ${!tbl.active ? 'opacity-50' : ''}`}
+            >
+              <CardHeader className="p-3 pb-0">
+                <CardTitle className="text-base">{tbl.name}</CardTitle>
+              </CardHeader>
+              <CardContent className="p-3 pt-1 text-xs">
+                <p className="font-medium">{t(STATE_KEY[state])}</p>
+                {tbl.openOrder && (
+                  <>
+                    <p>
+                      {t('seatedSince', {
+                        time: new Date(tbl.openOrder.seatedSince).toLocaleTimeString('he-IL', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        }),
+                      })}
+                    </p>
+                    {tbl.openOrder.guestCount != null && <p>{t('guests', { count: tbl.openOrder.guestCount })}</p>}
+                    <p className="font-semibold">{formatPrice(tbl.openOrder.total)}</p>
+                  </>
+                )}
+                {layoutMode && canEditLayout && (
+                  <div className="mt-2 flex gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Button variant="outline" className="min-h-12 min-w-12" onClick={() => openEdit(tbl)}>
                       {tCommon('edit')}
                     </Button>
                     <Button
                       variant="outline"
-                      size="sm"
-                      className="h-6 text-xs px-2 text-destructive hover:text-destructive"
+                      className="min-h-12 text-destructive hover:text-destructive"
                       onClick={() => handleDelete(tbl)}
                     >
                       {t('del')}
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      ))}
+                )}
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-sm">
@@ -156,16 +234,16 @@ export default function TablesPage() {
               <Input {...register('section')} placeholder="e.g. Main, Bar, Terrace" />
             </div>
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+              <Button type="button" variant="outline" className="min-h-12" onClick={() => setDialogOpen(false)}>
                 {tCommon('cancel')}
               </Button>
-              <Button type="submit" disabled={createTable.isPending || updateTable.isPending}>
+              <Button className="min-h-12" type="submit" disabled={createTable.isPending || updateTable.isPending}>
                 {editing ? tCommon('save') : tCommon('create')}
               </Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </main>
   )
 }
