@@ -292,7 +292,12 @@
     "activeOrders": "{count, plural, one {# active order} other {# active orders}}",
     "allCaughtUp": "All caught up",
     "allReady": "All Ready \u2713",
-    "ready": "\u2713 Ready"
+    "ready": "\u2713 Ready",
+    "bumpTicket": "Bump ticket",
+    "stationKitchen": "Kitchen",
+    "stationBar": "Bar",
+    "courseWaiting": "Course {n} waiting",
+    "ageMinutes": "{minutes} min"
   },
   "display": {
     "title": "Order Status",

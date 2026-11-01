@@ -50,6 +50,7 @@ class OrderItemOut(BaseModel):
     status: str
     sort_order: int = 0
     fire_course: int = 1
+    sent_at: datetime | None = Field(default=None, validation_alias="fired_at")
     guest_number: int | None = None
     discount_type: str | None = None
     discount_value: OptionalMoney = None

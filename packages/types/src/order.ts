@@ -42,6 +42,7 @@ export const OrderItemSchema = z.object({
   status: OrderItemStatus.default('pending'),
   sortOrder: z.number().int().default(0),
   fireCourse: z.number().int().min(1).max(5).default(1),
+  sentAt: z.string().datetime().nullable().optional(),
   guestNumber: z.number().int().min(1).nullable().optional(),
   discountType: z.enum(['percent', 'fixed']).nullable().optional(),
   discountValue: z.number().nullable().optional(),

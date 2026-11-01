@@ -58,8 +58,8 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 38 | Q9 | `fix/q9-business-day-reports` | merged | https://github.com/KKuznetsovV/SmartServe/pull/126 |
 | 39 | Q10 | `fix/q10-report-consistency` | merged | https://github.com/KKuznetsovV/SmartServe/pull/127 |
 | 40 | UI-1 | `ui/pin-pad-ltr` | merged | https://github.com/KKuznetsovV/SmartServe/pull/128 |
-| 41 | UI-2 | `ui/order-screen-localization-and-layout` | in progress | https://github.com/KKuznetsovV/SmartServe/pull/129 |
-| 42 | UI-3 | `ui/kds-redesign` | todo | |
+| 41 | UI-2 | `ui/order-screen-localization-and-layout` | merged | https://github.com/KKuznetsovV/SmartServe/pull/129 |
+| 42 | UI-3 | `ui/kds-redesign` | in progress | https://github.com/KKuznetsovV/SmartServe/pull/130 |
 | 43 | UI-4 | `ui/floor-plan-live-status` | todo | |
 | 44 | UI-5 | `ui/customer-display` | todo | |
 | 45 | UI-6 | `ui/responsive-layouts` | todo | |
