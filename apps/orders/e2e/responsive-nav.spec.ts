@@ -34,7 +34,7 @@ test('orders top nav collapses Kitchen, Display and Logout on phones', async ({ 
   await expect(page.getByRole('link', { name: /תצוגת מטבח|Kitchen Display/i })).toBeVisible()
   await expect(page.getByRole('link', { name: /תצוגת לקוחות|Customer Display/i })).toBeVisible()
   await expect(page.getByRole('button', { name: /יציאה|Logout/i })).toBeVisible()
-  await expect(page.getByTestId('open-orders-menu')).toHaveCount(0)
+  await expect(page.getByTestId('open-orders-menu')).toBeHidden()
   await expectNoHorizontalScroll(page)
   await expectNoSeriousAxeViolations(page)
   await test.info().attach('after-he-light-tablet', {

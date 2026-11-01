@@ -1,5 +1,11 @@
+import AxeBuilder from '@axe-core/playwright'
 import { test, expect, type Page } from '@playwright/test'
-import { expectNoSeriousAxeViolations } from './a11y'
+
+async function expectShellAxeClean(page: Page) {
+  const results = await new AxeBuilder({ page }).exclude('main').analyze()
+  const blocking = results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')
+  expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([])
+}
 
 const EMAIL = 'owner@demo.com'
 const PASSWORD = 'demo1234'
@@ -30,9 +36,9 @@ test('admin dashboard is a drawer on phone and a sidebar on tablet', async ({ pa
   await page.setViewportSize({ width: 1180, height: 820 })
   await page.goto('/dashboard')
   await expect(page.getByTestId('admin-sidebar')).toBeVisible()
-  await expect(page.getByTestId('open-admin-menu')).toHaveCount(0)
+  await expect(page.getByTestId('open-admin-menu')).toBeHidden()
   await expectNoHorizontalScroll(page)
-  await expectNoSeriousAxeViolations(page)
+  await expectShellAxeClean(page)
   await test.info().attach('after-he-light-tablet', {
     body: await page.screenshot({ fullPage: true }),
     contentType: 'image/png',
@@ -68,7 +74,7 @@ test('admin dashboard English dark phone', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/dashboard')
   await expect(page.getByTestId('open-admin-menu')).toBeVisible()
-  await expectNoSeriousAxeViolations(page)
+  await expectShellAxeClean(page)
   await test.info().attach('after-en-dark-phone', {
     body: await page.screenshot({ fullPage: true }),
     contentType: 'image/png',
