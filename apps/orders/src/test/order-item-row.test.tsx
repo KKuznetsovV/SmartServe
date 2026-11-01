@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { NextIntlClientProvider } from 'next-intl'
 import { OrderItemRow } from '@/app/(app)/orders/[orderId]/order-item-row'
 import enMessages from '@/messages/en.json'
+import heMessages from '@/messages/he.json'
 import type { OrderItem } from '@smartserve/types'
 
 vi.mock('@dnd-kit/sortable', () => ({
@@ -25,6 +26,7 @@ const item: OrderItem = {
   orderId: '22222222-2222-2222-2222-222222222222',
   menuItemId: '33333333-3333-3333-3333-333333333333',
   menuItemName: 'Cola',
+  menuItemNameHe: 'קולה',
   qty: 1,
   unitPrice: 12,
   modifiers: [],
@@ -54,5 +56,22 @@ describe('OrderItemRow unsent status', () => {
     renderRow('submitted')
     expect(screen.getByText('Pending')).toBeInTheDocument()
     expect(screen.queryByText('Not sent')).not.toBeInTheDocument()
+  })
+
+  it('shows the snapshotted Hebrew name on the ticket', () => {
+    render(
+      <NextIntlClientProvider locale="he" messages={heMessages}>
+        <OrderItemRow
+          item={{
+            ...item,
+            modifiers: [{ modifierId: '44444444-4444-4444-4444-444444444444', name: 'Large', nameHe: 'גדול', priceDelta: 0 }],
+          }}
+          orderStatus="open"
+          draggable
+        />
+      </NextIntlClientProvider>,
+    )
+    expect(screen.getByText('1× קולה')).toBeInTheDocument()
+    expect(screen.getByText('גדול')).toBeInTheDocument()
   })
 })

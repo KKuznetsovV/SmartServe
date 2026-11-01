@@ -26,6 +26,7 @@ export type OrderItemModifierInput = z.infer<typeof OrderItemModifierInputSchema
 export const OrderItemModifierSchema = z.object({
   modifierId: z.string().uuid(),
   name: z.string(),
+  nameHe: z.string().nullable().optional(),
   priceDelta: z.number(),
 })
 export type OrderItemModifier = z.infer<typeof OrderItemModifierSchema>
@@ -35,6 +36,7 @@ export const OrderItemSchema = z.object({
   orderId: z.string().uuid(),
   menuItemId: z.string().uuid(),
   menuItemName: z.string(),
+  menuItemNameHe: z.string().nullable().optional(),
   qty: z.number().int().min(1).max(99),
   unitPrice: z.number().min(0),
   modifiers: z.array(OrderItemModifierSchema).default([]),

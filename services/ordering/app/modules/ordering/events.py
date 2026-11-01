@@ -49,6 +49,7 @@ def _item_snapshot(item: OrderItem) -> dict[str, Any]:
         "id": item.id,
         "menuItemId": item.menu_item_id,
         "menuItemName": item.menu_item_name,
+        "menuItemNameHe": item.menu_item_name_he,
         "categoryId": item.category_id,
         "categoryName": item.category_name,
         "qty": item.qty,

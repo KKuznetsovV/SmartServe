@@ -8,7 +8,7 @@ from httpx import AsyncClient
 from smartserve_shared.security import hash_password
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Business, Location, MenuCategory, MenuItem, Table, User
+from app.db.models import Business, Location, MenuCategory, MenuItem, Modifier, ModifierGroup, Table, User
 from app.modules.ordering.schemas import OrderCreate
 from app.modules.ordering.service import OrderService
 
@@ -945,3 +945,44 @@ async def test_kitchen_item_status_rolls_up_order_status_for_customer_display(
     )
     display = (await client.get("/api/v1/public/display/orders", headers=headers_display)).json()
     assert display[0]["status"] == "ready"
+
+
+@pytest.mark.asyncio
+async def test_order_item_snapshots_hebrew_names(
+    client: AsyncClient,
+    db: AsyncSession,
+    business: Business,
+    manager_user: tuple[User, str],
+):
+    _, token = manager_user
+    location = Location(business_id=business.id, name="Main")
+    db.add(location)
+    item = MenuItem(category_id="cat-1", name="Burger", name_he="המבורגר", price=68.0, tax_rate=0.17)
+    db.add(item)
+    await db.flush()
+    group = ModifierGroup(item_id=item.id, name="Doneness", required=False, min_select=0, max_select=1)
+    db.add(group)
+    await db.flush()
+    modifier = Modifier(group_id=group.id, name="Medium", name_he="מדיום", price_delta=0.0, active=True)
+    db.add(modifier)
+    await db.flush()
+
+    headers = {"Authorization": f"Bearer {token}"}
+    order_id = (
+        await client.post(
+            "/api/v1/orders",
+            json={"locationId": location.id, "channel": "takeaway"},
+            headers=headers,
+        )
+    ).json()["id"]
+    resp = await client.post(
+        f"/api/v1/orders/{order_id}/items",
+        json={"menuItemId": item.id, "qty": 1, "modifiers": [{"modifierId": modifier.id}]},
+        headers=headers,
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["menuItemName"] == "Burger"
+    assert body["menuItemNameHe"] == "המבורגר"
+    assert body["modifiers"][0]["name"] == "Medium"
+    assert body["modifiers"][0]["nameHe"] == "מדיום"

@@ -33,6 +33,7 @@ class OrderItemModifierIn(BaseModel):
 class OrderItemModifier(BaseModel):
     modifier_id: str
     name: str
+    name_he: str | None = None
     price_delta: Money
 
 
@@ -41,6 +42,7 @@ class OrderItemOut(BaseModel):
     order_id: str
     menu_item_id: str
     menu_item_name: str
+    menu_item_name_he: str | None = None
     category_id: str | None = None
     category_name: str | None = None
     qty: int

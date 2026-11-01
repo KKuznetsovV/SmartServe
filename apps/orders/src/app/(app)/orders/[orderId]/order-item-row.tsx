@@ -3,7 +3,8 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, Pencil } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import { localizedName } from '@smartserve/ui'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn, formatPrice, getItemLineTotal } from '@/lib/utils'
@@ -42,6 +43,7 @@ export function OrderItemRow({
   selected,
   onToggleSelect,
 }: Props) {
+  const locale = useLocale()
   const t = useTranslations('orderItemRow')
   const tItemStatus = useTranslations('itemStatus')
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -87,10 +89,12 @@ export function OrderItemRow({
         )}
         <div className="space-y-0.5">
           <p className="text-sm font-medium">
-            {item.qty}× {item.menuItemName}
+            {item.qty}× {localizedName({ name: item.menuItemName, nameHe: item.menuItemNameHe }, locale)}
           </p>
           {item.modifiers.length > 0 && (
-            <p className="text-xs text-muted-foreground">{item.modifiers.map((m) => m.name).join(', ')}</p>
+            <p className="text-xs text-muted-foreground">
+              {item.modifiers.map((m) => localizedName({ name: m.name, nameHe: m.nameHe }, locale)).join(', ')}
+            </p>
           )}
           {item.notes && <p className="text-xs italic text-muted-foreground">{item.notes}</p>}
           <div className="flex items-center gap-1 flex-wrap">
@@ -148,10 +152,11 @@ export function OrderItemRow({
 
 /** Floating clone rendered inside DragOverlay while an order item row is being dragged. */
 export function OrderItemRowPreview({ item }: { item: OrderItem }) {
+  const locale = useLocale()
   return (
     <div className="w-64 rounded-md border bg-card px-3 py-2 shadow-lg">
       <p className="text-sm font-medium">
-        {item.qty}× {item.menuItemName}
+        {item.qty}× {localizedName({ name: item.menuItemName, nameHe: item.menuItemNameHe }, locale)}
       </p>
     </div>
   )

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import { localizedName } from '@smartserve/ui'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -19,6 +20,7 @@ interface Props {
 /** Asks how many units of each multi-quantity selected item a bulk action (guest tag,
  * discount, comp, delete) should apply to — the rest of that line stays untouched. */
 export function QuantitySelectDialog({ open, onOpenChange, items, onConfirm }: Props) {
+  const locale = useLocale()
   const t = useTranslations('quantitySelectDialog')
   const tCommon = useTranslations('common')
   const [quantities, setQuantities] = useState<Record<string, number>>({})
@@ -47,7 +49,9 @@ export function QuantitySelectDialog({ open, onOpenChange, items, onConfirm }: P
             {items.map((item) => (
               <div key={item.id} className="flex items-center justify-between gap-3 border-b pb-2 last:border-0">
                 <div>
-                  <p className="text-sm font-medium">{item.menuItemName}</p>
+                  <p className="text-sm font-medium">
+                    {localizedName({ name: item.menuItemName, nameHe: item.menuItemNameHe }, locale)}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {item.qty} {t('onOrder')} · {formatPrice(item.unitPrice)} {t('each')}
                   </p>

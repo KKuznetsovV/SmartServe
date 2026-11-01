@@ -3,7 +3,8 @@
 import { useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import { localizedName } from '@smartserve/ui'
 import { useOrders, useOrder, useUpdateOrderItemStatus } from '@/hooks/use-orders'
 import { useLocationWs } from '@/hooks/use-ws'
 import { useAuthStore } from '@/lib/auth-store'
@@ -38,6 +39,7 @@ function OrderCard({
   printers: Printer[]
   routes: PrinterRoute[]
 }) {
+  const locale = useLocale()
   const t = useTranslations('kitchen')
   const tItemStatus = useTranslations('itemStatus')
   const tOrders = useTranslations('orders')
@@ -122,7 +124,7 @@ function OrderCard({
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="text-base font-semibold">
-                  {item.qty}× {item.menuItemName}
+                  {item.qty}× {localizedName({ name: item.menuItemName, nameHe: item.menuItemNameHe }, locale)}
                 </span>
                 <span className="text-xs uppercase tracking-wide opacity-70">
                   {tItemStatus(item.status)}
@@ -130,7 +132,9 @@ function OrderCard({
               </div>
               {item.modifiers.length > 0 && (
                 <p className="mt-0.5 text-sm font-bold">
-                  {item.modifiers.map((m) => m.name).join(' · ')}
+                  {item.modifiers
+                    .map((m) => localizedName({ name: m.name, nameHe: m.nameHe }, locale))
+                    .join(' · ')}
                 </p>
               )}
               {item.notes && <p className="mt-0.5 text-sm font-bold italic">{item.notes}</p>}

@@ -54,6 +54,7 @@ async def _enqueue_unfired_pending(db, order, business_id: str) -> None:
                 "itemId": item.id,
                 "menuItemId": item.menu_item_id,
                 "menuItemName": item.menu_item_name,
+                "menuItemNameHe": item.menu_item_name_he,
                 "locationId": order.location_id,
                 "businessId": business_id,
                 "course": item.fire_course,

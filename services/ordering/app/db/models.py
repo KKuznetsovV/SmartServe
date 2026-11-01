@@ -120,6 +120,7 @@ class MenuItem(ReadOnlyMirror, Base):
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     category_id: Mapped[str] = mapped_column(String(), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    name_he: Mapped[str | None] = mapped_column(String(255), nullable=True)
     price: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, nullable=False)
     # Deprecated: VAT is location/business-level and snapshotted on the order. Kept for
     # existing rows; ordering no longer reads this column when computing totals.
@@ -175,6 +176,7 @@ class Modifier(ReadOnlyMirror, Base):
     id: Mapped[str] = mapped_column(String(), primary_key=True, default=_uuid)
     group_id: Mapped[str] = mapped_column(String(), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    name_he: Mapped[str | None] = mapped_column(String(255), nullable=True)
     price_delta: Mapped[Decimal] = mapped_column(MONEY_NUMERIC, default=Decimal("0.00"))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
@@ -306,6 +308,7 @@ class OrderItem(Base):
     order_id: Mapped[str] = mapped_column(ForeignKey("orders.id"), nullable=False)
     menu_item_id: Mapped[str] = mapped_column(String(), nullable=False)
     menu_item_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    menu_item_name_he: Mapped[str | None] = mapped_column(String(255), nullable=True)
     category_id: Mapped[str | None] = mapped_column(String(), nullable=True)
     category_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     qty: Mapped[int] = mapped_column(Integer, default=1)
