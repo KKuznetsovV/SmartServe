@@ -21,6 +21,6 @@ test('waiter load uses the device location and never 403s', async ({ page, reque
   await pinLoginWaiter(page, request)
   await expect(page.getByRole('heading', { name: /הזמנות|Orders/i })).toBeVisible()
   await page.goto('/tables')
-  await expect(page.getByRole('heading', { name: /תוכנית|Floor/i })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /תכנית שולחנות|Floor Plan/i })).toBeVisible()
   expect(forbidden, forbidden.join('\n')).toEqual([])
 })
