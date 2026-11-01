@@ -33,4 +33,9 @@ describe('formatPrice', () => {
     const withExplicit = formatPrice(50, 'ILS')
     expect(withDefault).toBe(withExplicit)
   })
+
+  it('always prints two fraction digits', () => {
+    expect(formatPrice(10)).toMatch(/10[.,]00/)
+    expect(formatPrice(10.5)).toMatch(/10[.,]50/)
+  })
 })

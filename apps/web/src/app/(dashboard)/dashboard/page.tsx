@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { ordersAppUrl } from '@/lib/orders-app-url'
+import { formatPrice } from '@/lib/utils'
 import type { OrderStatus } from '@smartserve/types'
 
 const ACTIVE_STATUSES: OrderStatus[] = ['open', 'submitted', 'preparing', 'ready']
@@ -92,7 +93,7 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">₪{(report?.totalRevenue ?? 0).toFixed(0)}</p>
+            <p className="text-2xl font-bold">{formatPrice(report?.totalRevenue ?? 0)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -112,7 +113,7 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">₪{(report?.avgOrderValue ?? 0).toFixed(0)}</p>
+            <p className="text-2xl font-bold">{formatPrice(report?.avgOrderValue ?? 0)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -188,7 +189,7 @@ export default function DashboardPage() {
                       minute: '2-digit',
                     })}
                   </span>
-                  <span className="text-sm font-medium">₪{o.total.toFixed(0)}</span>
+                  <span className="text-sm font-medium">{formatPrice(o.total)}</span>
                   <Badge variant={STATUS_VARIANT[o.status as OrderStatus]} className="text-xs">
                     {tOrders(`status.${o.status}`)}
                   </Badge>

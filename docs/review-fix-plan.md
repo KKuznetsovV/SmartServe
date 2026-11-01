@@ -57,8 +57,8 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 37 | E13 | `fix/e13-gateway-routing` | merged | https://github.com/KKuznetsovV/SmartServe/pull/125 |
 | 38 | Q9 | `fix/q9-business-day-reports` | merged | https://github.com/KKuznetsovV/SmartServe/pull/126 |
 | 39 | Q10 | `fix/q10-report-consistency` | merged | https://github.com/KKuznetsovV/SmartServe/pull/127 |
-| 40 | UI-1 | `ui/pin-pad-ltr` | in progress | https://github.com/KKuznetsovV/SmartServe/pull/128 |
-| 41 | UI-2 | `ui/order-screen-localization-and-layout` | todo | |
+| 40 | UI-1 | `ui/pin-pad-ltr` | merged | https://github.com/KKuznetsovV/SmartServe/pull/128 |
+| 41 | UI-2 | `ui/order-screen-localization-and-layout` | in progress | https://github.com/KKuznetsovV/SmartServe/pull/129 |
 | 42 | UI-3 | `ui/kds-redesign` | todo | |
 | 43 | UI-4 | `ui/floor-plan-live-status` | todo | |
 | 44 | UI-5 | `ui/customer-display` | todo | |
@@ -942,5 +942,7 @@ fixes* list, and these manual follow-ups that need the owner:
   cancel.
 - UI-1: `python-lockfiles` started failing on `main` after Q10 because CI installed unpinned `uv` and
   `--check` drifted. The job now pins `uv==0.13.6` to match `scripts/lock_deps.py`.
+- UI-2: owner `/login` is `10/minute`. Web + orders Playwright together exceed that unless they share
+  one cached owner token per worker (`apps/orders/e2e/owner-session.ts`).
 
 (Add items here as you find them. Don't fix them in an unrelated branch.)

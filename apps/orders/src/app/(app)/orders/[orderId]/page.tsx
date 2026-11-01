@@ -13,7 +13,7 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import {
   useOrder,
   useSubmitOrder,
@@ -44,7 +44,9 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
-import { cn } from '@/lib/utils'
+import { cn, formatPrice } from '@/lib/utils'
+import { localizedName } from '@smartserve/ui'
+import { OrderOverflowMenu } from './order-overflow-menu'
 import type { ItemSelection } from '@smartserve/api-client'
 import type { OrderStatus, PaymentMethod, MenuItem, OrderItem } from '@smartserve/types'
 
@@ -84,6 +86,7 @@ export default function OrderDetailPage({ params }: Props) {
   const tOrders = useTranslations('orders')
   const tPaymentMethod = useTranslations('paymentMethod')
   const tCommon = useTranslations('common')
+  const locale = useLocale()
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [configuringItem, setConfiguringItem] = useState<MenuItem | null>(null)
   const [editingItem, setEditingItem] = useState<OrderItem | null>(null)
@@ -123,7 +126,6 @@ export default function OrderDetailPage({ params }: Props) {
 
   async function handleCancel() {
     if (!order) return
-    if (!confirm(t('cancelOrderConfirm'))) return
     await cancelOrder.mutateAsync({ orderId, locationId: order.locationId })
     router.push('/orders')
   }
@@ -139,7 +141,13 @@ export default function OrderDetailPage({ params }: Props) {
     addItem.mutate({
       orderId,
       locationId: order.locationId,
-      item: { menuItemId: item.id, menuItemName: item.name, qty: 1, unitPrice: item.price, modifiers: [] },
+      item: {
+        menuItemId: item.id,
+        menuItemName: localizedName(item, locale),
+        qty: 1,
+        unitPrice: item.price,
+        modifiers: [],
+      },
     })
   }
 
@@ -193,7 +201,7 @@ export default function OrderDetailPage({ params }: Props) {
         locationId: order.locationId,
         item: {
           menuItemId: configuringItem.id,
-          menuItemName: configuringItem.name,
+          menuItemName: localizedName(configuringItem, locale),
           qty: result.qty,
           unitPrice: result.unitPrice,
           modifiers: result.modifiers,
@@ -380,6 +388,7 @@ export default function OrderDetailPage({ params }: Props) {
               <OrderItemRow
                 key={item.id}
                 item={item}
+                orderStatus={order.status}
                 draggable={canAddItems}
                 onEdit={setEditingItem}
                 selectable={selectMode}
@@ -434,23 +443,23 @@ export default function OrderDetailPage({ params }: Props) {
         <CardContent className="p-4 space-y-1">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">{t('subtotal')}</span>
-            <span>₪{order.subtotal.toFixed(2)}</span>
+            <span>{formatPrice(order.subtotal)}</span>
           </div>
           {order.discountAmount > 0 && (
             <div className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400">
               <span>{t('discount')}</span>
-              <span>−₪{order.discountAmount.toFixed(2)}</span>
+              <span>−{formatPrice(order.discountAmount)}</span>
             </div>
           )}
           <div className="flex justify-between font-bold text-base pt-1 border-t">
             <span>{t('total')}</span>
-            <span>₪{order.total.toFixed(2)}</span>
+            <span>{formatPrice(order.total)}</span>
           </div>
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>
               {t('includesVat', {
                 rate: Math.round((order.vatRate ?? 0.18) * 100),
-                amount: order.taxAmount.toFixed(2),
+                amount: formatPrice(order.taxAmount),
               })}
             </span>
           </div>
@@ -458,11 +467,11 @@ export default function OrderDetailPage({ params }: Props) {
             <>
               <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
                 <span>{t('paid')}</span>
-                <span>−₪{paidAmount.toFixed(2)}</span>
+                <span>−{formatPrice(paidAmount)}</span>
               </div>
               <div className="flex justify-between font-semibold text-sm pt-1 border-t">
                 <span>{t('remaining')}</span>
-                <span>₪{remaining.toFixed(2)}</span>
+                <span>{formatPrice(remaining)}</span>
               </div>
             </>
           )}
@@ -508,7 +517,7 @@ export default function OrderDetailPage({ params }: Props) {
                     {new Date(p.createdAt).toLocaleTimeString('he-IL')}
                   </span>
                 </div>
-                <span className="font-medium">₪{p.amount.toFixed(2)}</span>
+                <span className="font-medium">{formatPrice(p.amount)}</span>
               </div>
             ))}
           </CardContent>
@@ -524,36 +533,34 @@ export default function OrderDetailPage({ params }: Props) {
       )}
 
       {/* Actions */}
-      <div className="flex gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         {canSubmit && (
-          <Button onClick={handleSubmit} disabled={submitOrder.isPending}>
+          <Button className="min-h-12" onClick={handleSubmit} disabled={submitOrder.isPending}>
             {t('submitToKitchen')}
           </Button>
         )}
         {canPay && !fullyPaid && remaining > 0 && (
-          <Button onClick={() => setPaymentOpen(true)}>{t('collectPayment')}</Button>
+          <Button className="min-h-16" onClick={() => setPaymentOpen(true)}>
+            {t('collectPayment')}
+          </Button>
         )}
         {['submitted', 'preparing', 'ready'].includes(order.status) &&
           heldCourses.map((course) => (
             <Button
               key={course}
               variant="outline"
+              className="min-h-12"
               disabled={fireCourse.isPending}
               onClick={() => fireCourse.mutate({ orderId, course })}
             >
               {t('fireCourse', { course })}
             </Button>
           ))}
-        {canCancel && (
-          <Button
-            variant="outline"
-            className="text-destructive hover:text-destructive"
-            onClick={handleCancel}
-            disabled={cancelOrder.isPending}
-          >
-            {t('cancelOrder')}
-          </Button>
-        )}
+        <OrderOverflowMenu
+          canCancel={canCancel}
+          cancelPending={cancelOrder.isPending}
+          onCancel={handleCancel}
+        />
       </div>
           </div>
         </div>

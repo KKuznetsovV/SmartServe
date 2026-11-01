@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import { formatPrice, localizedName } from '@smartserve/ui'
 import { useReportSummary, useSalesReport, useSalesByServerReport, useClosedOrdersReport } from '@/hooks/use-reports'
 import { useCategories, useMenuItems } from '@/hooks/use-menu'
 import { useAuthStore } from '@/lib/auth-store'
@@ -82,7 +83,7 @@ function OverviewSection() {
                 <CardTitle className="text-sm font-medium text-muted-foreground">{t('revenue')}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">₪{data.totalRevenue.toFixed(2)}</p>
+                <p className="text-3xl font-bold">{formatPrice(data.totalRevenue)}</p>
               </CardContent>
             </Card>
             <Card>
@@ -90,7 +91,7 @@ function OverviewSection() {
                 <CardTitle className="text-sm font-medium text-muted-foreground">{t('vatCollected')}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">₪{(data.vatCollected ?? 0).toFixed(2)}</p>
+                <p className="text-3xl font-bold">{formatPrice(data.vatCollected ?? 0)}</p>
               </CardContent>
             </Card>
             <Card>
@@ -98,7 +99,7 @@ function OverviewSection() {
                 <CardTitle className="text-sm font-medium text-muted-foreground">{t('netRevenue')}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">₪{(data.netRevenue ?? 0).toFixed(2)}</p>
+                <p className="text-3xl font-bold">{formatPrice(data.netRevenue ?? 0)}</p>
               </CardContent>
             </Card>
             <Card>
@@ -114,7 +115,7 @@ function OverviewSection() {
                 <CardTitle className="text-sm font-medium text-muted-foreground">{t('avgOrder')}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-bold">₪{data.avgOrderValue.toFixed(2)}</p>
+                <p className="text-3xl font-bold">{formatPrice(data.avgOrderValue)}</p>
               </CardContent>
             </Card>
             <Card>
@@ -124,7 +125,7 @@ function OverviewSection() {
               <CardContent>
                 <p className="text-3xl font-bold">{data.openOrderCount ?? 0}</p>
                 <p className="text-sm text-muted-foreground tabular-nums">
-                  ₪{(data.openOrderValue ?? 0).toFixed(2)}
+                  {formatPrice(data.openOrderValue ?? 0)}
                 </p>
               </CardContent>
             </Card>
@@ -144,7 +145,7 @@ function OverviewSection() {
                   <div key={channel}>
                     <div className="flex justify-between text-sm mb-1">
                       <span>{tOrders(`channel.${channel}`)}</span>
-                      <span className="font-medium">₪{revenue.toFixed(2)}</span>
+                      <span className="font-medium">{formatPrice(revenue)}</span>
                     </div>
                     <div className="h-2 rounded-full bg-muted overflow-hidden">
                       <div
@@ -197,7 +198,7 @@ function OverviewSection() {
                         <td className="py-2">{item.menuItemName}</td>
                         <td className="py-2 text-end tabular-nums">{item.qty}</td>
                         <td className="py-2 text-end tabular-nums font-medium">
-                          ₪{item.revenue.toFixed(2)}
+                          {formatPrice(item.revenue)}
                         </td>
                       </tr>
                     ))}
@@ -244,6 +245,7 @@ function SalesByServerTab({
   startDate: string
   endDate: string
 }) {
+  const locale = useLocale()
   const [categoryId, setCategoryId] = useState('')
   const [itemId, setItemId] = useState('')
   const { data: categories } = useCategories(locationId)
@@ -272,7 +274,7 @@ function SalesByServerTab({
               <option value="">All categories</option>
               {categories?.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name}
+                  {localizedName(c, locale)}
                 </option>
               ))}
             </Select>
@@ -283,7 +285,7 @@ function SalesByServerTab({
               <option value="">All items</option>
               {items?.map((i) => (
                 <option key={i.id} value={i.id}>
-                  {i.name}
+                  {localizedName(i, locale)}
                 </option>
               ))}
             </Select>

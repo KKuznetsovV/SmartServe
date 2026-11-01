@@ -20,6 +20,8 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | '
 
 interface Props {
   item: OrderItem
+  /** Open tickets have not been sent; pending there means "not sent", not kitchen pending. */
+  orderStatus: string
   /** Whether drag-to-reorder / drag-out-to-cancel is enabled (order is still open/submitted). */
   draggable: boolean
   /** Called when the edit (pencil) button is tapped — omit to hide the button entirely. */
@@ -31,7 +33,15 @@ interface Props {
 }
 
 /** A single order item row: drag the handle to reorder, or drag it onto the cancel zone to remove it. */
-export function OrderItemRow({ item, draggable, onEdit, selectable, selected, onToggleSelect }: Props) {
+export function OrderItemRow({
+  item,
+  orderStatus,
+  draggable,
+  onEdit,
+  selectable,
+  selected,
+  onToggleSelect,
+}: Props) {
   const t = useTranslations('orderItemRow')
   const tItemStatus = useTranslations('itemStatus')
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -42,6 +52,8 @@ export function OrderItemRow({ item, draggable, onEdit, selectable, selected, on
 
   const canEdit = draggable && !selectable && !['served', 'cancelled'].includes(item.status)
   const lineTotal = getItemLineTotal(item)
+  const unsent = orderStatus === 'open' && item.status === 'pending'
+  const statusLabel = unsent ? tItemStatus('notSent') : tItemStatus(item.status)
 
   return (
     <div
@@ -66,7 +78,7 @@ export function OrderItemRow({ item, draggable, onEdit, selectable, selected, on
               type="button"
               {...attributes}
               {...listeners}
-              className="mt-0.5 touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
+              className="mt-0.5 flex h-12 min-h-12 w-12 min-w-12 touch-none items-center justify-center text-muted-foreground hover:text-foreground active:cursor-grabbing"
               aria-label={t('dragToReorder')}
             >
               <GripVertical className="h-4 w-4" />
@@ -83,7 +95,7 @@ export function OrderItemRow({ item, draggable, onEdit, selectable, selected, on
           {item.notes && <p className="text-xs italic text-muted-foreground">{item.notes}</p>}
           <div className="flex items-center gap-1 flex-wrap">
             <Badge variant={STATUS_VARIANT[item.status] ?? 'outline'} className="text-xs capitalize">
-              {tItemStatus(item.status)}
+              {statusLabel}
             </Badge>
             {item.fireCourse > 1 && (
               <Badge variant="outline" className="text-xs">
@@ -113,7 +125,7 @@ export function OrderItemRow({ item, draggable, onEdit, selectable, selected, on
           <button
             type="button"
             onClick={() => onEdit(item)}
-            className="text-muted-foreground hover:text-foreground"
+            className="flex h-12 min-h-12 w-12 min-w-12 items-center justify-center text-muted-foreground hover:text-foreground"
             aria-label={t('editItem')}
           >
             <Pencil className="h-3.5 w-3.5" />

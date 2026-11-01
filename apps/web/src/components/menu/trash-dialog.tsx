@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { RotateCcw, Trash2 } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
+import { localizedName } from '@smartserve/ui'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog'
@@ -26,6 +27,7 @@ export function TrashDialog({
 }) {
   const t = useTranslations('trash')
   const tCommon = useTranslations('common')
+  const locale = useLocale()
   const { data: trashedItems = [], isLoading } = useTrashedItems(open ? locationId : null)
   const restoreItem = useRestoreMenuItem()
   const permanentlyDeleteItem = usePermanentlyDeleteMenuItem()
@@ -55,7 +57,7 @@ export function TrashDialog({
               <Card key={item.id}>
                 <CardContent className="flex items-center justify-between gap-2 p-3">
                   <div className="min-w-0 flex-1">
-                    <span className="block truncate font-medium">{item.name}</span>
+                    <span className="block truncate font-medium">{localizedName(item, locale)}</span>
                     <span className="text-xs text-muted-foreground">
                       {formatPrice(item.price)}
                       {item.deletedAt && ` · ${t('trashedOn', { date: new Date(item.deletedAt).toLocaleDateString() })}`}
