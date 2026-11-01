@@ -1,7 +1,7 @@
 """Paired devices: register, list, revoke, and PIN gating."""
 
 from httpx import AsyncClient
-from smartserve_shared.security import hash_password
+from smartserve_shared.security import create_access_token, hash_password
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Location, User
@@ -126,3 +126,41 @@ async def test_current_device_from_token(client: AsyncClient, manager_user: tupl
     assert current.json()["id"] == created.json()["id"]
     assert current.json()["type"] == "kds"
     assert current.json()["locationId"] == location.id
+
+
+async def test_waiter_can_read_own_location_and_current_device(
+    client: AsyncClient,
+    db: AsyncSession,
+    business,
+    manager_user: tuple[User, str],
+    location: Location,
+):
+    waiter = User(
+        business_id=business.id,
+        name="Waiter",
+        role="waiter",
+        pin_hash=hash_password("1234"),
+    )
+    db.add(waiter)
+    await db.flush()
+    waiter_token = create_access_token(waiter.id, {"business_id": waiter.business_id, "role": waiter.role})
+    _, manager_token = manager_user
+    created = await _register(client, manager_token, location.id)
+    raw = created.json()["token"]
+
+    got = await client.get(
+        f"/api/v1/locations/{location.id}",
+        headers={"Authorization": f"Bearer {waiter_token}"},
+    )
+    assert got.status_code == 200, got.text
+    assert got.json()["id"] == location.id
+
+    current = await client.get("/api/v1/devices/current", headers={"X-Device-Token": raw})
+    assert current.status_code == 200
+    assert current.json()["locationId"] == location.id
+
+    listed = await client.get(
+        f"/api/v1/locations/{location.id}/devices",
+        headers={"Authorization": f"Bearer {waiter_token}"},
+    )
+    assert listed.status_code == 403

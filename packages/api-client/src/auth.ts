@@ -22,5 +22,7 @@ export function createAuthResource(http: Http) {
     refresh: () => http.post<TokenPair>('/auth/refresh', {}),
     logout: () => http.post<void>('/auth/logout', {}),
     me: () => http.get<User>('/auth/me'),
+    currentDevice: (deviceToken: string) =>
+      http.get<Device>('/devices/current', { 'X-Device-Token': deviceToken }),
   }
 }

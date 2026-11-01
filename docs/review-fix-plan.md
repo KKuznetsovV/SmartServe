@@ -68,7 +68,8 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 48 | MQ | `fix/mq-queue-upgrade` | merged | https://github.com/KKuznetsovV/SmartServe/pull/135 |
 | 49 | HE | `fix/order-line-hebrew-names` | merged | https://github.com/KKuznetsovV/SmartServe/pull/136 |
 | 50 | PIN | `fix/pin-keyboard-input` | merged | https://github.com/KKuznetsovV/SmartServe/pull/137 |
-| 51 | A11Y | `fix/a11y-leftovers` | in progress | |
+| 51 | A11Y | `fix/a11y-leftovers` | merged | https://github.com/KKuznetsovV/SmartServe/pull/138 |
+| 52 | 403 | `fix/waiter-location-403` | in progress | |
 
 ---
 

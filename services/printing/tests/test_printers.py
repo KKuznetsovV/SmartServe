@@ -4,6 +4,8 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from smartserve_shared.security import create_access_token, hash_password
+
 from app.db.models import User
 
 
@@ -98,3 +100,40 @@ async def test_update_nonexistent_printer_404(
 
     resp = await client.patch("/api/v1/printers/does-not-exist", json={"active": False}, headers=headers)
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_waiter_can_list_printers_and_routes(
+    client: AsyncClient,
+    db: AsyncSession,
+    location_id: str,
+    manager_user: tuple[User, str],
+):
+    manager, manager_token = manager_user
+    waiter = User(
+        business_id=manager.business_id,
+        name="Waiter",
+        role="waiter",
+        pin_hash=hash_password("1234"),
+    )
+    db.add(waiter)
+    await db.flush()
+    waiter_token = create_access_token(waiter.id, {"business_id": waiter.business_id, "role": waiter.role})
+    headers = {"Authorization": f"Bearer {manager_token}"}
+    created = await client.post(
+        "/api/v1/printers",
+        json={"locationId": location_id, "name": "Kitchen Printer", "type": "kitchen"},
+        headers=headers,
+    )
+    assert created.status_code == 201
+    waiter_headers = {"Authorization": f"Bearer {waiter_token}"}
+    listed = await client.get(f"/api/v1/locations/{location_id}/printers", headers=waiter_headers)
+    assert listed.status_code == 200, listed.text
+    routes = await client.get(f"/api/v1/locations/{location_id}/printer-routes", headers=waiter_headers)
+    assert routes.status_code == 200, routes.text
+    create_forbidden = await client.post(
+        "/api/v1/printers",
+        json={"locationId": location_id, "name": "Nope", "type": "kitchen"},
+        headers=waiter_headers,
+    )
+    assert create_forbidden.status_code == 403
