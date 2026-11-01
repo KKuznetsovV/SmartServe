@@ -117,7 +117,7 @@ export default function StaffPage() {
 
   function renderStaffCard(u: User) {
     return (
-      <Card key={u.id} className={!u.active ? 'opacity-50' : ''}>
+      <Card key={u.id} className={!u.active ? 'bg-muted/40' : ''}>
         <CardContent className="p-4 flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
@@ -138,7 +138,7 @@ export default function StaffPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className={u.active ? 'text-destructive hover:text-destructive' : ''}
+                className={u.active ? 'text-destructive hover:text-destructive hover:bg-destructive/10' : ''}
                 disabled={updateStaff.isPending}
                 onClick={() => toggleActive(u)}
               >

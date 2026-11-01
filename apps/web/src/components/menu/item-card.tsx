@@ -140,6 +140,7 @@ function ModifierGroupDialog({
                     type="button"
                     variant="ghost"
                     size="icon"
+                    aria-label={t('removeOption')}
                     onClick={() => remove(idx)}
                     disabled={fields.length === 1}
                   >
@@ -227,6 +228,7 @@ export function ItemCard({
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label={item.inStock ? t('markOutOfStock') : t('markInStock')}
                 onClick={() => toggleStock.mutate({ id: item.id, inStock: !item.inStock, categoryId })}
                 title={item.inStock ? t('markOutOfStock') : t('markInStock')}
               >
@@ -236,12 +238,13 @@ export function ItemCard({
                   <PowerOff className="h-4 w-4 text-amber-500 dark:text-amber-400" />
                 )}
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => onEdit(item)}>
+              <Button variant="ghost" size="icon" aria-label={t('editItem')} onClick={() => onEdit(item)}>
                 <Pencil className="h-4 w-4" />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label={t('deleteItem')}
                 onClick={() => deleteItem.mutate({ id: item.id, categoryId })}
                 disabled={deleteItem.isPending}
               >

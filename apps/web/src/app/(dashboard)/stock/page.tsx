@@ -86,7 +86,7 @@ export default function StockPage() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="text-destructive hover:text-destructive"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
                   disabled={setStock.isPending}
                   onClick={() =>
                     setStock.mutate({ id: item.id, locationId: activeLocationId!, inStock: false })

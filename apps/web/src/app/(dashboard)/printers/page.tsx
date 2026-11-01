@@ -129,7 +129,7 @@ export default function PrintersPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {printers?.map((p) => (
-          <Card key={p.id} className={!p.active ? 'opacity-60' : ''}>
+          <Card key={p.id} className={!p.active ? 'bg-muted/40' : ''}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">{p.name}</CardTitle>

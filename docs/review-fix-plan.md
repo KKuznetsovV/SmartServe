@@ -67,7 +67,8 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 47 | E14 | `docs/e14-honest-readme-and-architecture` | todo | |
 | 48 | MQ | `fix/mq-queue-upgrade` | merged | https://github.com/KKuznetsovV/SmartServe/pull/135 |
 | 49 | HE | `fix/order-line-hebrew-names` | merged | https://github.com/KKuznetsovV/SmartServe/pull/136 |
-| 50 | PIN | `fix/pin-keyboard-input` | in progress | |
+| 50 | PIN | `fix/pin-keyboard-input` | merged | https://github.com/KKuznetsovV/SmartServe/pull/137 |
+| 51 | A11Y | `fix/a11y-leftovers` | in progress | |
 
 ---
 
