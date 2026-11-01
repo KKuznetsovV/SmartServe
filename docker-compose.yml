@@ -40,6 +40,36 @@ services:
       timeout: 5s
       retries: 10
 
+  rabbitmq-pre-e5-queues:
+    image: curlimages/curl:8.12.1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      RABBITMQ_USER: ${RABBITMQ_USER:-smartserve}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-smartserve}
+    restart: "no"
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        n=0
+        until curl -sf -u "$$RABBITMQ_USER:$$RABBITMQ_PASSWORD" http://rabbitmq:15672/api/overview >/dev/null; do
+          n=$$((n + 1))
+          if [ "$$n" -gt 40 ]; then
+            echo "RabbitMQ management API did not become ready"
+            exit 1
+          fi
+          sleep 1
+        done
+        for q in ordering.payment_completed ordering.realtime printing.order_item_fired reporting.audit_log; do
+          curl -sf -u "$$RABBITMQ_USER:$$RABBITMQ_PASSWORD" -X PUT \
+            -H "content-type: application/json" \
+            -d '{"durable":true,"auto_delete":false,"arguments":{}}' \
+            "http://rabbitmq:15672/api/queues/%2F/$$q"
+        done
+
   auth:
     build:
       context: ./services
@@ -118,6 +148,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      rabbitmq-pre-e5-queues:
+        condition: service_completed_successfully
       auth:
         condition: service_healthy
     volumes:
@@ -211,6 +243,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      rabbitmq-pre-e5-queues:
+        condition: service_completed_successfully
     volumes:
       - ./services/printing:/app
       - ./services/_shared:/shared
@@ -240,6 +274,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      rabbitmq-pre-e5-queues:
+        condition: service_completed_successfully
     volumes:
       - ./services/reporting:/app
       - ./services/_shared:/shared

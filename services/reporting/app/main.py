@@ -17,15 +17,14 @@ from app.modules.reports.events import handle_any_event
 @asynccontextmanager
 async def lifespan_hooks(app: FastAPI):
     reconnect = asyncio.create_task(mq.maintain_connection(app, settings.RABBITMQ_URL))
-    consumer_task = asyncio.create_task(
-        mq.consume_forever(
-            settings.RABBITMQ_URL,
-            "reporting.audit_log",
-            ["#"],
-            handle_any_event,
-            session_factory=AsyncSessionLocal,
-            processed_model=ProcessedEvent,
-        )
+    consumer_task = mq.spawn_consumer(
+        app,
+        settings.RABBITMQ_URL,
+        "reporting.audit_log",
+        ["#"],
+        handle_any_event,
+        session_factory=AsyncSessionLocal,
+        processed_model=ProcessedEvent,
     )
     yield
     reconnect.cancel()

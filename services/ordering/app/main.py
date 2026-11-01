@@ -47,25 +47,23 @@ async def lifespan_hooks(app: FastAPI):
     app.state.redis = None
     reconnect = asyncio.create_task(mq.maintain_connection(app, settings.RABBITMQ_URL))
     relay = asyncio.create_task(relay_forever(lambda: app.state.mq_connection, AsyncSessionLocal, Outbox))
-    consumer_task = asyncio.create_task(
-        mq.consume_forever(
-            settings.RABBITMQ_URL,
-            "ordering.payment_completed",
-            ["payment.completed", "payment.refunded"],
-            handle_payment_event,
-            session_factory=AsyncSessionLocal,
-            processed_model=ProcessedEvent,
-        )
+    consumer_task = mq.spawn_consumer(
+        app,
+        settings.RABBITMQ_URL,
+        "ordering.payment_completed",
+        ["payment.completed", "payment.refunded"],
+        handle_payment_event,
+        session_factory=AsyncSessionLocal,
+        processed_model=ProcessedEvent,
     )
-    realtime_task = asyncio.create_task(
-        mq.consume_forever(
-            settings.RABBITMQ_URL,
-            "ordering.realtime",
-            ["order.*", "catalog.item_updated"],
-            handle_realtime,
-            session_factory=AsyncSessionLocal,
-            processed_model=ProcessedEvent,
-        )
+    realtime_task = mq.spawn_consumer(
+        app,
+        settings.RABBITMQ_URL,
+        "ordering.realtime",
+        ["order.*", "catalog.item_updated"],
+        handle_realtime,
+        session_factory=AsyncSessionLocal,
+        processed_model=ProcessedEvent,
     )
     redis_task = asyncio.create_task(_redis_fanout(app))
     yield

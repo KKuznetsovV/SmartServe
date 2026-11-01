@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 
 from smartserve_shared.app_factory import create_service_app
+from smartserve_shared.mq import ConsumerHealth, register_consumer
 from smartserve_shared.routing import APIRouter
 
 
@@ -58,6 +59,27 @@ def test_ready_503_when_broker_required_but_missing() -> None:
     resp = client.get("/api/v1/ready")
     assert resp.status_code == 503
     assert resp.json()["missing"] == ["broker"]
+
+
+def test_ready_503_when_consumer_is_retrying() -> None:
+    settings = SimpleNamespace(
+        ENVIRONMENT="development",
+        SECRET_KEY="test-secret-key-for-shared-package",
+        CORS_ORIGINS=[],
+        ALGORITHM="HS256",
+        ACCESS_TOKEN_EXPIRE_MINUTES=15,
+        REFRESH_TOKEN_EXPIRE_DAYS=7,
+    )
+    app = create_service_app("ordering", settings, APIRouter())
+    health = ConsumerHealth()
+    register_consumer(app, health)
+    client = TestClient(app)
+    resp = client.get("/api/v1/ready")
+    assert resp.status_code == 503
+    assert "consumer" in resp.json()["missing"]
+    health.connected = True
+    resp = client.get("/api/v1/ready")
+    assert resp.status_code == 200
 
 
 def test_integrity_error_returns_409() -> None:

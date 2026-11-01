@@ -63,8 +63,9 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 43 | UI-4 | `ui/floor-plan-live-status` | merged | https://github.com/KKuznetsovV/SmartServe/pull/131 |
 | 44 | UI-5 | `ui/customer-display` | merged | https://github.com/KKuznetsovV/SmartServe/pull/132 |
 | 45 | UI-6 | `ui/responsive-layouts` | merged | https://github.com/KKuznetsovV/SmartServe/pull/133 |
-| 46 | UI-7 | `ui/accessibility` | in progress | |
+| 46 | UI-7 | `ui/accessibility` | merged | https://github.com/KKuznetsovV/SmartServe/pull/134 |
 | 47 | E14 | `docs/e14-honest-readme-and-architecture` | todo | |
+| 48 | MQ | `fix/mq-queue-upgrade` | in progress | https://github.com/KKuznetsovV/SmartServe/pull/135 |
 
 ---
 
