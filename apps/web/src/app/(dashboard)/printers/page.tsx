@@ -143,13 +143,12 @@ export default function PrintersPage() {
                 {p.ip ? `${p.ip}:${p.port}` : `${t('port')} ${p.port}`}
               </p>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openEdit(p)}>
+                <Button variant="outline" className="min-h-12" onClick={() => openEdit(p)}>
                   {tCommon('edit')}
                 </Button>
                 <Button
                   variant="outline"
-                  size="sm"
-                  className="h-7 text-xs text-destructive hover:text-destructive"
+                  className="min-h-12 text-destructive hover:text-destructive"
                   onClick={() => handleDelete(p)}
                 >
                   {tCommon('delete')}
@@ -194,7 +193,11 @@ export default function PrintersPage() {
                                 <td key={p.id} className="py-1.5 px-2 text-center">
                                   <input
                                     type="checkbox"
-                                    className="h-4 w-4 accent-primary"
+                                    className="h-12 w-12 accent-primary"
+                                    aria-label={t('routeTo', {
+                                      item: localizedName(item, locale),
+                                      printer: p.name,
+                                    })}
                                     checked={!!routeIdByKey[`${item.id}:${p.id}`]}
                                     onChange={(e) => handleRouteToggle(item.id, p.id, e.target.checked)}
                                   />
@@ -219,32 +222,32 @@ export default function PrintersPage() {
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-1">
-              <Label>{t('name')}</Label>
-              <Input {...register('name')} placeholder="e.g. Kitchen Printer" />
+              <Label htmlFor="printer-name">{t('name')}</Label>
+              <Input id="printer-name" {...register('name')} placeholder="e.g. Kitchen Printer" />
               {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
             </div>
             <div className="space-y-1">
-              <Label>{t('type')}</Label>
-              <Select {...register('type')}>
+              <Label htmlFor="printer-type">{t('type')}</Label>
+              <Select id="printer-type" {...register('type')}>
                 <option value="receipt">{t('type_receipt')}</option>
                 <option value="kitchen">{t('type_kitchen')}</option>
                 <option value="label">{t('type_label')}</option>
               </Select>
             </div>
             <div className="space-y-1">
-              <Label>{t('ipAddressOptional')}</Label>
-              <Input {...register('ip')} placeholder="192.168.1.100" />
+              <Label htmlFor="printer-ip">{t('ipAddressOptional')}</Label>
+              <Input id="printer-ip" {...register('ip')} placeholder="192.168.1.100" />
             </div>
             <div className="space-y-1">
-              <Label>{t('port')}</Label>
-              <Input type="number" {...register('port')} />
+              <Label htmlFor="printer-port">{t('port')}</Label>
+              <Input id="printer-port" type="number" {...register('port')} />
               {errors.port && <p className="text-xs text-destructive">{errors.port.message}</p>}
             </div>
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+              <Button type="button" variant="outline" className="min-h-12" onClick={() => setDialogOpen(false)}>
                 {tCommon('cancel')}
               </Button>
-              <Button type="submit" disabled={createPrinter.isPending || updatePrinter.isPending}>
+              <Button className="min-h-12" type="submit" disabled={createPrinter.isPending || updatePrinter.isPending}>
                 {editing ? tCommon('save') : tCommon('add')}
               </Button>
             </div>

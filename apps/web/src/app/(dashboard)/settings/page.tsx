@@ -127,27 +127,27 @@ export default function SettingsPage() {
           {!bizLoading && (
             <form onSubmit={bizForm.handleSubmit((v) => updateBiz.mutate(v))} className="space-y-4">
               <div className="space-y-1">
-                <Label>{t('businessName')}</Label>
-                <Input {...bizForm.register('name')} />
+                <Label htmlFor="biz-name">{t('businessName')}</Label>
+                <Input id="biz-name" {...bizForm.register('name')} />
                 {bizForm.formState.errors.name && (
                   <p className="text-xs text-destructive">{bizForm.formState.errors.name.message}</p>
                 )}
               </div>
               <div className="space-y-1">
-                <Label>{t('taxIdOptional')}</Label>
-                <Input {...bizForm.register('taxId')} placeholder="e.g. 512345678" />
+                <Label htmlFor="biz-tax">{t('taxIdOptional')}</Label>
+                <Input id="biz-tax" {...bizForm.register('taxId')} placeholder="e.g. 512345678" />
               </div>
               <div className="space-y-1">
-                <Label>{t('currency')}</Label>
-                <Select {...bizForm.register('currency')}>
+                <Label htmlFor="biz-currency">{t('currency')}</Label>
+                <Select id="biz-currency" {...bizForm.register('currency')}>
                   {CURRENCIES.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label>{t('vatRate')}</Label>
-                <Input type="number" step="0.1" min={0} max={100} {...bizForm.register('vatRatePercent')} />
+                <Label htmlFor="biz-vat">{t('vatRate')}</Label>
+                <Input id="biz-vat" type="number" step="0.1" min={0} max={100} {...bizForm.register('vatRatePercent')} />
                 <p className="text-xs text-muted-foreground">{t('vatRateHint')}</p>
               </div>
               <Button type="submit" disabled={updateBiz.isPending}>{t('saveBusiness')}</Button>
@@ -165,28 +165,28 @@ export default function SettingsPage() {
           {!locLoading && (
             <form onSubmit={locForm.handleSubmit((v) => updateLoc.mutate(v))} className="space-y-4">
               <div className="space-y-1">
-                <Label>{t('locationName')}</Label>
-                <Input {...locForm.register('name')} />
+                <Label htmlFor="loc-name">{t('locationName')}</Label>
+                <Input id="loc-name" {...locForm.register('name')} />
                 {locForm.formState.errors.name && (
                   <p className="text-xs text-destructive">{locForm.formState.errors.name.message}</p>
                 )}
               </div>
               <div className="space-y-1">
-                <Label>{t('addressOptional')}</Label>
-                <Input {...locForm.register('address')} placeholder={t('addressPlaceholder')} />
+                <Label htmlFor="loc-address">{t('addressOptional')}</Label>
+                <Input id="loc-address" {...locForm.register('address')} placeholder={t('addressPlaceholder')} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label>{t('timezone')}</Label>
-                  <Select {...locForm.register('timezone')}>
+                  <Label htmlFor="loc-timezone">{t('timezone')}</Label>
+                  <Select id="loc-timezone" {...locForm.register('timezone')}>
                     {TIMEZONES.map((tz) => (
                       <option key={tz} value={tz}>{tz}</option>
                     ))}
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label>{t('defaultLanguage')}</Label>
-                  <Select {...locForm.register('language')}>
+                  <Label htmlFor="loc-language">{t('defaultLanguage')}</Label>
+                  <Select id="loc-language" {...locForm.register('language')}>
                     <option value="he">עברית</option>
                     <option value="en">English</option>
                   </Select>
@@ -194,13 +194,14 @@ export default function SettingsPage() {
               </div>
               <p className="text-xs text-muted-foreground">{t('defaultLanguageHint')}</p>
               <div className="space-y-1">
-                <Label>{t('businessDayCutoff')}</Label>
-                <Input type="time" {...locForm.register('businessDayCutoff')} />
+                <Label htmlFor="loc-cutoff">{t('businessDayCutoff')}</Label>
+                <Input id="loc-cutoff" type="time" {...locForm.register('businessDayCutoff')} />
                 <p className="text-xs text-muted-foreground">{t('businessDayCutoffHint')}</p>
               </div>
               <div className="space-y-1">
-                <Label>{t('locationVatRate')}</Label>
+                <Label htmlFor="loc-vat">{t('locationVatRate')}</Label>
                 <Input
+                  id="loc-vat"
                   type="number"
                   step="0.1"
                   min={0}

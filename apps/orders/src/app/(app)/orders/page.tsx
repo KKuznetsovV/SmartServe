@@ -76,8 +76,8 @@ export default function OrdersPage() {
         <Card className="p-4 space-y-3 max-w-sm">
           <p className="font-medium text-sm">{t('newOrder')}</p>
           <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">{t('tableOptional')}</label>
-            <Select value={selectedTableId} onChange={(e) => setSelectedTableId(e.target.value)}>
+            <label htmlFor="new-order-table" className="text-xs text-muted-foreground">{t('tableOptional')}</label>
+            <Select id="new-order-table" value={selectedTableId} onChange={(e) => setSelectedTableId(e.target.value)}>
               <option value="">{t('noTableOption')}</option>
               {tables?.map((t) => (
                 <option key={t.id} value={t.id}>{t.name}</option>
@@ -85,8 +85,8 @@ export default function OrdersPage() {
             </Select>
           </div>
           <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">{t('channelLabel')}</label>
-            <Select value={channel} onChange={(e) => setChannel(e.target.value as OrderChannel)}>
+            <label htmlFor="new-order-channel" className="text-xs text-muted-foreground">{t('channelLabel')}</label>
+            <Select id="new-order-channel" value={channel} onChange={(e) => setChannel(e.target.value as OrderChannel)}>
               {CHANNELS.map((c) => (
                 <option key={c} value={c}>{t(`channel.${c}`)}</option>
               ))}
@@ -94,8 +94,9 @@ export default function OrdersPage() {
           </div>
           {guestCountRequired && (
             <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">{t('guestCountLabel')}</label>
+              <label htmlFor="new-order-guests" className="text-xs text-muted-foreground">{t('guestCountLabel')}</label>
               <Input
+                id="new-order-guests"
                 type="number"
                 min={1}
                 value={guestCount}
