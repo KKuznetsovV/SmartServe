@@ -14,6 +14,7 @@ import { apiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
 import { useDeviceStore } from '@/lib/device-store'
 import { useAuthReady } from '@/hooks/use-auth-ready'
+import { syncLocationFromDevice } from '@/lib/auth-session'
 import { LocaleToggle } from '@/components/layout/locale-toggle'
 import { ThemeToggle } from '@/components/layout/theme-toggle'
 import { PinPad } from '@/components/pin-pad'
@@ -91,7 +92,11 @@ function LoginForm() {
       setTokens(tokens.accessToken)
       const user = await apiClient.auth.me()
       setAuth(tokens.accessToken, user)
-      setActiveLocation(user.businessId, locationId)
+      try {
+        await syncLocationFromDevice(user)
+      } catch {
+        setActiveLocation(user.businessId, locationId)
+      }
       router.push(afterLogin)
     } catch {
       toast.error(t('invalidPin'))

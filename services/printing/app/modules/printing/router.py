@@ -1,7 +1,7 @@
 from fastapi import Depends
 from smartserve_shared.routing import APIRouter
 
-from app.api.v1.deps import require_manager
+from app.api.v1.deps import require_manager, require_staff
 from app.db.models import User
 from app.db.session import DbSession
 from app.modules.printing.schemas import (
@@ -21,7 +21,7 @@ router = APIRouter()
 async def list_printers(
     location_id: str,
     db: DbSession,
-    current_user: User = Depends(require_manager),
+    current_user: User = Depends(require_staff),
 ):
     return await PrinterService(db).list_printers(location_id, current_user.business_id)
 
@@ -85,6 +85,6 @@ async def delete_printer_route(
 async def list_printer_routes(
     location_id: str,
     db: DbSession,
-    current_user: User = Depends(require_manager),
+    current_user: User = Depends(require_staff),
 ):
     return await PrinterService(db).list_routes(location_id, current_user.business_id)
