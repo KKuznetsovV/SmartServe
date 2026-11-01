@@ -40,6 +40,23 @@ services:
       timeout: 5s
       retries: 10
 
+  rabbitmq-pre-e5-queues:
+    image: rabbitmq:4-management-alpine
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      RABBITMQ_USER: ${RABBITMQ_USER:-smartserve}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-smartserve}
+    restart: "no"
+    command:
+      - /bin/sh
+      - -c
+      - |
+        for q in ordering.payment_completed ordering.realtime printing.order_item_fired reporting.audit_log; do
+          rabbitmqadmin -H rabbitmq -u "$$RABBITMQ_USER" -p "$$RABBITMQ_PASSWORD" declare queue name="$$q" durable=true
+        done
+
   auth:
     build:
       context: ./services
@@ -118,6 +135,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      rabbitmq-pre-e5-queues:
+        condition: service_completed_successfully
       auth:
         condition: service_healthy
     volumes:
@@ -211,6 +230,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      rabbitmq-pre-e5-queues:
+        condition: service_completed_successfully
     volumes:
       - ./services/printing:/app
       - ./services/_shared:/shared
@@ -240,6 +261,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      rabbitmq-pre-e5-queues:
+        condition: service_completed_successfully
     volumes:
       - ./services/reporting:/app
       - ./services/_shared:/shared

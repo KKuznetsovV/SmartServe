@@ -19,6 +19,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from smartserve_shared.logging import setup_logging
+from smartserve_shared.mq import consumers_unhealthy
 from smartserve_shared.security import DEFAULT_SECRET_KEY, configure_security_from_settings
 
 _PLACEHOLDER_SECRETS = frozenset(
@@ -164,6 +165,8 @@ def create_service_app(
                 missing.append("db")
             if _broker_missing():
                 missing.append("broker")
+            if consumers_unhealthy(app):
+                missing.append("consumer")
             if missing:
                 return JSONResponse(
                     status_code=503,
@@ -185,12 +188,17 @@ def create_service_app(
 
         @app.get("/api/v1/ready")
         async def ready() -> JSONResponse:
+            missing: list[str] = []
             if _broker_missing():
+                missing.append("broker")
+            if consumers_unhealthy(app):
+                missing.append("consumer")
+            if missing:
                 return JSONResponse(
                     status_code=503,
                     content={
                         "status": "not_ready",
-                        "missing": ["broker"],
+                        "missing": missing,
                         "service": f"smartserve-{name}",
                     },
                 )
