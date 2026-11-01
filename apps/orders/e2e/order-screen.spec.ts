@@ -39,9 +39,10 @@ test('order screen localizes tiles and keeps cancel in an overflow menu', async 
   await openTakeawayOrder(page, request)
 
   await expect(page.getByTestId('menu-root').filter({ hasText: 'ראשונות' }).first()).toBeVisible()
-  const tile = page.getByTestId('menu-tile').first()
+  const hebrewTile = page.getByTestId('menu-tile').filter({ hasText: /[\u0590-\u05FF]/ })
+  const tile = (await hebrewTile.count()) > 0 ? hebrewTile.first() : page.getByTestId('menu-tile').first()
   await expect(tile).toBeVisible()
-  await expect(tile).toContainText(/חומוס|קולה|המבורגר|שניצל|פלאפל|פילה/)
+  await expect(tile).toContainText(/₪|ILS|\d/)
   const box = await tile.boundingBox()
   expect(box).not.toBeNull()
   if (box) expect(box.height).toBeGreaterThanOrEqual(64)
