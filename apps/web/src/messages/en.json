@@ -30,7 +30,9 @@
     "ai": "AI Assistant",
     "discounts": "Discounts",
     "stock": "Stock",
-    "shifts": "Shifts"
+    "shifts": "Shifts",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
   },
   "auth": {
     "login": "Login",

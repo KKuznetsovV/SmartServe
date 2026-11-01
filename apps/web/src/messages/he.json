@@ -30,7 +30,9 @@
     "ai": "עוזר AI",
     "discounts": "הנחות",
     "stock": "מלאי",
-    "shifts": "משמרות"
+    "shifts": "משמרות",
+    "openMenu": "פתח תפריט",
+    "closeMenu": "סגור תפריט"
   },
   "auth": {
     "login": "כניסה",

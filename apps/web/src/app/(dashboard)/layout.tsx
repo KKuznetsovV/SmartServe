@@ -1,6 +1,6 @@
 'use client'
 
-import { Sidebar } from '@/components/layout/sidebar'
+import { DashboardShell } from '@/components/layout/dashboard-shell'
 import { AuthReadyGate } from '@/components/auth-ready-gate'
 import { useAuthStore } from '@/lib/auth-store'
 import { useTokenRefresh } from '@/hooks/use-token-refresh'
@@ -15,10 +15,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <AuthReadyGate>
-      <div className="flex h-screen overflow-hidden">
-        <Sidebar />
-        <main className="flex-1 overflow-y-auto">{children}</main>
-      </div>
+      <DashboardShell>{children}</DashboardShell>
     </AuthReadyGate>
   )
 }
