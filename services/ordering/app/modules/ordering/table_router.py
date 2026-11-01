@@ -20,7 +20,8 @@ async def list_tables(
     service = TableService(db)
     if include == "status":
         return await service.list_tables_with_status(location_id, current_user.business_id)
-    return await service.list_tables(location_id, current_user.business_id)
+    tables = await service.list_tables(location_id, current_user.business_id)
+    return [TableOut.model_validate(table) for table in tables]
 
 
 @router.post("/tables", response_model=TableOut, status_code=201)

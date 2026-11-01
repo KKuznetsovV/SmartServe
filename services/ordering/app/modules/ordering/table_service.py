@@ -59,15 +59,20 @@ class TableService:
             if order is None:
                 out.append(payload)
                 continue
-            payload.floor_state = floor_state_for_order(order.status)
-            payload.open_order = TableOpenOrderOut(
-                id=order.id,
-                status=order.status,
-                guest_count=order.guest_count,
-                seated_since=order.created_at,
-                total=order.total,
+            out.append(
+                payload.model_copy(
+                    update={
+                        "floor_state": floor_state_for_order(order.status),
+                        "open_order": TableOpenOrderOut(
+                            id=order.id,
+                            status=order.status,
+                            guest_count=order.guest_count,
+                            seated_since=order.created_at,
+                            total=order.total,
+                        ),
+                    }
+                )
             )
-            out.append(payload)
         return out
 
     async def create_table(self, data: TableCreate, business_id: str | None = None) -> Table:
