@@ -605,6 +605,11 @@ async def test_fire_course(
 
     resp = await client.post(f"/api/v1/orders/{order_id}/submit", headers=headers)
     assert resp.status_code == 200
+    submitted = resp.json()
+    starter_sent = next(i for i in submitted["items"] if i["id"] == starter_item["id"])
+    assert starter_item.get("sentAt") is None
+    assert starter_sent["sentAt"] is not None
+    assert starter_sent["status"] == "pending"
 
     # No held items for course 3
     resp = await client.post(f"/api/v1/orders/{order_id}/fire-course", json={"course": 3}, headers=headers)

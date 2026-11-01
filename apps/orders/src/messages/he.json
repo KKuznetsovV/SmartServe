@@ -292,7 +292,12 @@
     "activeOrders": "{count, plural, one {הזמנה פעילה אחת} other {# הזמנות פעילות}}",
     "allCaughtUp": "הכל בוצע",
     "allReady": "הכל מוכן \u2713",
-    "ready": "\u2713 מוכן"
+    "ready": "\u2713 מוכן",
+    "bumpTicket": "סמן כהוכן",
+    "stationKitchen": "מטבח",
+    "stationBar": "בר",
+    "courseWaiting": "מנה {n} ממתינה",
+    "ageMinutes": "{minutes} דק׳"
   },
   "display": {
     "title": "סטטוס הזמנה",
