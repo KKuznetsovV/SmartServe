@@ -12,7 +12,7 @@ import { safeInternalPath } from '@smartserve/ui'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
 import { apiClient } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
@@ -107,9 +107,7 @@ function LoginForm() {
           <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <ChefHat className="h-6 w-6 text-primary" />
           </div>
-          <h1>
-            <CardTitle className="text-2xl">SmartServe</CardTitle>
-          </h1>
+          <h1 className="text-2xl font-semibold leading-none tracking-tight">SmartServe</h1>
           <p className="text-sm text-muted-foreground">{t('managerPortal')}</p>
         </CardHeader>
         <CardContent>

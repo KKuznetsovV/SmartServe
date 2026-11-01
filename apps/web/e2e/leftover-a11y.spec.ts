@@ -20,7 +20,7 @@ test('web login has landmarks and no serious axe issues', async ({ page }) => {
   await page.setViewportSize({ width: 1180, height: 820 })
   await page.goto('/login')
   await expect(page.getByRole('main')).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'SmartServe' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'SmartServe' })).toBeVisible()
   await expectNoSeriousAxeViolations(page)
   await test.info().attach('after-he-light-tablet', {
     body: await page.screenshot({ fullPage: true }),
@@ -28,7 +28,7 @@ test('web login has landmarks and no serious axe issues', async ({ page }) => {
   })
 })
 
-test('dashboard, printers and settings have no serious axe issues', async ({ page }) => {
+test('dashboard, printers and settings pass axe in light and dark', async ({ page }) => {
   test.setTimeout(90_000)
   await page.context().addCookies([
     { name: 'locale', value: 'he', path: '/', domain: 'localhost' },
@@ -52,18 +52,13 @@ test('dashboard, printers and settings have no serious axe issues', async ({ pag
   await page.goto('/settings')
   await expect(page.getByRole('heading').first()).toBeVisible()
   await expectNoSeriousAxeViolations(page)
-})
 
-test('dashboard English dark has no serious axe issues', async ({ page }) => {
-  test.setTimeout(60_000)
   await page.context().addCookies([
     { name: 'locale', value: 'en', path: '/', domain: 'localhost' },
     { name: 'theme', value: 'dark', path: '/', domain: 'localhost' },
   ])
-  await page.setViewportSize({ width: 1180, height: 820 })
-  await login(page)
   await page.goto('/dashboard')
-  await expect(page.getByRole('heading').first()).toBeVisible()
+  await expect(page.locator('html')).toHaveClass(/dark/)
   await expectNoSeriousAxeViolations(page)
   await test.info().attach('after-en-dark-dashboard', {
     body: await page.screenshot({ fullPage: true }),
