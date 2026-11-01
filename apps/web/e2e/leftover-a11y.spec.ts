@@ -28,8 +28,8 @@ test('web login has landmarks and no serious axe issues', async ({ page }) => {
   })
 })
 
-test('dashboard, printers and settings pass axe in light and dark', async ({ page }) => {
-  test.setTimeout(90_000)
+test('dashboard, menu, staff, printers and stock pass axe in light and dark', async ({ page }) => {
+  test.setTimeout(120_000)
   await page.context().addCookies([
     { name: 'locale', value: 'he', path: '/', domain: 'localhost' },
     { name: 'theme', value: 'light', path: '/', domain: 'localhost' },
@@ -37,30 +37,27 @@ test('dashboard, printers and settings pass axe in light and dark', async ({ pag
   await page.setViewportSize({ width: 1180, height: 820 })
   await login(page)
 
-  await page.goto('/dashboard')
-  await expect(page.getByRole('heading').first()).toBeVisible()
-  await expectNoSeriousAxeViolations(page)
-  await test.info().attach('after-he-light-dashboard', {
+  for (const path of ['/dashboard', '/menu', '/staff', '/printers', '/stock', '/settings']) {
+    await page.goto(path)
+    await expect(page.getByRole('heading').first()).toBeVisible()
+    await expectNoSeriousAxeViolations(page)
+  }
+  await test.info().attach('after-he-light-menu', {
     body: await page.screenshot({ fullPage: true }),
     contentType: 'image/png',
   })
-
-  await page.goto('/printers')
-  await expect(page.getByRole('heading', { name: /מדפסות|Printers/i })).toBeVisible()
-  await expectNoSeriousAxeViolations(page)
-
-  await page.goto('/settings')
-  await expect(page.getByRole('heading').first()).toBeVisible()
-  await expectNoSeriousAxeViolations(page)
 
   await page.context().addCookies([
     { name: 'locale', value: 'en', path: '/', domain: 'localhost' },
     { name: 'theme', value: 'dark', path: '/', domain: 'localhost' },
   ])
-  await page.goto('/dashboard')
-  await expect(page.locator('html')).toHaveClass(/dark/)
-  await expectNoSeriousAxeViolations(page)
-  await test.info().attach('after-en-dark-dashboard', {
+  for (const path of ['/dashboard', '/menu', '/staff', '/printers', '/stock']) {
+    await page.goto(path)
+    await expect(page.locator('html')).toHaveClass(/dark/)
+    await expect(page.getByRole('heading').first()).toBeVisible()
+    await expectNoSeriousAxeViolations(page)
+  }
+  await test.info().attach('after-en-dark-staff', {
     body: await page.screenshot({ fullPage: true }),
     contentType: 'image/png',
   })

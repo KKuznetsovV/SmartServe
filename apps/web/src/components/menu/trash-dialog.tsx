@@ -93,6 +93,7 @@ export function TrashDialog({
                       <Button
                         size="icon"
                         variant="ghost"
+                        aria-label={t('permanentlyDelete')}
                         onClick={() => setConfirmingId(item.id)}
                         title={t('permanentlyDelete')}
                       >

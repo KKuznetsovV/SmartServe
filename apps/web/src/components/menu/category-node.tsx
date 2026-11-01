@@ -106,6 +106,7 @@ export function CategoryNode({
             <Button
               variant="ghost"
               size="icon"
+              aria-label={t('editCategory')}
               onClick={(e) => { e.stopPropagation(); onEdit(category) }}
             >
               <Pencil className="h-4 w-4" />
@@ -113,6 +114,7 @@ export function CategoryNode({
             <Button
               variant="ghost"
               size="icon"
+              aria-label={t('deleteCategory')}
               onClick={(e) => { e.stopPropagation(); onDelete(category.id) }}
               disabled={deletingId === category.id}
             >

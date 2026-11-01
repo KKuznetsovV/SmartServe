@@ -38,7 +38,7 @@ export default function CategoryItemsPage() {
     <div className="p-6">
       {/* Header */}
       <div className="mb-6 flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.push('/menu')}>
+        <Button variant="ghost" size="icon" aria-label={t('backToMenu')} onClick={() => router.push('/menu')}>
           <ArrowLeft className="h-5 w-5 rtl:-scale-x-100" />
         </Button>
         <div className="flex-1">
