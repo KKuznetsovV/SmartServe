@@ -24,7 +24,7 @@ describe('Badge', () => {
   })
 
   it('merges extra className', () => {
-    render(<Badge className="ml-2">Tag</Badge>)
-    expect(screen.getByText('Tag').className).toContain('ml-2')
+    render(<Badge className="ms-2">Tag</Badge>)
+    expect(screen.getByText('Tag').className).toContain('ms-2')
   })
 })

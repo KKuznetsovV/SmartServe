@@ -34,7 +34,9 @@
     "stock": "מלאי",
     "shifts": "משמרות",
     "kitchenDisplay": "תצוגת מטבח",
-    "customerDisplay": "תצוגת לקוחות"
+    "customerDisplay": "תצוגת לקוחות",
+    "openMenu": "פתח תפריט",
+    "closeMenu": "סגור תפריט"
   },
   "auth": {
     "login": "כניסה",

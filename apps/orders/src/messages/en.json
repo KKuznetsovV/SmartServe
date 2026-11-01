@@ -34,7 +34,9 @@
     "stock": "Stock",
     "shifts": "Shifts",
     "kitchenDisplay": "Kitchen Display",
-    "customerDisplay": "Customer Display"
+    "customerDisplay": "Customer Display",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
   },
   "auth": {
     "login": "Login",

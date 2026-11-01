@@ -36,7 +36,13 @@ const navItems = [
   { href: '/settings', icon: Settings, key: 'settings' },
 ]
 
-export function Sidebar() {
+export function Sidebar({
+  onNavigate,
+  testId = 'admin-sidebar',
+}: {
+  onNavigate?: () => void
+  testId?: string
+}) {
   const pathname = usePathname()
   const { user } = useAuthStore()
   const isManager = user?.role === 'owner' || user?.role === 'manager'
@@ -44,12 +50,14 @@ export function Sidebar() {
   const tAuth = useTranslations('auth')
 
   return (
-    <aside className="flex h-screen w-60 shrink-0 flex-col overflow-hidden border-r bg-card">
-      {/* Logo */}
-      <div className="flex h-14 items-center justify-between gap-2 border-b px-3">
+    <aside
+      data-testid={testId}
+      className="flex h-full w-60 shrink-0 flex-col overflow-hidden border-e bg-card"
+    >
+      <div className="flex h-14 min-w-0 items-center justify-between gap-2 border-b px-3">
         <div className="flex min-w-0 items-center gap-2">
           <ChefHat className="h-6 w-6 shrink-0 text-primary" />
-          <span className="truncate font-bold text-lg">SmartServe</span>
+          <span className="whitespace-nowrap font-bold text-lg">SmartServe</span>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           <LocaleToggle />
@@ -57,7 +65,6 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-4">
         {navItems
           .filter((item) => !item.managerOnly || isManager)
@@ -65,8 +72,9 @@ export function Sidebar() {
             <Link
               key={key}
               href={href}
+              onClick={onNavigate}
               className={cn(
-                'flex items-center gap-3 rounded-md mx-2 px-3 py-2 text-sm font-medium transition-colors',
+                'mx-2 flex min-h-12 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                 pathname.startsWith(href) && href !== '/dashboard'
                   ? 'bg-primary text-primary-foreground'
                   : pathname === href
@@ -80,12 +88,11 @@ export function Sidebar() {
           ))}
       </nav>
 
-      {/* User */}
       <div className="border-t p-4">
-        <div className="mb-2 text-sm font-medium truncate">{user?.name ?? user?.email}</div>
+        <div className="mb-2 truncate text-sm font-medium">{user?.name ?? user?.email}</div>
         <button
           onClick={() => void signOut()}
-          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          className="flex min-h-12 w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <LogOut className="h-4 w-4" />
           <span>{tAuth('logout')}</span>
