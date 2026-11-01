@@ -41,7 +41,7 @@ services:
       retries: 10
 
   rabbitmq-pre-e5-queues:
-    image: rabbitmq:4-management-alpine
+    image: curlimages/curl:8.12.1
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -53,8 +53,21 @@ services:
       - /bin/sh
       - -c
       - |
+        set -eu
+        n=0
+        until curl -sf -u "$$RABBITMQ_USER:$$RABBITMQ_PASSWORD" http://rabbitmq:15672/api/overview >/dev/null; do
+          n=$$((n + 1))
+          if [ "$$n" -gt 40 ]; then
+            echo "RabbitMQ management API did not become ready"
+            exit 1
+          fi
+          sleep 1
+        done
         for q in ordering.payment_completed ordering.realtime printing.order_item_fired reporting.audit_log; do
-          rabbitmqadmin -H rabbitmq -u "$$RABBITMQ_USER" -p "$$RABBITMQ_PASSWORD" declare queue name="$$q" durable=true
+          curl -sf -u "$$RABBITMQ_USER:$$RABBITMQ_PASSWORD" -X PUT \
+            -H "content-type: application/json" \
+            -d '{"durable":true,"auto_delete":false,"arguments":{}}' \
+            "http://rabbitmq:15672/api/queues/%2F/$$q"
         done
 
   auth:
