@@ -1,19 +1,16 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
+import type { DisplayOrder } from '@smartserve/types'
 import { apiClient } from '@/lib/api'
 import { useDeviceStore } from '@/lib/device-store'
 import { useAuthReady } from '@/hooks/use-auth-ready'
 import { useLocationWs } from '@/hooks/use-ws'
-
-const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
-  submitted: { bg: 'bg-zinc-800', text: 'text-zinc-100' },
-  preparing: { bg: 'bg-amber-500', text: 'text-amber-950' },
-  ready: { bg: 'bg-emerald-500', text: 'text-emerald-950' },
-}
+import { playReadyChime } from './chime'
+import { newlyReadyNumbers, splitDisplayOrders } from './columns'
 
 export default function CustomerDisplayPage() {
   const router = useRouter()
@@ -22,6 +19,9 @@ export default function CustomerDisplayPage() {
   const locationId = useDeviceStore((s) => s.locationId)
   const deviceToken = useDeviceStore((s) => s.deviceToken)
   const deviceType = useDeviceStore((s) => s.deviceType)
+  const seenReady = useRef<Set<number>>(new Set())
+  const primed = useRef(false)
+  const [flash, setFlash] = useState<Set<number>>(new Set())
 
   useEffect(() => {
     if (ready && (!deviceConfigured || deviceType !== 'display')) {
@@ -38,51 +38,109 @@ export default function CustomerDisplayPage() {
 
   useLocationWs(deviceType === 'display' ? locationId : null)
 
+  const { preparing, ready: readyOrders } = splitDisplayOrders(orders)
   const lastUpdated = dataUpdatedAt ? new Date(dataUpdatedAt) : new Date()
+
+  useEffect(() => {
+    const numbers = newlyReadyNumbers(seenReady.current, readyOrders)
+    const next = new Set(
+      readyOrders.map((order) => order.orderNumber).filter((n): n is number => n != null),
+    )
+    if (!primed.current) {
+      primed.current = true
+      seenReady.current = next
+      return
+    }
+    seenReady.current = next
+    if (numbers.length === 0) return
+    playReadyChime()
+    setFlash(new Set(numbers))
+    const timer = window.setTimeout(() => setFlash(new Set()), 4000)
+    return () => window.clearTimeout(timer)
+  }, [readyOrders])
 
   if (!ready || !deviceConfigured || deviceType !== 'display') {
     return null
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white p-6">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
-        <p className="text-sm text-zinc-500">
-          {t('updated', { time: lastUpdated.toLocaleTimeString('he-IL') })}
+    <main className="min-h-screen bg-zinc-950 px-6 py-6 text-white">
+      <div className="mb-8 flex items-center justify-between">
+        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">{t('title')}</h1>
+        <p className="text-sm text-zinc-400">
+          {t('updated', { time: lastUpdated.toLocaleTimeString() })}
         </p>
       </div>
 
+      <div className="grid min-h-[70vh] grid-cols-1 gap-6 lg:grid-cols-2">
+        <DisplayColumn
+          testId="display-preparing"
+          title={t('preparing')}
+          empty={t('noPreparing')}
+          orders={preparing}
+          tone="preparing"
+          flash={flash}
+        />
+        <DisplayColumn
+          testId="display-ready"
+          title={t('ready')}
+          empty={t('noReady')}
+          orders={readyOrders}
+          tone="ready"
+          flash={flash}
+        />
+      </div>
+    </main>
+  )
+}
+
+function DisplayColumn({
+  testId,
+  title,
+  empty,
+  orders,
+  tone,
+  flash,
+}: {
+  testId: string
+  title: string
+  empty: string
+  orders: DisplayOrder[]
+  tone: 'preparing' | 'ready'
+  flash: ReadonlySet<number>
+}) {
+  const panel =
+    tone === 'ready'
+      ? 'border-emerald-500/40 bg-emerald-950/40'
+      : 'border-amber-500/40 bg-amber-950/30'
+  return (
+    <section
+      data-testid={testId}
+      className={`flex min-h-[20rem] flex-col rounded-3xl border-2 p-6 ${panel}`}
+    >
+      <h2 className="mb-6 text-center text-3xl font-semibold uppercase tracking-wide">{title}</h2>
       {orders.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-64 text-zinc-500">
-          <p className="text-xl">{t('noActiveOrders')}</p>
-        </div>
+        <p className="m-auto text-xl text-zinc-400">{empty}</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           {orders.map((order) => {
-            const style = STATUS_STYLE[order.status] ?? STATUS_STYLE.submitted
-            const statusLabel =
-              order.status === 'preparing'
-                ? t('preparing')
-                : order.status === 'ready'
-                  ? t('ready')
-                  : t('received')
+            const n = order.orderNumber
+            const lit = n != null && flash.has(n)
             return (
-              <div
+              <li
                 key={`${order.orderNumber}-${order.updatedAt}`}
-                className={`rounded-2xl p-5 ${style.bg} ${style.text} flex flex-col gap-3`}
+                data-testid="display-number"
+                data-order-number={order.orderNumber ?? ''}
+                className={`flex min-h-32 items-center justify-center rounded-2xl px-3 py-4 font-mono text-[clamp(3.5rem,8vw,7rem)] font-black leading-none ${
+                  tone === 'ready' ? 'bg-emerald-500 text-emerald-950' : 'bg-amber-500 text-amber-950'
+                } ${lit ? 'animate-pulse ring-4 ring-white' : ''}`}
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold font-mono">#{order.orderNumber}</span>
-                  <span className="text-sm font-semibold uppercase tracking-wide opacity-80">
-                    {statusLabel}
-                  </span>
-                </div>
-              </div>
+                {order.orderNumber}
+              </li>
             )
           })}
-        </div>
+        </ul>
       )}
-    </div>
+    </section>
   )
 }

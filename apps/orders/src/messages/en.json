@@ -314,7 +314,9 @@
     "noActiveOrders": "No active orders",
     "received": "Received",
     "preparing": "Preparing",
-    "ready": "Ready \u2713"
+    "ready": "Ready",
+    "noPreparing": "Nothing preparing",
+    "noReady": "Nothing ready yet"
   },
   "ai": {
     "placeholder": "What would you like to do? e.g. 'Add margherita pizza for 58 NIS'",

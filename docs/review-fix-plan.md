@@ -60,8 +60,8 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 40 | UI-1 | `ui/pin-pad-ltr` | merged | https://github.com/KKuznetsovV/SmartServe/pull/128 |
 | 41 | UI-2 | `ui/order-screen-localization-and-layout` | merged | https://github.com/KKuznetsovV/SmartServe/pull/129 |
 | 42 | UI-3 | `ui/kds-redesign` | merged | https://github.com/KKuznetsovV/SmartServe/pull/130 |
-| 43 | UI-4 | `ui/floor-plan-live-status` | in progress | |
-| 44 | UI-5 | `ui/customer-display` | todo | |
+| 43 | UI-4 | `ui/floor-plan-live-status` | merged | https://github.com/KKuznetsovV/SmartServe/pull/131 |
+| 44 | UI-5 | `ui/customer-display` | in progress | |
 | 45 | UI-6 | `ui/responsive-layouts` | todo | |
 | 46 | UI-7 | `ui/accessibility` | todo | |
 | 47 | E14 | `docs/e14-honest-readme-and-architecture` | todo | |
