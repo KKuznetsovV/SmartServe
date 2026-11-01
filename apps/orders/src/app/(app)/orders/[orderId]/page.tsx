@@ -143,7 +143,8 @@ export default function OrderDetailPage({ params }: Props) {
       locationId: order.locationId,
       item: {
         menuItemId: item.id,
-        menuItemName: localizedName(item, locale),
+        menuItemName: item.name,
+        menuItemNameHe: item.nameHe ?? null,
         qty: 1,
         unitPrice: item.price,
         modifiers: [],
@@ -201,7 +202,8 @@ export default function OrderDetailPage({ params }: Props) {
         locationId: order.locationId,
         item: {
           menuItemId: configuringItem.id,
-          menuItemName: localizedName(configuringItem, locale),
+          menuItemName: configuringItem.name,
+          menuItemNameHe: configuringItem.nameHe ?? null,
           qty: result.qty,
           unitPrice: result.unitPrice,
           modifiers: result.modifiers,
@@ -630,7 +632,11 @@ export default function OrderDetailPage({ params }: Props) {
         onOpenChange={(open) => !open && setEditingItem(null)}
         onConfirm={handleEditConfirm}
         pending={updateItem.isPending}
-        title={editingItem ? `Edit ${editingItem.menuItemName}` : undefined}
+        title={
+          editingItem
+            ? `Edit ${localizedName({ name: editingItem.menuItemName, nameHe: editingItem.menuItemNameHe }, locale)}`
+            : undefined
+        }
         confirmLabel="Save Changes"
         initial={
           editingItem

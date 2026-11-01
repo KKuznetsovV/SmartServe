@@ -345,6 +345,7 @@ class OrderService:
                 {
                     "modifier_id": modifier.id,
                     "name": modifier.name,
+                    "name_he": modifier.name_he,
                     "price_delta": float(money(modifier.price_delta)),
                 }
             )
@@ -388,6 +389,7 @@ class OrderService:
             order_id=order_id,
             menu_item_id=data.menu_item_id,
             menu_item_name=menu_item.name,
+            menu_item_name_he=menu_item.name_he,
             category_id=menu_item.category_id,
             category_name=category.name if category else None,
             qty=data.qty,
@@ -736,6 +738,7 @@ class OrderService:
             order_id=order.id,
             menu_item_id=item.menu_item_id,
             menu_item_name=item.menu_item_name,
+            menu_item_name_he=item.menu_item_name_he,
             category_id=item.category_id,
             category_name=item.category_name,
             qty=quantity,

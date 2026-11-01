@@ -68,6 +68,7 @@ test('kitchen tickets show the table, order number and a 64px bump', async ({ pa
   await expect(page.getByRole('heading', { name: /תצוגת מטבח|Kitchen/i })).toBeVisible()
   await expect(page.getByRole('link', { name: /מטבח|Kitchen/i }).first()).toBeVisible()
   const bump = page.getByTestId('bump-ticket').first()
+  await expect(page.getByText('המבורגר')).toBeVisible()
   await expect(bump).toBeVisible()
   const box = await bump.boundingBox()
   expect(box).not.toBeNull()

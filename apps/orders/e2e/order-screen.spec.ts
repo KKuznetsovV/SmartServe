@@ -75,6 +75,7 @@ test('order screen localizes tiles and keeps cancel in an overflow menu', async 
   if (box) expect(box.height).toBeGreaterThanOrEqual(64)
 
   await expect(page.getByText(/לא נשלח|Not sent/)).toBeVisible()
+  await expect(page.getByText('חומוס')).toBeVisible()
   await expectNoSeriousAxeViolations(page)
 
   await page.getByTestId('order-overflow').click({ force: true })
