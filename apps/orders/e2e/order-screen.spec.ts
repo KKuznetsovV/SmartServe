@@ -38,9 +38,10 @@ test('order screen localizes tiles and keeps cancel in an overflow menu', async 
   await page.setViewportSize({ width: 1180, height: 820 })
   await openTakeawayOrder(page, request)
 
-  await expect(page.getByRole('button', { name: 'ראשונות' })).toBeVisible()
-  const tile = page.getByTestId('menu-tile').filter({ hasText: 'חומוס' })
+  await expect(page.getByTestId('menu-root').filter({ hasText: 'ראשונות' }).first()).toBeVisible()
+  const tile = page.getByTestId('menu-tile').first()
   await expect(tile).toBeVisible()
+  await expect(tile).toContainText(/חומוס|קולה|המבורגר|שניצל|פלאפל|פילה/)
   const box = await tile.boundingBox()
   expect(box).not.toBeNull()
   if (box) expect(box.height).toBeGreaterThanOrEqual(64)

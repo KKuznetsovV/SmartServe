@@ -72,6 +72,7 @@ export function MenuPanel({ locationId, onItemTap }: Props) {
             <button
               key={root.id}
               type="button"
+              data-testid="menu-root"
               onClick={() => setActiveRootId(root.id)}
               className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-lg border px-4 py-3 text-sm font-semibold transition-colors sm:flex-none sm:px-6 ${
                 activeRootId === root.id

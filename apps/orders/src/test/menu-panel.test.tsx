@@ -57,7 +57,7 @@ describe('MenuPanel', () => {
       </NextIntlClientProvider>,
     )
 
-    expect(screen.getByRole('button', { name: /שתייה/ })).toBeInTheDocument()
+    expect(screen.getByTestId('menu-root')).toHaveTextContent('שתייה')
     expect(screen.getByText('קולה')).toBeInTheDocument()
     expect(screen.queryByText('Cola')).not.toBeInTheDocument()
     const tile = screen.getByTestId('menu-tile')
