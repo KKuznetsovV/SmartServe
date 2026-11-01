@@ -66,7 +66,8 @@ Update the row for each item in the same branch that fixes it. Status values: `t
 | 46 | UI-7 | `ui/accessibility` | merged | https://github.com/KKuznetsovV/SmartServe/pull/134 |
 | 47 | E14 | `docs/e14-honest-readme-and-architecture` | todo | |
 | 48 | MQ | `fix/mq-queue-upgrade` | merged | https://github.com/KKuznetsovV/SmartServe/pull/135 |
-| 49 | HE | `fix/order-line-hebrew-names` | in progress | |
+| 49 | HE | `fix/order-line-hebrew-names` | merged | https://github.com/KKuznetsovV/SmartServe/pull/136 |
+| 50 | PIN | `fix/pin-keyboard-input` | in progress | |
 
 ---
 

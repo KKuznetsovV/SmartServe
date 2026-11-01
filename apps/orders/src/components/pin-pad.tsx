@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import { Delete } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -14,6 +15,7 @@ interface PinPadProps {
   onDigit: (digit: string) => void
   onBackspace: () => void
   onBack: () => void
+  onEnter?: () => void
 }
 
 /** Numeric keypad forced LTR so Hebrew `dir=rtl` on `<html>` does not reverse 1–9 or swap Back/Delete. */
@@ -26,7 +28,39 @@ export function PinPad({
   onDigit,
   onBackspace,
   onBack,
+  onEnter,
 }: PinPadProps) {
+  const onDigitRef = useRef(onDigit)
+  const onBackspaceRef = useRef(onBackspace)
+  const onEnterRef = useRef(onEnter)
+  const disabledRef = useRef(disabled)
+  onDigitRef.current = onDigit
+  onBackspaceRef.current = onBackspace
+  onEnterRef.current = onEnter
+  disabledRef.current = disabled
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (disabledRef.current) return
+      if (event.key >= '0' && event.key <= '9') {
+        event.preventDefault()
+        onDigitRef.current(event.key)
+        return
+      }
+      if (event.key === 'Backspace') {
+        event.preventDefault()
+        onBackspaceRef.current()
+        return
+      }
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        onEnterRef.current?.()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="flex gap-3" aria-hidden="true">

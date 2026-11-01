@@ -53,6 +53,12 @@ test('PIN keypad stays 1-2-3 under Hebrew RTL', async ({ page, request }) => {
   })
 })
 
+test('physical keyboard types the PIN', async ({ page, request }) => {
+  await openPinPad(page, request)
+  await page.keyboard.type('1234')
+  await expect(page).toHaveURL(/\/orders/)
+})
+
 test('PIN keypad stays usable on a phone viewport', async ({ page, request }) => {
   await page.context().addCookies([
     { name: 'locale', value: 'en', path: '/', domain: 'localhost' },

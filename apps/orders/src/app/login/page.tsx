@@ -103,9 +103,12 @@ function LoginForm() {
 
   const handleDigit = (digit: string) => {
     if (submitting) return
-    const next = (pin + digit).slice(0, PIN_LENGTH)
-    setPin(next)
-    if (next.length === PIN_LENGTH) void submitPin(next)
+    setPin((current) => {
+      if (current.length >= PIN_LENGTH) return current
+      const next = current + digit
+      if (next.length === PIN_LENGTH) void submitPin(next)
+      return next
+    })
   }
 
   if (!selected) {
@@ -177,6 +180,9 @@ function LoginForm() {
             backLabel={tCommon('back')}
             deleteLabel={t('deleteDigit')}
             onDigit={handleDigit}
+            onEnter={() => {
+              if (pin.length === PIN_LENGTH) void submitPin(pin)
+            }}
             onBackspace={() => setPin((p) => p.slice(0, -1))}
             onBack={() => {
               setSelected(null)
