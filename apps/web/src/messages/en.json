@@ -132,6 +132,7 @@
     "routingTitle": "Print Routing",
     "routingHint": "Choose which printer(s) each item's tickets print to — an item can be routed to several printers at once (e.g. kitchen + receipt).",
     "item": "Item",
+    "routeTo": "Route {item} to {printer}",
     "confirmDelete": "Delete printer \"{name}\"?",
     "toastAdded": "Printer added",
     "toastUpdated": "Printer updated",

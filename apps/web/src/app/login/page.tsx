@@ -97,7 +97,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
+    <main className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
       <div className="absolute end-4 top-4 flex items-center gap-2">
         <LocaleToggle />
         <ThemeToggle />
@@ -107,7 +107,9 @@ function LoginForm() {
           <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <ChefHat className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle className="text-2xl">SmartServe</CardTitle>
+          <h1>
+            <CardTitle className="text-2xl">SmartServe</CardTitle>
+          </h1>
           <p className="text-sm text-muted-foreground">{t('managerPortal')}</p>
         </CardHeader>
         <CardContent>
@@ -137,13 +139,13 @@ function LoginForm() {
                 <p className="text-xs text-destructive">{errors.password.message}</p>
               )}
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="min-h-12 w-full" disabled={loading}>
               {loading ? <Spinner className="me-2" /> : null}
               {t('loginButton')}
             </Button>
           </form>
         </CardContent>
       </Card>
-    </div>
+    </main>
   )
 }

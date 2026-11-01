@@ -27,14 +27,14 @@ const STATUS_VARIANT: Record<OrderStatus, 'default' | 'secondary' | 'destructive
 }
 
 const STATUS_COLOR: Record<OrderStatus, string> = {
-  open: 'text-slate-600 dark:text-slate-400',
-  submitted: 'text-blue-600 dark:text-blue-400',
-  preparing: 'text-amber-600 dark:text-amber-400',
-  ready: 'text-green-600 dark:text-green-400',
-  served: 'text-green-700 dark:text-green-400',
-  paid: 'text-green-800 dark:text-green-300',
-  split: 'text-slate-600 dark:text-slate-400',
-  cancelled: 'text-red-500 dark:text-red-400',
+  open: 'text-zinc-800 dark:text-zinc-200',
+  submitted: 'text-blue-800 dark:text-blue-300',
+  preparing: 'text-amber-800 dark:text-amber-300',
+  ready: 'text-emerald-800 dark:text-emerald-300',
+  served: 'text-emerald-800 dark:text-emerald-200',
+  paid: 'text-emerald-900 dark:text-emerald-200',
+  split: 'text-zinc-800 dark:text-zinc-200',
+  cancelled: 'text-red-700 dark:text-red-300',
 }
 
 export default function DashboardPage() {

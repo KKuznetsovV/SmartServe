@@ -221,8 +221,8 @@ function SalesTab({ locationId, startDate, endDate }: { locationId: string; star
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <label className="text-sm font-medium text-muted-foreground">Group by</label>
-          <Select value={groupBy} onChange={(e) => setGroupBy(e.target.value as ReportGroupBy)} className="w-40">
+          <label htmlFor="report-group-by" className="text-sm font-medium text-muted-foreground">Group by</label>
+          <Select id="report-group-by" value={groupBy} onChange={(e) => setGroupBy(e.target.value as ReportGroupBy)} className="w-40">
             <option value="item">Item</option>
             <option value="category">Category</option>
             <option value="menu">Whole menu</option>
@@ -262,8 +262,9 @@ function SalesByServerTab({
       <div className="flex items-center justify-between gap-3">
         <div className="flex gap-3">
           <div className="space-y-1">
-            <label className="text-sm font-medium text-muted-foreground">Category</label>
+            <label htmlFor="report-category" className="text-sm font-medium text-muted-foreground">Category</label>
             <Select
+              id="report-category"
               value={categoryId}
               onChange={(e) => {
                 setCategoryId(e.target.value)
@@ -280,8 +281,8 @@ function SalesByServerTab({
             </Select>
           </div>
           <div className="space-y-1">
-            <label className="text-sm font-medium text-muted-foreground">Item</label>
-            <Select value={itemId} onChange={(e) => setItemId(e.target.value)} disabled={!categoryId} className="w-44">
+            <label htmlFor="report-item" className="text-sm font-medium text-muted-foreground">Item</label>
+            <Select id="report-item" value={itemId} onChange={(e) => setItemId(e.target.value)} disabled={!categoryId} className="w-44">
               <option value="">All items</option>
               {items?.map((i) => (
                 <option key={i.id} value={i.id}>
@@ -326,8 +327,9 @@ function ClosedOrdersTab({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <label className="text-sm font-medium text-muted-foreground">{t('status')}</label>
+          <label htmlFor="report-status" className="text-sm font-medium text-muted-foreground">{t('status')}</label>
           <Select
+            id="report-status"
             value={status}
             onChange={(e) => setStatus(e.target.value as ClosedOrderStatusFilter | '')}
             className="w-40"

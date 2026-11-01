@@ -193,21 +193,21 @@ export default function StaffPage() {
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-1">
-              <Label>{t('name')}</Label>
-              <Input {...register('name')} placeholder={t('fullNamePlaceholder')} />
+              <Label htmlFor="staff-name">{t('name')}</Label>
+              <Input id="staff-name" {...register('name')} placeholder={t('fullNamePlaceholder')} />
               {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
             </div>
 
             <div className="space-y-1">
-              <Label>{t('emailOptional')}</Label>
-              <Input type="email" {...register('email')} placeholder="name@example.com" />
+              <Label htmlFor="staff-email">{t('emailOptional')}</Label>
+              <Input id="staff-email" type="email" {...register('email')} placeholder="name@example.com" />
               {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label>{t('role')}</Label>
-                <Select {...register('role')}>
+                <Label htmlFor="staff-role">{t('role')}</Label>
+                <Select id="staff-role" {...register('role')}>
                   {(editing && !pickerRoles.includes(editing.role as UserRole)
                     ? [editing.role as UserRole, ...pickerRoles]
                     : pickerRoles
@@ -220,8 +220,8 @@ export default function StaffPage() {
                 {errors.role && <p className="text-xs text-destructive">{errors.role.message}</p>}
               </div>
               <div className="space-y-1">
-                <Label>{t('preferredLanguage')}</Label>
-                <Select {...register('language')}>
+                <Label htmlFor="staff-language">{t('preferredLanguage')}</Label>
+                <Select id="staff-language" {...register('language')}>
                   <option value="he">עברית</option>
                   <option value="en">English</option>
                 </Select>
@@ -230,8 +230,8 @@ export default function StaffPage() {
 
             {!editing && (
               <div className="space-y-1">
-                <Label>{t('passwordOptional')}</Label>
-                <Input type="password" {...register('password')} placeholder={t('passwordMinCharsPlaceholder')} />
+                <Label htmlFor="staff-password">{t('passwordOptional')}</Label>
+                <Input id="staff-password" type="password" {...register('password')} placeholder={t('passwordMinCharsPlaceholder')} />
                 {errors.password && (
                   <p className="text-xs text-destructive">{errors.password.message}</p>
                 )}
@@ -239,8 +239,9 @@ export default function StaffPage() {
             )}
 
             <div className="space-y-1">
-              <Label>{editing ? t('pinEditHint') : t('pinCreateHint')}</Label>
+              <Label htmlFor="staff-pin">{editing ? t('pinEditHint') : t('pinCreateHint')}</Label>
               <Input
+                id="staff-pin"
                 type="password"
                 maxLength={6}
                 inputMode="numeric"
