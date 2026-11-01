@@ -1,4 +1,15 @@
+from datetime import datetime
+
+from smartserve_shared.money import Money
 from smartserve_shared.schemas import BaseSchema as BaseModel
+
+
+class TableOpenOrderOut(BaseModel):
+    id: str
+    status: str
+    guest_count: int | None = None
+    seated_since: datetime
+    total: Money
 
 
 class TableOut(BaseModel):
@@ -10,6 +21,8 @@ class TableOut(BaseModel):
     pos_x: float
     pos_y: float
     active: bool
+    floor_state: str = "free"
+    open_order: TableOpenOrderOut | None = None
 
     model_config = {"from_attributes": True}
 

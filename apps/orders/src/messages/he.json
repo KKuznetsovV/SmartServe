@@ -285,7 +285,16 @@
     "deleteConfirm": "למחוק את השולחן \"{name}\"?",
     "toastCreated": "השולחן נוצר",
     "toastUpdated": "השולחן עודכן",
-    "toastDeleted": "השולחן נמחק"
+    "toastDeleted": "השולחן נמחק",
+    "editLayout": "עריכת מפה",
+    "doneLayout": "סיום",
+    "stateFree": "פנוי",
+    "stateSeated": "ישבו",
+    "stateOrdered": "הוזמן",
+    "stateFoodReady": "האוכל מוכן",
+    "stateWaitingToPay": "ממתין לתשלום",
+    "seatedSince": "מישיבה {time}",
+    "guests": "{count, plural, one {אורח אחד} other {# אורחים}}"
   },
   "kitchen": {
     "title": "תצוגת מטבח",

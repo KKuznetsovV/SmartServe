@@ -6,10 +6,10 @@ import { useTranslations } from 'next-intl'
 import { apiClient } from '@/lib/api'
 import type { Table } from '@smartserve/types'
 
-export function useTables(locationId: string | null) {
+export function useTables(locationId: string | null, includeStatus = false) {
   return useQuery({
-    queryKey: ['tables', locationId],
-    queryFn: () => apiClient.tables.list(locationId!),
+    queryKey: ['tables', locationId, includeStatus ? 'status' : 'basic'],
+    queryFn: () => apiClient.tables.list(locationId!, includeStatus ? 'status' : undefined),
     enabled: !!locationId,
   })
 }
