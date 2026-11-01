@@ -55,20 +55,20 @@ class TableService:
         out: list[TableOut] = []
         for table in tables:
             payload = TableOut.model_validate(table)
-            order = latest.get(table.id)
-            if order is None:
+            open_order = latest.get(table.id)
+            if open_order is None:
                 out.append(payload)
                 continue
             out.append(
                 payload.model_copy(
                     update={
-                        "floor_state": floor_state_for_order(order.status),
+                        "floor_state": floor_state_for_order(open_order.status),
                         "open_order": TableOpenOrderOut(
-                            id=order.id,
-                            status=order.status,
-                            guest_count=order.guest_count,
-                            seated_since=order.created_at,
-                            total=order.total,
+                            id=open_order.id,
+                            status=open_order.status,
+                            guest_count=open_order.guest_count,
+                            seated_since=open_order.created_at,
+                            total=open_order.total,
                         ),
                     }
                 )
