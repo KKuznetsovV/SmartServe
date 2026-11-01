@@ -77,11 +77,14 @@ test('customer display shows preparing and ready columns', async ({ page, reques
   await expect(page.getByRole('heading', { name: /סטטוס הזמנה|Order Status/i })).toBeVisible()
   await expect(page.getByTestId('display-preparing')).toBeVisible()
   await expect(page.getByTestId('display-ready')).toBeVisible()
-  await expect(page.getByTestId('display-preparing').getByTestId('display-number')).toContainText(
-    String(preparingNumber),
-  )
-  await expect(page.getByTestId('display-ready').getByTestId('display-number')).toContainText(String(readyNumber))
-  const readyBox = await page.getByTestId('display-ready').getByTestId('display-number').first().boundingBox()
+  await expect(
+    page.getByTestId('display-preparing').locator(`[data-order-number="${preparingNumber}"]`),
+  ).toBeVisible()
+  await expect(page.getByTestId('display-ready').locator(`[data-order-number="${readyNumber}"]`)).toBeVisible()
+  const readyBox = await page
+    .getByTestId('display-ready')
+    .locator(`[data-order-number="${readyNumber}"]`)
+    .boundingBox()
   expect(readyBox).not.toBeNull()
   if (readyBox) expect(readyBox.height).toBeGreaterThanOrEqual(96)
   await expectNoSeriousAxeViolations(page)
