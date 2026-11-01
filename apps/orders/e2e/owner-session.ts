@@ -34,31 +34,42 @@ export async function demoLocationId(request: APIRequestContext): Promise<string
   return cachedLocationId
 }
 
+export async function registerDevice(
+  page: Page,
+  request: APIRequestContext,
+  locationId: string,
+  name: string,
+  deviceType: 'pos' | 'kds' | 'display',
+): Promise<string> {
+  const token = await ownerToken(request)
+  const registered = await request.post(`${API}/locations/${locationId}/devices`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { name, type: deviceType },
+  })
+  expect(registered.ok(), await registered.text()).toBeTruthy()
+  const device = await registered.json()
+  await page.addInitScript(
+    ({ locationId: id, deviceToken, deviceName, deviceType: type }) => {
+      localStorage.setItem(
+        'smartserve-device',
+        JSON.stringify({
+          state: { locationId: id, deviceToken, deviceType: type, deviceName },
+          version: 0,
+        }),
+      )
+    },
+    { locationId, deviceToken: device.token as string, deviceName: name, deviceType },
+  )
+  return device.token as string
+}
+
 export async function registerPosDevice(
   page: Page,
   request: APIRequestContext,
   locationId: string,
   name: string,
 ): Promise<void> {
-  const token = await ownerToken(request)
-  const registered = await request.post(`${API}/locations/${locationId}/devices`, {
-    headers: { Authorization: `Bearer ${token}` },
-    data: { name, type: 'pos' },
-  })
-  expect(registered.ok(), await registered.text()).toBeTruthy()
-  const device = await registered.json()
-  await page.addInitScript(
-    ({ locationId: id, deviceToken, deviceName }) => {
-      localStorage.setItem(
-        'smartserve-device',
-        JSON.stringify({
-          state: { locationId: id, deviceToken, deviceType: 'pos', deviceName },
-          version: 0,
-        }),
-      )
-    },
-    { locationId, deviceToken: device.token as string, deviceName: name },
-  )
+  await registerDevice(page, request, locationId, name, 'pos')
 }
 
 export { API }
