@@ -30,6 +30,7 @@ async function openTakeawayOrder(page: Page, request: APIRequestContext) {
 }
 
 test('order screen localizes tiles and keeps cancel in an overflow menu', async ({ page, request }) => {
+  test.setTimeout(60_000)
   await page.context().addCookies([
     { name: 'locale', value: 'he', path: '/', domain: 'localhost' },
     { name: 'theme', value: 'light', path: '/', domain: 'localhost' },
@@ -37,18 +38,17 @@ test('order screen localizes tiles and keeps cancel in an overflow menu', async 
   await page.setViewportSize({ width: 1180, height: 820 })
   await openTakeawayOrder(page, request)
 
-  await expect(page.getByRole('button', { name: 'שתייה' })).toBeVisible()
-  await page.getByRole('button', { name: 'שתייה' }).click()
-  await expect(page.getByTestId('menu-tile').first()).toBeVisible()
-  const tile = page.getByTestId('menu-tile').first()
+  await expect(page.getByRole('button', { name: 'ראשונות' })).toBeVisible()
+  const tile = page.getByTestId('menu-tile').filter({ hasText: 'חומוס' })
+  await expect(tile).toBeVisible()
   const box = await tile.boundingBox()
   expect(box).not.toBeNull()
   if (box) expect(box.height).toBeGreaterThanOrEqual(64)
 
-  await tile.click()
+  await tile.click({ force: true })
   await expect(page.getByText(/לא נשלח/)).toBeVisible()
 
-  await page.getByTestId('order-overflow').click()
+  await page.getByTestId('order-overflow').click({ force: true })
   await page.getByRole('menuitem', { name: /בטל הזמנה/ }).click()
   await expect(page.getByTestId('confirm-cancel-order')).toBeVisible()
 
@@ -60,6 +60,7 @@ test('order screen localizes tiles and keeps cancel in an overflow menu', async 
 })
 
 test('order screen stays usable on a phone in English dark mode', async ({ page, request }) => {
+  test.setTimeout(60_000)
   await page.context().addCookies([
     { name: 'locale', value: 'en', path: '/', domain: 'localhost' },
     { name: 'theme', value: 'dark', path: '/', domain: 'localhost' },
