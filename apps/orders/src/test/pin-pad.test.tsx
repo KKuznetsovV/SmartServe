@@ -51,4 +51,27 @@ describe('PinPad', () => {
     expect(onDigit).toHaveBeenCalledWith('1')
     expect(onBackspace).toHaveBeenCalledTimes(1)
   })
+
+  it('accepts digits, Backspace and Enter from the keyboard', async () => {
+    const onDigit = vi.fn()
+    const onBackspace = vi.fn()
+    const onEnter = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <PinPad
+        pinLength={4}
+        pin=""
+        backLabel="Back"
+        deleteLabel="Delete last digit"
+        onDigit={onDigit}
+        onBackspace={onBackspace}
+        onBack={vi.fn()}
+        onEnter={onEnter}
+      />,
+    )
+    await user.keyboard('12{Backspace}34{Enter}')
+    expect(onDigit.mock.calls.map((c) => c[0])).toEqual(['1', '2', '3', '4'])
+    expect(onBackspace).toHaveBeenCalledTimes(1)
+    expect(onEnter).toHaveBeenCalledTimes(1)
+  })
 })
