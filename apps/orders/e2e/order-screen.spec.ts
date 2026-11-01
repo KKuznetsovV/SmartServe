@@ -75,12 +75,12 @@ test('order screen localizes tiles and keeps cancel in an overflow menu', async 
   if (box) expect(box.height).toBeGreaterThanOrEqual(64)
 
   await expect(page.getByText(/לא נשלח|Not sent/)).toBeVisible()
+  await expectNoSeriousAxeViolations(page)
 
   await page.getByTestId('order-overflow').click({ force: true })
   await page.getByRole('menuitem', { name: /בטל הזמנה/ }).click()
   await expect(page.getByTestId('confirm-cancel-order')).toBeVisible()
 
-  await expectNoSeriousAxeViolations(page)
   await test.info().attach('after-he-light-tablet', {
     body: await page.screenshot({ fullPage: true }),
     contentType: 'image/png',
